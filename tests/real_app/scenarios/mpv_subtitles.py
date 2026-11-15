@@ -12,6 +12,7 @@ from PyQt5.QtCore import QRect
 from PyQt5.QtGui import QColor
 
 from gridplayer.models.subtitle_selection import SubtitleExternal, SubtitleTrackId
+from gridplayer.mpv_player import abilities
 from gridplayer.params.static import VideoTransform
 from tests.real_app.composed import is_direct
 from tests.real_app.media import _ffmpeg, _pattern
@@ -191,6 +192,11 @@ def _vobsub(d):
 
     b = _open(d, video)
 
+    if not abilities.known().reads_subtitle_file(index):
+        _greyed_out(d, b, index)
+        _close(d, b)
+        return
+
     b.subtitles.add_external([index])
     d.wait_until(lambda: len(b.subtitles.external_track_ids) == 2, "its two tracks")
     d.wait_until(lambda: _lit(b) > 0, "its first shows")
@@ -212,6 +218,18 @@ def _vobsub(d):
     d.wait_until(lambda: _lit(b) > 0, "and shown")
 
     _close(d, b)
+
+
+def _greyed_out(d, b, file):
+    """A file beside the video this libmpv can't read (VobSub in MPVKit's, on macOS):
+    offered, greyed out."""
+
+    d.run(b, "active", "subtitles.set_external_autodiscover", True)
+    d.wait_until(lambda: file in b.subtitles.offered_files, f"{file.name} is offered")
+
+    rows = [row for _, row in d._menu(b, "menu_generator_subtitle_track") if row]
+    row = next(r for r in rows if r["func"][2:] == (str(file),))
+    d.check(f"{file.name}: greyed out", not d.ctx.commands.resolve(row["enable_if"])())
 
 
 def _character_sets(d):

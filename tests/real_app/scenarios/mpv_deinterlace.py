@@ -3,14 +3,16 @@
 A bar moving fast, made interlaced: what's combed has rows that differ from the ones
 next to them. Each setting takes hold with no reload, comes back after one, and a mode
 gets as many pictures a second as it should. A filter this libmpv hasn't got leaves it
-playing on with its own.
+playing on with its own, and a mode whose filters it hasn't got (MPVKit's on macOS)
+shows greyed out.
 """
 
 from unittest.mock import patch
 
 from PyQt5.QtGui import qGray
 
-from gridplayer.mpv_player import deinterlace, player
+from gridplayer.mpv_player import abilities, deinterlace, player
+from gridplayer.params.actions import ACTIONS
 from gridplayer.params.static import VideoDeinterlaceMode
 from tests.real_app.media import _ffmpeg
 from tests.real_app.scenarios.mpv_subtitles import _reload
@@ -186,6 +188,10 @@ def _modes(d, flagged):
     size = tuple(_mpv(b).video_out_params[key] for key in ("w", "h"))
 
     for action, rate in MODE_RATES.items():
+        if _is_missing(action):
+            d.check(f"{action}: greyed out", not d.ctx.actions[action].is_enabled)
+            continue
+
         d.act(b, action)
 
         _wait_for_rate(d, b, rate, action)
@@ -214,7 +220,19 @@ def _most_comb_of_many(d, b) -> int:
     return most
 
 
+def _is_missing(action: str) -> bool:
+    """A mode whose filters this libmpv's FFmpeg hasn't got."""
+
+    mode = ACTIONS[action]["func"][2]
+
+    return mode in deinterlace.unavailable_modes(abilities.known())
+
+
 def _film(d):
+    if _is_missing("Deinterlace Mode - Film NTSC (IVTC)"):
+        d.note("film: no IVTC in this libmpv")
+        return
+
     b = _open(d, _clip(d, "film.mkv", _TELECINE, *_FLAGS))
 
     d.act(b, "Deinterlace Off")
@@ -337,7 +355,13 @@ def _frame_steps(d, flagged):
 def _a_filter_it_has_not_got(d, flagged):
     mode = VideoDeinterlaceMode.YADIF
 
-    with patch.dict(deinterlace._MODE_FILTERS, {mode: "nosuchfilter"}):
+    # not known to be missing beforehand, as where mpv can't be asked
+    with (
+        patch.dict(deinterlace._MODE_FILTERS, {mode: "nosuchfilter"}),
+        patch.object(
+            abilities, "_known", abilities.Abilities(frozenset(), frozenset())
+        ),
+    ):
         b = _open(d, flagged)
         d.act(b, "Deinterlace On")
         d.act(b, "Deinterlace Mode - Yadif")

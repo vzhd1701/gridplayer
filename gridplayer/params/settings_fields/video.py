@@ -203,6 +203,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         settings_key="video_defaults/deinterlace_mode",
         label=translate("SettingsDialog", "Mode"),
         choices=choices.deinterlace_modes,
+        unavailable_choices=choices.unavailable_deinterlace_modes,
         enabled_when=When(
             "video_defaults/deinterlace", (VideoDeinterlace.AUTO, VideoDeinterlace.ON)
         ),

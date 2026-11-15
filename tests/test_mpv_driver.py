@@ -26,6 +26,7 @@ from gridplayer.models.subtitle_selection import (
     SubtitleTrackId,
 )
 from gridplayer.models.video import Video
+from gridplayer.mpv_player import abilities
 from gridplayer.mpv_player import player as player_module
 from gridplayer.mpv_player.conf import parse_conf
 from gridplayer.mpv_player.deinterlace import deinterlace_options
@@ -566,6 +567,15 @@ def _built_in_scripts_read(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _abilities_known(monkeypatch):
+    """As if asked already, with nothing said: asking makes an mpv of its own."""
+
+    monkeypatch.setattr(
+        abilities, "_known", abilities.Abilities(frozenset(), frozenset())
+    )
+
+
+@pytest.fixture(autouse=True)
 def _no_refused_modes():
     _REFUSED_MODES.clear()
 
@@ -777,6 +787,21 @@ def test_a_mode_refused_once_is_left_alone_by_later_videos():
 
     assert player.mpv.options["hwdec"] == "auto"
     assert _deinterlace_told(player) == [("deinterlace", "yes")]
+
+
+def test_a_mode_this_libmpv_has_not_the_filters_for_is_not_tried(monkeypatch):
+    # MPVKit's FFmpeg has yadif, not separatefields
+    monkeypatch.setattr(
+        abilities,
+        "_known",
+        abilities.Abilities(frozenset({"yadif", "bwdif", "scale"}), frozenset()),
+    )
+    player = _filter_on_cpu()
+
+    player.set_deinterlace(VideoDeinterlace.ON, VideoDeinterlaceMode.BOB)
+
+    assert not any(told[0] == "vf" and told[1] for told in _deinterlace_told(player))
+    assert ("deinterlace", "yes") in _deinterlace_told(player)
 
 
 def test_a_mode_refused_leaves_the_others_as_they_are():

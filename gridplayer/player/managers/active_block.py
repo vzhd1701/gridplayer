@@ -30,6 +30,8 @@ from gridplayer.models.subtitle_selection import (
     SubtitlePreferred,
     SubtitleTrackId,
 )
+from gridplayer.mpv_player import abilities
+from gridplayer.mpv_player.deinterlace import unavailable_modes
 from gridplayer.params.static import (
     NO_CROP_RATIO,
     OWN_ASPECT_RATIO,
@@ -37,6 +39,7 @@ from gridplayer.params.static import (
 )
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.utils.bookmarks import default_bookmark_name
+from gridplayer.utils.media_libs import MediaLib
 from gridplayer.utils.qt import is_modal_open, topmost, translate
 from gridplayer.utils.time_txt import timed_title
 from gridplayer.utils.track_language import language_name
@@ -159,6 +162,8 @@ class ActiveBlockManager(ManagerBase):
             "is_active_navigable": self.is_active_navigable,
             "is_active_has_audio": self.is_active_has_audio,
             "is_active_has_video": self.is_active_has_video,
+            "is_deinterlace_mode_possible": self.is_deinterlace_mode_possible,
+            "is_subtitle_file_readable": self.is_subtitle_file_readable,
             "is_active_has_subtitles": self.is_active_has_subtitles,
             "is_active_subtitle_track": self.is_active_subtitle_track,
             "is_active_subtitle_preferred": self.is_active_subtitle_preferred,
@@ -374,6 +379,31 @@ class ActiveBlockManager(ManagerBase):
             return False
 
         return bool(self._ctx.active_block.video_tracks)
+
+    def is_deinterlace_mode_possible(self, mode):
+        """Greyed out where this MPV's FFmpeg hasn't got the mode's filters.
+        VLC has every mode."""
+
+        if not self._is_active_on_mpv():
+            return True
+
+        return mode not in unavailable_modes(abilities.known())
+
+    def is_subtitle_file_readable(self, file_path):
+        """Greyed out where this MPV's FFmpeg can't read the file's format."""
+
+        if not self._is_active_on_mpv():
+            return True
+
+        known = abilities.known()
+
+        return known is None or known.reads_subtitle_file(Path(file_path))
+
+    def _is_active_on_mpv(self):
+        if self.is_no_active_block:
+            return False
+
+        return self._ctx.active_block.video_driver.media_lib == MediaLib.MPV
 
     def is_active_multistream(self):
         if self.is_no_active_block:
@@ -1179,6 +1209,7 @@ class ActiveBlockManager(ManagerBase):
                 "title": block.subtitles.file_name(file_path),
                 "icon": "empty",
                 "func": ("active", "subtitles.show_external", str(file_path)),
+                "enable_if": ("is_subtitle_file_readable", str(file_path)),
                 "show_if": "is_active_local_file",
             }
             for file_path in block.subtitles.offered_files

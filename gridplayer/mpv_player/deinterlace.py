@@ -34,6 +34,24 @@ _MODE_FILTERS = {
 }
 
 
+def unavailable_modes(abilities) -> frozenset[VideoDeinterlaceMode]:
+    """The modes whose filters this libmpv's FFmpeg hasn't got: Discard, Blend,
+    Bob, Linear and IVTC in MPVKit's. None of them while that's not known."""
+
+    if abilities is None:
+        return frozenset()
+
+    return frozenset(
+        mode
+        for mode, chain in _MODE_FILTERS.items()
+        if not abilities.has_filters(_filter_names(chain))
+    )
+
+
+def _filter_names(chain: str) -> set[str]:
+    return {part.split("=", 1)[0] for part in chain.split(",")}
+
+
 def deinterlace_options(
     deinterlace: VideoDeinterlace,
     mode: VideoDeinterlaceMode,

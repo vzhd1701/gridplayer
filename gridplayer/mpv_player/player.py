@@ -25,6 +25,7 @@ from PyQt5.QtGui import QImage
 from gridplayer.models.audio_device import AudioDevice, resolve_device_id
 from gridplayer.models.chapter import Chapter
 from gridplayer.models.subtitle_selection import SubtitleExternal, track_of_file
+from gridplayer.mpv_player import abilities
 from gridplayer.mpv_player.conf import (
     ConfLine,
     Skip,
@@ -33,7 +34,7 @@ from gridplayer.mpv_player.conf import (
     log_skipped,
     resolve,
 )
-from gridplayer.mpv_player.deinterlace import deinterlace_options
+from gridplayer.mpv_player.deinterlace import deinterlace_options, unavailable_modes
 from gridplayer.mpv_player.quality import FAST, high_options, is_high
 from gridplayer.mpv_player.subtitles import (
     SubtitleView,
@@ -503,6 +504,9 @@ class MpvPlayer(QObject):
         super().__init__()
 
         self._log = logging.getLogger(self.__class__.__name__)
+
+        # once a run, for the menus as well
+        abilities.ask(mpv_module)
 
         self._mpv_module = mpv_module
         self.media_input = media_input
@@ -1255,10 +1259,14 @@ class MpvPlayer(QObject):
 
         return deinterlace_options(
             video.deinterlace,
-            VideoDeinterlaceMode.AUTO if mode in _REFUSED_MODES else mode,
+            VideoDeinterlaceMode.AUTO if self._is_refused(mode) else mode,
             self._has_auto_deinterlace,
             self._is_interlaced,
         )
+
+    @staticmethod
+    def _is_refused(mode: VideoDeinterlaceMode) -> bool:
+        return mode in _REFUSED_MODES or mode in unavailable_modes(abilities.known())
 
     def _hwdec_for(self, video_filter: str) -> str:
         return _HWDEC_TO_CPU if video_filter and self._hwdec != "no" else self._hwdec

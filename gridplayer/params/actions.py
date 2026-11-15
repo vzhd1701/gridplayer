@@ -1118,6 +1118,7 @@ ACTIONS = MappingProxyType(
             "title": translate("Deinterlace Mode", "Discard"),
             "icon": "empty",
             "func": ("active", "set_deinterlace_mode", VideoDeinterlaceMode.DISCARD),
+            "enable_if": ("is_deinterlace_mode_possible", VideoDeinterlaceMode.DISCARD),
             "check_if": (
                 "is_active_param_set_to",
                 "deinterlace_mode",
@@ -1130,6 +1131,7 @@ ACTIONS = MappingProxyType(
             "title": translate("Deinterlace Mode", "Blend"),
             "icon": "empty",
             "func": ("active", "set_deinterlace_mode", VideoDeinterlaceMode.BLEND),
+            "enable_if": ("is_deinterlace_mode_possible", VideoDeinterlaceMode.BLEND),
             "check_if": (
                 "is_active_param_set_to",
                 "deinterlace_mode",
@@ -1142,6 +1144,7 @@ ACTIONS = MappingProxyType(
             "title": translate("Deinterlace Mode", "Mean"),
             "icon": "empty",
             "func": ("active", "set_deinterlace_mode", VideoDeinterlaceMode.MEAN),
+            "enable_if": ("is_deinterlace_mode_possible", VideoDeinterlaceMode.MEAN),
             "check_if": (
                 "is_active_param_set_to",
                 "deinterlace_mode",
@@ -1154,6 +1157,7 @@ ACTIONS = MappingProxyType(
             "title": translate("Deinterlace Mode", "Bob"),
             "icon": "empty",
             "func": ("active", "set_deinterlace_mode", VideoDeinterlaceMode.BOB),
+            "enable_if": ("is_deinterlace_mode_possible", VideoDeinterlaceMode.BOB),
             "check_if": (
                 "is_active_param_set_to",
                 "deinterlace_mode",
@@ -1166,6 +1170,7 @@ ACTIONS = MappingProxyType(
             "title": translate("Deinterlace Mode", "Linear"),
             "icon": "empty",
             "func": ("active", "set_deinterlace_mode", VideoDeinterlaceMode.LINEAR),
+            "enable_if": ("is_deinterlace_mode_possible", VideoDeinterlaceMode.LINEAR),
             "check_if": (
                 "is_active_param_set_to",
                 "deinterlace_mode",
@@ -1178,6 +1183,7 @@ ACTIONS = MappingProxyType(
             "title": translate("Deinterlace Mode", "X"),
             "icon": "empty",
             "func": ("active", "set_deinterlace_mode", VideoDeinterlaceMode.X),
+            "enable_if": ("is_deinterlace_mode_possible", VideoDeinterlaceMode.X),
             "check_if": (
                 "is_active_param_set_to",
                 "deinterlace_mode",
@@ -1190,6 +1196,7 @@ ACTIONS = MappingProxyType(
             "title": translate("Deinterlace Mode", "Yadif"),
             "icon": "empty",
             "func": ("active", "set_deinterlace_mode", VideoDeinterlaceMode.YADIF),
+            "enable_if": ("is_deinterlace_mode_possible", VideoDeinterlaceMode.YADIF),
             "check_if": (
                 "is_active_param_set_to",
                 "deinterlace_mode",
@@ -1202,6 +1209,7 @@ ACTIONS = MappingProxyType(
             "title": translate("Deinterlace Mode", "Yadif (2x)"),
             "icon": "empty",
             "func": ("active", "set_deinterlace_mode", VideoDeinterlaceMode.YADIF2X),
+            "enable_if": ("is_deinterlace_mode_possible", VideoDeinterlaceMode.YADIF2X),
             "check_if": (
                 "is_active_param_set_to",
                 "deinterlace_mode",
@@ -1214,6 +1222,10 @@ ACTIONS = MappingProxyType(
             "title": translate("Deinterlace Mode", "Phosphor"),
             "icon": "empty",
             "func": ("active", "set_deinterlace_mode", VideoDeinterlaceMode.PHOSPHOR),
+            "enable_if": (
+                "is_deinterlace_mode_possible",
+                VideoDeinterlaceMode.PHOSPHOR,
+            ),
             "check_if": (
                 "is_active_param_set_to",
                 "deinterlace_mode",
@@ -1226,6 +1238,7 @@ ACTIONS = MappingProxyType(
             "title": translate("Deinterlace Mode", "Film NTSC (IVTC)"),
             "icon": "empty",
             "func": ("active", "set_deinterlace_mode", VideoDeinterlaceMode.IVTC),
+            "enable_if": ("is_deinterlace_mode_possible", VideoDeinterlaceMode.IVTC),
             "check_if": (
                 "is_active_param_set_to",
                 "deinterlace_mode",

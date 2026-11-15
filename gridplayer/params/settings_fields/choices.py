@@ -349,6 +349,37 @@ def deinterlace_modes() -> dict:
     }
 
 
+def unavailable_deinterlace_modes() -> dict:
+    """The modes this MPV's FFmpeg hasn't the filters for, value -> reason, as
+    MPVKit's in the macOS package. VLC has every mode. Asks libmpv, loading it,
+    if no video has yet: once a run."""
+
+    # imported here, it asks the session, which is not there on import
+    from gridplayer.mpv_player import abilities
+    from gridplayer.mpv_player.deinterlace import unavailable_modes
+    from gridplayer.mpv_player.libmpv import load_mpv
+    from gridplayer.settings import Settings
+    from gridplayer.utils.media_libs import MediaLib, lib_of_driver, lib_problem
+    from gridplayer.utils.video_driver import session_video_driver
+
+    driver = session_video_driver(Settings().get("player/video_driver"))
+
+    if lib_of_driver(driver) != MediaLib.MPV or lib_problem(MediaLib.MPV):
+        return {}
+
+    known = abilities.known()
+
+    if known is None:
+        try:
+            known = abilities.ask(load_mpv())
+        except OSError:
+            return {}
+
+    reason = translate("SettingsDialog", "Not available in this MPV")
+
+    return dict.fromkeys(unavailable_modes(known), reason)
+
+
 def end_actions() -> dict:
     return {
         VideoEndAction.LOOP_FILE: translate("When Finished", "Loop this file"),
