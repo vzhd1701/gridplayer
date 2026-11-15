@@ -675,13 +675,36 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
   pattern decodes far more easily than a film. YouTube itself not measured since.
 - `mpv_seeking`: where each lands, by the setting, on 0.35, 0.37, 0.40 and 0.41.
 
-**Left:**
+**Left** (gone through 2026-11-15):
 
-- A long way back can take 7 s, about the same as the playlist did on Windows and more than VLC's 2-5 s. mpv works through fragments to get there: not looked into further.
+- ~~A long way back can take 7 s~~ **Not any more (2026-11-15).** The YouTube video you gave for MPV testing (729 s, 1080p VP9, Hardware
+  MPV, Exact): back a long way 0.9 and 1.3 s, back into what's played 0.9 s, on again 1.5 s; only the first seek, on far,
+  4.4 s. The test file in fragments from a slow server (1 MB/s, 0.1 s a request): every seek 0.7-1.3 s, 2-3 requests.
+  The 7 s was before the file in fragments was opened as that file (`has_fragmented_file`). VLC, on that slow server,
+  11-40 s a seek: its playlist made of the file reads whole fragments; not looked into.
 - **YouTube turned me down with 429 after a long run of testing, on both machines,** for a while, so go easy with these. It's what the scenarios here are for. It cleared by itself.
-- A stream's sound whose link fails leaves the video playing silent, with only a log line. Read in the code, not tried.
+- ~~A stream's sound whose link fails leaves the video playing silent~~ **Fixed (2026-11-15).** Tried: refused from the
+  start, MPV played the picture on with no sound track; refused halfway, it stalled 2 s and went on silent. VLC does the
+  same. Now the proxy's failure on the sound's link (told once asking again with the link renewed was no better) is
+  checked each second with the stall watch: the cell is loaded again, as for a video failing, and once that's no better,
+  "Can't play the sound" with the server's answer ("The server refused. The link may have expired.", HTTP 403).
+  `StreamControl.sound_failure`, `RecoveryControl._is_sound_lost`; scenario `mpv_stream_sound`. A muted cell is
+  loaded again too: rather that than a video whose sound is gone without a word.
 - On Linux yt-dlp had no JavaScript runtime here, so it was given other formats than Windows. Not run with one.
 - Not run: AMD, macOS, cookies on MPV, DASH live. Nobody has looked at this on a real screen or listened: I read pixels, `avsync` and the track list.
+  - **Cookies (2026-11-15): work.** Scenario `cookies`, on VLC and both MPVs: a server that refuses anything without a
+    cookie, the cookie in cookies.txt; a file and an HLS stream with its sound apart play, no request without it. A
+    link with cookies for its host always goes through the proxy (`needs_relay`), whichever player.
+  - **DASH live (2026-11-15): doesn't work on MPV.** FFmpeg's DASH reader, which mpv plays DASH with, reads what's there
+    at once (about 340 requests in a second, the manifest before each segment), asks 100 times for segments not out
+    yet, gives up and plays what it has, about 15 s; the cell then reconnects and fails. The same on DASH-IF's own live
+    test stream (livesim2 testpic_2s): HTTP 425 Too Early, never plays. Through the proxy (with a cookie) the same.
+    VLC follows it: 5-7 requests every 5 s, plays on. Static DASH is not affected. YouTube and Twitch live are HLS.
+    What would fix it: the proxy making a live HLS playlist of the DASH manifest, the picture and sound each one, as
+    it does of a static one (`dash`). Your call: 9.L1 below.
+  - AMD on Linux: no hardware. AMD on Windows passed (2026-11-11).
+- [ ] 9.L1 **Live DASH on MPV (found 2026-11-15), your call:** the proxy turns a live DASH manifest into live HLS for
+  MPV, or it's left to VLC, said in the README's known issues.
 
 ## Stage 10: Hardening
 
@@ -1854,7 +1877,8 @@ How it goes in, by what's there already:
     before either way of starting. The turns stay on Windows. Left open: Intel on Windows (no machine), and whether
     `d3d11-flip=no` is worth having on NVIDIA (0 of 44 against 3 of 44, a hint). All of it written up in
     `MPV_DIRECT_CRASHES.md`; what the turns cost, 14.13.
-- [ ] 14.12 Parked (2026-11-12): X11, Direct, a GNOME screenshot taken as a video says it has loaded shows the
+- [x] 14.12 **Closed (2026-11-15, your call): seen only by the test's screenshot, never on screen.** Parked
+  2026-11-12; the notes are kept in case it turns up. X11, Direct, a GNOME screenshot taken as a video says it has loaded shows the
   loading card, the picture 0.3-0.7 s later. `mpv_transport`'s random start sees it, failing on the Ubuntu VM 5 runs of
   16, then 8 of 8 (2026-11-12), as often with mpvs starting together as in turn. Windows passes. You see no glitch
   opening videos on the VM, so it may be what the screenshot catches rather than what's on screen.
