@@ -22,9 +22,9 @@ overnight 2026-11-09: new items 10.21-10.23.
 | 8 | Deinterlacing, chapters, bookmarks, SponsorBlock | **built**, macOS on a VM with no GPU |
 | 9 | Streams, live video, errors and recovery, lists | **built**, macOS on a VM with no GPU |
 | 10 | Hardening: long churn, memory, real drags, other GPUs | mostly done; open: 10.4 (other GPUs) |
-| 11 | macOS | **VM half done 2026-11-11**, all scenarios pass; a real GPU still to come (11.4) |
+| 11 | macOS | **real GPU run 2026-11-15** (11.4): every scenario passes on a hackintosh; OpenGL 3.2 Core and Shared output on macOS now; Retina, two GPUs, Apple Silicon not run |
 | 12 | Packaging, docs, release | not started |
-| 13 | GL output, a choice beside readback | **built, macOS not run**, resize shaking, NVIDIA's black line and a crash closing a cell fixed, one surface for the window (13.5), 120 fps (13.10) |
+| 13 | GL output, a choice beside readback | **built**, on macOS too since 2026-11-15 (the default there), resize shaking, NVIDIA's black line and a crash closing a cell fixed, one surface for the window (13.5), 120 fps (13.10) |
 | 14 | mpv drawing into its own windows, a third output | **started 2026-11-11**, Windows first |
 
 ## Rules that hold in every stage
@@ -1132,17 +1132,69 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     Legacy Patcher), macOS 15.8.3, one 1080p screen. OpenGL in hardware, 2.1 and 4.1 Core; VideoToolbox decodes H.264 only
     (HEVC, VP9, AV1 on the CPU). MacPorts libmpv 0.42 (Homebrew has no Intel Mac builds any more), VLC 3.0.24. First
     `mpv_basics` on Hardware MPV passed, decoding `videotoolbox-copy`. Not there: Retina, two GPUs, Apple Silicon.
-  - First: every scenario on Hardware MPV, Software MPV and VLC, as only the VM's software renderer has run them; then
-    the rest below, the bench overnight.
-  - VideoToolbox: does Hardware MPV decode with it, and with frames kept on the GPU (`videotoolbox`, not `-copy`) in Qt's
-    context? H.264, HEVC, 10-bit HEVC. Colours right in the read-back frames.
-  - OpenGL 2.1 against 3.2 Core: whether Hardware MPV draws as it should on 2.1, or should ask for Core.
-  - How many play and what it costs: the bench's mix at 4, 9 and 16 on Hardware and Software MPV and VLC.
-  - A Retina screen (or a 4K one scaled): frames rendered at the screen's pixels, cells, zoom and screenshots.
-  - Fast output, hidden on macOS: whether it's worth it there. It needs the render thread's context in Qt's share group.
+  - **Run overnight 2026-11-15**, in real windows on the Mac's screen (`REAL_APP_QT_PLATFORM=cocoa`).
+  - [x] Every scenario on Hardware MPV, Software MPV and VLC: **all 77 pass** (`external_audio_jump` the known VLC bug),
+    on Copy and again on Shared. The first run failed 13, none of them MPV's:
+    - **VLC Software showed no picture of a file that says to turn it.** On a Mac with a hardware decoder VLC 3 decodes
+      H.264 with VideoToolbox, a decoder of its own beside avcodec that `avcodec-hw=none` doesn't reach. Its frames
+      (`CVPN`) can't go through the `transform` filter the turn needs, so the video output failed to open. The VM has no
+      hardware decoder and never showed it. VLC Software takes `no-videotoolbox` too on macOS now
+      (`software_decoding_options`).
+    - The drags of 8 layout scenarios: Qt's `QCursor.setPos` on macOS posts a mouse move of its own, with no button
+      held, which ends the drag as let go of elsewhere. The driver moves the pointer with `CGWarpMouseCursorPosition`
+      on cocoa, which posts nothing. `grid_lines` came back to the spot it had left from, and Qt drops a move to
+      where the last one was: it comes from elsewhere now.
+    - `mpv_basics` on Software MPV checked Picture quality, which Software MPV doesn't take (it scales on the CPU): a
+      scenario bug since 10.34, never run on Software MPV before. Skipped there now.
+  - [x] VideoToolbox, and **OpenGL 3.2 Core**. In Qt's default context, the legacy 2.1 profile, mpv has no VideoToolbox
+    interop: `auto` lands on `videotoolbox-copy`, and `hwdec=videotoolbox` falls to the CPU altogether. In a 3.2 Core
+    context `auto` takes `videotoolbox` with the frames kept on the GPU: H.264, HEVC, 10-bit HEVC (`p010`), 4K. The
+    render thread's context is asked as 3.2 Core on macOS now (`macos_gl_format`), Qt's own if a Mac has no such
+    context. HEVC goes through VideoToolbox too, which decodes it on the CPU on a GPU with no HEVC (Haswell).
+    Colours: every hardware path gave the same frames, within 0.5 of Software MPV's on SMPTE bars (BT.709, limited).
+  - [x] The bench in a real window, 1080p clips (fps a cell; `tests/real_app/bench` runs on macOS now, GPU load from
+    `ioreg`):
+
+    | | mix ×4 | mix ×9 | mix ×16 | H.264 60p ×4 | ×9 | ×16 |
+    |---|---|---|---|---|---|---|
+    | Hardware MPV, Copy, 2.1 (before) | 29 | 10 | 5 | 34 | 7 | — |
+    | Hardware MPV, Copy, 3.2 Core | 39 | 27 | 14 | 50 | 30 | 10.5 |
+    | **Hardware MPV, Shared, 3.2 Core** | **43** | **39** | **25** | **60** | **60** | 11 |
+    | Software MPV | 44 | 38 | 21 | | | |
+    | VLC Software (one process or many) | 43 | 25 | 15 | | | |
+    | VLC Hardware | 44 | 29 | 18, 2 frozen | 60 | 32, slowest 13 | 11, 3 frozen |
+
+    Copy is held up by reading frames back: at 16 cells a render round took 68 ms, 58 of them reading back (3.6 ms a
+    frame). Shared reads none back and took the least CPU of all (130% at 9 cells against Software MPV's 593%). VLC
+    Software filled all 8 threads by 9 cells, the GUI stalling up to 1.4 s at 16. VLC Hardware is as good at 4, on less
+    CPU (it draws into a view of its own), and behind from 9; at 16 some of its videos showed no new frame at all (0 fps
+    the whole measure). H.264 60p at 16 is the HD 4600's own limit. VLC Hardware's rate is VLC's own count of pictures
+    shown, and no scenario sees its picture (its own view, out of `grab()`'s reach).
+  - [x] **Shared output on macOS**, hidden till now: worth it, and **the default there** (`settings.py`). Qt's contexts
+    are all 3.2 Core then (`QSurfaceFormat.setDefaultFormat`, as two profiles can't share), the share group takes Qt's
+    context itself where Windows and Linux take WGL's and EGL's, and the render thread's context shares with it.
+    Video output shows on macOS, with Copy and Shared (no Direct). **Your call:** Shared as macOS's default.
+  - [x] Black rows or columns under the pictures, as NVIDIA's padding gave on Windows (13.8): none on macOS. 9 cells of
+    a flat grey clip, filled, the window stepped through 45 sizes, captured from the screen right after each resize
+    and settled: no dark edge in 90 captures on Shared, Copy, Software MPV, VLC Software or VLC Hardware.
+  - Review fixes: the render thread's context is checked to really share with Qt's (Qt makes one of its own, saying
+    nothing, when it can't), and takes the group's own format; no fallback to 2.1 while sharing. The window-size
+    flush (`gl_window_size`) found no Qt on macOS and was off: it takes the framework PyQt5 carries now.
+  - A stall that isn't the app's: `window.raise_()` on cocoa now and then takes 2-3 s in the window server, a bare Qt
+    window too (1 in 6). It froze the GUI on opening a video and failed `mpv_transport`'s speed check (time not told
+    for 2.6 s). Not seen in the night's four full runs; it came with a screen-sharing session on the Mac.
+  - Found on the way, not MPV's:
+    - **Media keys in the background are off on macOS** with Python 3.11 and up: pyobjc 13.0's CoreMedia (30 Oct, the
+      latest) links `@rpath/libswiftCoreMedia.dylib` with no path to `/usr/lib/swift`, so it won't load, and the
+      session gives up. Pinning pyobjc below 13 until a fixed one would do it. **Your call.**
+    - VLC Software: a screenshot asked for just as a short clip loops round finds no frame, VLC's output being made
+      again, and says so in a box. Seen once, in `aspect_ratio`.
+    - `screencapture` over ssh brought up macOS's own question about `com.apple.sshd-session` recording the screen:
+      left unanswered on the Mac.
+  - Not run: a Retina screen (or a 4K one scaled): frames at the screen's pixels, cells, zoom and screenshots. Two GPUs
+    (which one Qt's context draws on). Sleep and wake, a screen unplugged, the window moved between screens of different
+    scales. Apple Silicon.
   - Video memory: Auto reads none on macOS, so it never decodes on the CPU. Metal says how much a GPU has, if that's needed.
-  - Two GPUs (an iGPU and an AMD card): which one Qt's context draws on.
-  - Sleep and wake, a screen unplugged, the window moved between screens of different scales.
 
 ## Stage 12: Packaging and release
 
@@ -1566,8 +1618,8 @@ How it goes in, by what's there already:
     Windows: Direct to VLC Hardware (single process), back, to Copy and back, each in about half a second, both
     pictures on show each time.
   - Default (your call, 2026-11-12): Direct on Windows, the lightest there by every measure here (CPU, video memory,
-    hidden cells); Copy on Linux, where it works on Wayland too. macOS has Copy only, the setting not shown: Direct
-    there would want a real Mac (the VM has no GPU). Direct with no window system to give mpv (offscreen) is Copy.
+    hidden cells); Copy on Linux, where it works on Wayland too. macOS has no Direct; Shared is its default since
+    2026-11-15 (11.4). Direct with no window system to give mpv (offscreen) is Copy.
 - [x] 14.8 All MPV real-app scenarios on it on Windows (`REAL_APP_MPV_OUTPUT=window`), and the bench against Steady and
   Fast, the real app this time.
   - On Windows, the other desktop, message boxes logged instead of shown: `mpv_view` (127 checks), `mpv_basics`,
@@ -1775,6 +1827,9 @@ How it goes in, by what's there already:
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-15: 11.4 overnight on the real Mac: every scenario passes there. Fixed: VLC Software's picture of turned files
+  (VideoToolbox), the cocoa harness's drags. MPV on macOS asks for OpenGL 3.2 Core (zero-copy VideoToolbox), and Shared
+  output runs there, its default: 9 videos at 39 fps where Copy on 2.1 did 10.
 - 2026-11-14: 10.35 built as "Use mpv.conf" (Experimental), not a typed-in box.
 - 2026-11-14: 10.34 Picture quality built: Auto / Fast / High, no middle level (measured, see the item). The Ubuntu VM
   passed `mpv_audio`, `mpv_streams` and `mpv_basics` after 14.14/14.15's review fixes.
