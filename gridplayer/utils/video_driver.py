@@ -213,7 +213,7 @@ def _stand_in_driver(picked: VideoDriver) -> VideoDriver:
 
 
 def _default_vlc_driver() -> VideoDriver:
-    # the same as in the default settings
+    # VLC's default before MPV's: macOS can't draw another process's video
     driver = VideoDriver.VLC_HW_SP if env.IS_MACOS else VideoDriver.VLC_HW
 
     return driver_for_platform(driver)

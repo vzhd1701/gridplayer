@@ -306,11 +306,9 @@ _default_settings = {
     "last_playlist": "",
 }
 
-if env.IS_MACOS:
-    _default_settings["player/video_driver"] = VideoDriver.VLC_HW_SP
-
-# The Linux packages carry libmpv; from source without it, VLC stands in
-if env.IS_LINUX:
+# The macOS and Linux packages carry libmpv. Without it, from source or on
+# macOS before 12, where the Mac's libmpv won't load, VLC stands in
+if env.IS_MACOS or env.IS_LINUX:
     _default_settings["player/video_driver"] = VideoDriver.MPV_HW
 
 # mpv into a window of its own a cell, the least work for the CPU and the GPU.
