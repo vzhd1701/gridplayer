@@ -54,11 +54,10 @@ def scenario(d):
     d.check("3 s to a press of 1%", abs(one_percent_s - 3) < 0.1, length_s)
 
     precision = Settings().get("player/mpv_seek_precision")
-    d.check(
-        "by hand fast, marks exact by default",
-        precision == SeekPrecision.EXACT_MARKS,
-        precision,
-    )
+    d.check("exact by default", precision == SeekPrecision.EXACT, precision)
+
+    # Exact for bookmarks and chapters: by hand fast, marks exact
+    d.change_setting("player/mpv_seek_precision", SeekPrecision.EXACT_MARKS)
 
     _start_at(d, cell, 19)
     cell.manual_seek("seek_shift_percent", 1)
