@@ -658,7 +658,7 @@ VLC, for comparison: about 2 s, up to 5 s, but it lands short of where it was as
 ### Seeking: exact or fast
 
 You decided: a setting, "Seeking" under Video Decoder, greyed out unless on MPV, as mpv.net has it: Exact, Exact for bookmarks and chapters
-(the default, as mpv.net's and mpv's own), and Fast. Fast lands on a key frame. Exact seeks decode from the key frame to the time: 2160p60 AV1 on the
+(the default at first, as mpv.net's and mpv's own), and Fast. **Your call (2026-11-15): Exact is the default.** Fast lands on a key frame. Exact seeks decode from the key frame to the time: 2160p60 AV1 on the
 CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC does by landing short.
 
 - Each seek says what it's for (`SeekAim`): by hand (the bar, seek keys, a random place), a mark (a bookmark, a chapter, a time typed in), or always
@@ -1106,7 +1106,8 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
 
 ## Stage 11: macOS
 
-- [ ] 11.1 Spike on `test_macos`: GL context, render API, VideoToolbox interop, readback
+- [x] 11.1 Spike on `test_macos`: GL context, render API, VideoToolbox interop, readback. Closed 2026-11-15: the
+  VM half below, VideoToolbox and speed on the real Mac (11.4)
   - **Run 2026-11-11 on `test_macos`, a VM with no GPU (macOS 15.1, Intel), Homebrew's libmpv 0.41.** The VM half is done;
     VideoToolbox and anything about speed need a real GPU, see 11.4.
   - Found with nothing set: Homebrew's `/usr/local/lib/libmpv.2.dylib`. Every driver offered, none greyed out.
@@ -1127,7 +1128,8 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
       the window being seen again now, where the cells were drawn at once.
 - [x] 11.2 Same Stage 1 checks: in the scenarios above (`mpv_basics`: play, pause, resize, zoom, pan, pixel shapes, a file
   that says to turn it), on the VM. Settings: the Video Decoder page shows as on Windows, with no Output or Processes rows.
-- [ ] 11.3 Own CGL context only if the Qt one causes trouble. None so far
+- [x] 11.3 Own CGL context only if the Qt one causes trouble. Closed 2026-11-15, not needed: Qt's context, asked as
+  3.2 Core, does VideoToolbox, Copy and Shared on the real Mac (11.4)
 - [ ] 11.4 **On a Mac with a real GPU** (a hackintosh is Intel with an AMD or Intel GPU; Apple Silicon needs a real Mac of its own,
   its libmpv arm64 and its OpenGL on Metal):
   - **Ready 2026-11-14: `test_macos_real`**, a hackintosh: i7-4790K, Intel HD 4600 (Haswell, drivers put back by OpenCore
@@ -1189,6 +1191,9 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     - **Media keys in the background are off on macOS** with Python 3.11 and up: pyobjc 13.0's CoreMedia (30 Oct, the
       latest) links `@rpath/libswiftCoreMedia.dylib` with no path to `/usr/lib/swift`, so it won't load, and the
       session gives up. Pinning pyobjc below 13 until a fixed one would do it. **Your call.**
+      **Fixed 2026-11-15** (`e7091ea`) without pinning: MediaPlayer is loaded through pyobjc-core alone, its
+      wrapper and CoreMedia's dropped. Checked on the Mac on Python 3.13: the session in 116 ms, play/pause and
+      next sent through MediaRemote arrive.
     - VLC Software: a screenshot asked for just as a short clip loops round finds no frame, VLC's output being made
       again, and says so in a box. Seen once, in `aspect_ratio`.
     - `screencapture` over ssh brought up macOS's own question about `com.apple.sshd-session` recording the screen:
@@ -1197,6 +1202,8 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     (which one Qt's context draws on). Sleep and wake, a screen unplugged, the window moved between screens of different
     scales. Apple Silicon.
   - Video memory: Auto reads none on macOS, so it never decodes on the CPU. Metal says how much a GPU has, if that's needed.
+  - **Open (2026-11-15): only what this Mac can't run**, the "Not run" above. Everything it can is done; Apple
+    Silicon needs a real Mac of its own.
 
 ## Stage 12: Packaging and release
 
@@ -1272,6 +1279,12 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
   - `get.videolan.org` sent the Mac to a mirror at 5 KB/s for the 63 MB `.dmg` (3 hours); VideoLAN's own server took
     7 s. Both builds take VLC from `download.videolan.org` now and check it against the SHA-256 VideoLAN publishes beside
     it, pinned in the script (the Windows zip: 8 s, matched).
+  - The DMG (2026-11-15): `build_dmg.sh` on the x86_64 `.app`, by `hdiutil` as the Mac has no `create-dmg` (CI
+    installs it): 204 MB. The app run from the mounted image on fresh settings loads its own libmpv and plays two
+    clips through VideoToolbox, nothing in the log.
+  - The README (12.5) says it: both libraries in every package, the Snap VLC only till Qt 6, Windows 10 and 11, both
+    DMGs, MPV on macOS 12 and up, the Video output choices, libmpv only for UV and source installs, the attributions
+    and Brick2892's fork.
   - **Your call (2026-11-15): the builds on Python 3.14**, from 3.10: Windows (x64 and x86), macOS, AppImage, the Flatpak's and
     PyPI's jobs. Not the Snap's, which stays on 22.04 until Qt 6. Windows 7 was gone already: Python 3.9 and later don't run
     there, and the builds have been on 3.10 since 0.5.4 (`763745c`), so the README's "Windows 7, 8" is stale (12.5).
