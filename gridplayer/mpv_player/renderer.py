@@ -53,6 +53,7 @@ from PyQt5.QtCore import QElapsedTimer, QObject, Qt, QThread, QTimer, pyqtSignal
 from PyQt5.QtGui import QGuiApplication, QOffscreenSurface
 from PyQt5.QtWidgets import QWidget
 
+from gridplayer.mpv_player import abilities
 from gridplayer.mpv_player.gl_context import (
     GLContextError,
     QtShareGroup,
@@ -284,8 +285,14 @@ class SoftwareRenderCalls:
         self._size = (ctypes.c_int * 2)()
         # B, G, R and A, as the painted frames are, opaque. Not "bgr0": zimg
         # leaves its fourth byte at 0, and Qt's RGB32 painting carries that
-        # through as alpha, a picture to see through.
-        self._format = ctypes.create_string_buffer(b"bgra")
+        # through as alpha, a picture to see through. A libmpv with no zimg
+        # (MPVKit's, on macOS) can't draw subtitles onto "bgra" ("osd: Failed
+        # rendering OSD"), and its libswscale fills "bgr0"'s fourth byte in.
+        known = abilities.known()
+        is_zimg_missing = known is not None and not known.has_zimg
+        self._format = ctypes.create_string_buffer(
+            b"bgr0" if is_zimg_missing else b"bgra"
+        )
         self._stride = ctypes.c_size_t()
         self._off = ctypes.c_int(0)
         self._on = ctypes.c_int(1)

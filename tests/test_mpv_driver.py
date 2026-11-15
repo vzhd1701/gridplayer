@@ -2982,6 +2982,20 @@ def test_software_draws_into_the_pixels_it_is_given():
     ]
 
 
+def test_software_with_no_zimg_draws_bgr0(monkeypatch):
+    # MPVKit's libmpv, on macOS, can't draw subtitles onto bgra without it
+    monkeypatch.setattr(
+        abilities,
+        "_known",
+        abilities.Abilities(frozenset(), frozenset(), has_zimg=False),
+    )
+    calls, told = _software_calls()
+
+    calls.draw(640, 360, 1234)
+
+    assert told[0]["format"] == b"bgr0"
+
+
 def test_software_takes_a_frame_without_drawing_it():
     calls, told = _software_calls()
 
