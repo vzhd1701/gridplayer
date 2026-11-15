@@ -1,7 +1,7 @@
 # VLC notes
 
 What was found and done about VLC itself while working on the `mpv` branch: freezes, CPU, 32-bit, single process against
-multi-process. These were items 10.23-10.28 of `MPV_PLAN.md` and keep their numbers there, as commits and the plan's log name them.
+multi-process, resizing. These are items of `MPV_PLAN.md`'s Stage 10 and keep their numbers there, as commits and the plan's log name them.
 The longer stories have files of their own: `VLC_WAITS.md` (10.26) and `VLC_HELPER.md` (the native log helper designed for 10.24, not
 built).
 
@@ -145,3 +145,37 @@ built).
       process 650 threads and 486 MB before, 20 and 322 after; Software, 2 runs, 942-954 threads and 634-659 MB before, 17-18 and
       247-314 after.
   - **Not tested:** macOS, the same code there; whether VLC starts its playlist thread there isn't known.
+- [x] 10.36 **Hardware VLC resizes like it's stuck in tar; MPV doesn't (you, 2026-11-15).** A window of a dozen Hardware VLC
+  videos dragged by its corner, on Windows. **Left as it is, your call: VLC can't redraw its picture at a new size, so every fix
+  is a workaround. Hardware MPV is the answer for live resizing.**
+  - **Why:** VLC never draws into the window it's given. It makes two windows of its own inside it, owned by the VLC process
+    with Hardware VLC, notices a new size only when its video thread next looks (at once to ~70 ms), then rebuilds its
+    swap chain and shows the new size only with its next frame (up to 33 ms at 30 fps). The app moves VLC's windows itself
+    (`win32_vlc_vout.py`), posted to that process, and only every 100 ms (`NATIVE_VIEW_RESIZE_INTERVAL_MS`), all cells together.
+    mpv's window is in the app's own process, and mpv redraws the frame it has at the new size straight away, every step.
+  - **The time of a step isn't it.** `bench/resize.py`, 12 cells of 1080p30, a resize stepped from a script, ms a step, the same
+    on the other desktop and on the screen: Hardware VLC 29, single process 29, MPV Direct 45, MPV Copy 8.5, Software VLC 14.
+  - **Drags by hand** (`hand_drag.py` in the 2026-11-15 session's scratchpad, times `WM_SIZE` between `WM_ENTERSIZEMOVE` and
+    `WM_EXITSIZEMOVE`): sizes the window got a second, with what you said of each.
+
+    | | sizes a second | you |
+    |---|---|---|
+    | Hardware VLC as it is | 39 | sluggish, black glitches around cells |
+    | VLC's windows following every step | 29 | the worst: stuck in tar |
+    | VLC left alone through the drag, placed at the end | 57-68 | quicker, but the pictures keep their size |
+    | every 200 ms instead of 100 | 51 | as before, lags on a quick drag |
+    | one cell placed a step, in turn | 43-55, two stalls of 1.2 s | quicker, cells settle only at the end |
+    | a still of each picture, stretched with its cell, VLC hidden | 49-65 | the quickest, works, but not liked: the videos stop |
+    | MPV Direct | 27-28 | very quick, a slight flicker on borders (as good as it got, Stage 14) |
+
+    So what makes it tar is how late the pictures follow, not how many steps there are: MPV has the fewest and is the best.
+  - **Tried and dropped:**
+    - VLC's windows placed every step, with the window's drawing held (`WM_SETREDRAW`) while the cells' native windows moved: 34
+      ms a step from a script, but by hand much slower, still going after the mouse was let go, and flickering. `WM_SETREDRAW` on
+      a top-level window hides it, so it blinks every step. The scripted numbers missed all of it: a resize from a script doesn't
+      go through Windows' own sizing loop.
+    - The stills: one grab of the window (`PrintWindow`, client area) cut per cell takes 20-43 ms at the start of a drag, one a
+      cell ~100 ms; the cells' controls hidden for it or they're in the stills. Kept here in case it's ever wanted.
+  - **macOS, Hardware VLC single process (the real Mac, 11.4), scripted:** 168 ms a step, a 2 s drag taking 20 s; MPV Shared 54,
+    Copy 29. Each resize of VLC's view waits for VLC's render thread, and every cell asks for its track list on each view update
+    (2.2 s of 10). Not fixed: MPV is the default there.

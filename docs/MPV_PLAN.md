@@ -1101,6 +1101,8 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     scripts, other files; `vo` / `gpu-api` only on Direct, Direct's subtitle layout only elsewhere. Checked: unit
     tests, real libmpv (Check and a playing video agree), Direct on `vo=gpu-next` draws. Credit in the CHANGELOG
     still due (12.5).
+- [x] 10.36 Hardware VLC resizing like it's stuck in tar, against MPV: VLC's own, in `VLC.md`. Left as it is (your call,
+  2026-11-15): VLC's pictures follow their cells late whatever is done, and MPV is the answer for live resizing.
 
 ## Stage 11: macOS
 
@@ -1827,6 +1829,8 @@ How it goes in, by what's there already:
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-15: 10.36 Hardware VLC's slow live resizing measured with drags by hand: what feels like tar is VLC's pictures
+  following late, not slow steps. Six ways tried, none kept (your call); MPV is the answer. Findings in `VLC.md`.
 - 2026-11-15: 11.4 overnight on the real Mac: every scenario passes there. Fixed: VLC Software's picture of turned files
   (VideoToolbox), the cocoa harness's drags. MPV on macOS asks for OpenGL 3.2 Core (zero-copy VideoToolbox), and Shared
   output runs there, its default: 9 videos at 39 fps where Copy on 2.1 did 10.
