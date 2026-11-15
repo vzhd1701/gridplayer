@@ -363,9 +363,10 @@ def test_dialog_leaves_hardware_options_alone(make_dialog):
     assert dialog.forms["decoder"]._rows["internal/hw_crop_border_offset"].isHidden()
 
 
-def test_dialog_offers_hardware_on_xcb(monkeypatch, make_dialog):
+def test_dialog_offers_hardware_on_xcb(monkeypatch, make_dialog, settings):
     monkeypatch.setattr(env, "IS_MACOS", False)
     monkeypatch.setattr(video_driver, "_qt_platform_name", lambda: "xcb")
+    settings.set("player/video_driver", VideoDriver.VLC_HW)
 
     dialog = make_dialog()
 

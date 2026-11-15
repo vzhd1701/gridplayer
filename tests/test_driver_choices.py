@@ -313,8 +313,9 @@ def test_the_bubble_is_out_of_the_card_under_it(libs, make_dialog):
     assert row.parentWidget() is not dialog.driverNotice.parentWidget()
 
 
-def test_a_library_not_installed_is_only_not_available(libs, make_dialog):
+def test_a_library_not_installed_is_only_not_available(libs, make_dialog, settings):
     libs[MediaLib.MPV] = LibProblem.MISSING
+    settings.set(DRIVER, VideoDriver.VLC_HW)
 
     assert _note(make_dialog()) == (
         f"Some modes aren't available\nMPV: libmpv not found. {HOW_TO_FIX}"
@@ -346,8 +347,11 @@ def test_a_vlc_pick_that_cant_run(libs, make_dialog, settings):
         (LibProblem.TOO_OLD, "MPV: libmpv is too old."),
     ],
 )
-def test_each_problem_says_its_own_in_the_bubble(libs, make_dialog, problem, said):
+def test_each_problem_says_its_own_in_the_bubble(
+    libs, make_dialog, settings, problem, said
+):
     libs[MediaLib.MPV] = problem
+    settings.set(DRIVER, VideoDriver.VLC_HW)
 
     assert said in _note(make_dialog())
 
@@ -401,8 +405,9 @@ def test_wayland_says_it_even_if_the_pick_is_fine(libs, make_dialog, settings):
 
 
 @pytest.mark.usefixtures("wayland")
-def test_every_reason_gets_a_line(libs, make_dialog):
+def test_every_reason_gets_a_line(libs, make_dialog, settings):
     libs[MediaLib.MPV] = LibProblem.MISSING
+    settings.set(DRIVER, VideoDriver.VLC_SW)
 
     note = _note(make_dialog())
 
@@ -476,8 +481,9 @@ def test_vlc_options_stay_on_software_vlc(libs, make_dialog, settings):
     [("logging/log_level_vlc", True), ("logging/log_level_mpv", False)],
 )
 def test_a_log_level_on_its_other_page_follows_the_driver(
-    libs, make_dialog, key, is_vlc
+    libs, make_dialog, settings, key, is_vlc
 ):
+    settings.set(DRIVER, VideoDriver.VLC_HW)
     dialog = make_dialog()
     level = dialog.widget(key)
     combo = dialog.widget(DRIVER)
@@ -518,7 +524,8 @@ def _row_hidden(dialog, key):
     return dialog.forms["decoder"]._rows[key].isHidden()
 
 
-def test_vlc_only_experiments_go_on_mpv(libs, make_dialog):
+def test_vlc_only_experiments_go_on_mpv(libs, make_dialog, settings):
+    settings.set(DRIVER, VideoDriver.VLC_HW)
     dialog = make_dialog()
     key = "internal/hw_crop_border_offset"
 
@@ -857,8 +864,9 @@ def test_reset_goes_back_to_the_default_of_both(libs, make_dialog, settings):
     dialog = make_dialog()
     dialog.forms["decoder"].reset(DRIVER)
 
-    assert dialog.value(DRIVER) == VideoDriver.VLC_HW
-    assert _editor(dialog).processes.currentData() is False
+    assert dialog.value(DRIVER) == VideoDriver.MPV_HW
+    # MPV plays in a single process
+    assert _editor(dialog).processes.currentData() is True
 
 
 @pytest.mark.usefixtures("wayland_with_xwayland")
