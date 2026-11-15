@@ -13,15 +13,15 @@
 
 ## About
 
-Simple VLC-based media player that can play multiple videos at the same time. You can
+Simple media player that can play multiple videos at the same time, with MPV or VLC. You can
 play as many videos as you like, the only limit is your hardware. It supports all video
-formats that VLC supports (which is all of them). You can save your playlist retaining
+formats that MPV and VLC support (which is all of them). You can save your playlist retaining
 information about the position, sound volume, loops, aspect ratio, etc.
 
 ## Features
 
 - Cross-platform (Linux, Mac, and Windows)
-- Support for any video and audio format (VLC)
+- Support for any video and audio format (MPV and VLC)
 - Support for (almost) any streaming
   URLs ([streamlink](https://streamlink.github.io/plugins.html) + [yt-dlp](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md))
 - Play a whole list in one cell: m3u, pls and xspf playlists, folders, YouTube playlists, IPTV channels
@@ -56,7 +56,7 @@ Via [scoop](https://scoop.sh/):
 scoop install gridplayer
 ```
 
-**Compatible with Windows 7, 8, 10, 11.**
+**Compatible with Windows 10 and 11.**
 
 ### Linux
 
@@ -65,6 +65,8 @@ scoop install gridplayer
 [![Download AppImage](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_appimage.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.5.5/GridPlayer-0.5.5-x86_64.AppImage)
 
 **For better system integration install via Flathub.**
+
+The Snap plays with VLC only for now. MPV comes to it with the move to Qt 6.
 
 #### Note on AppImage
 
@@ -81,7 +83,12 @@ chmod +x GridPlayer-0.5.5-x86_64.AppImage
 
 [![Download DMG](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_dmg.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.5.5/GridPlayer.0.5.5_arm64.dmg)
 
-**DMG image is not signed and targets Apple Silicon (`arm64`).** You will have to add an exception to run this app.
+The button gets the DMG for Apple Silicon (`arm64`). For an Intel Mac, get
+[GridPlayer.0.5.5_intel64.dmg](https://github.com/vzhd1701/gridplayer/releases/download/v0.5.5/GridPlayer.0.5.5_intel64.dmg).
+
+MPV needs macOS 12 or later. On older versions, VLC plays the videos.
+
+**DMG image is not signed.** You will have to add an exception to run this app.
 
 - [How to open an app that hasn’t been notarized or is from an unidentified developer](https://support.apple.com/en-euro/HT202491)
 - [Open a Mac app from an unidentified developer](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unidentified-developer-mh40616/mac)
@@ -100,9 +107,9 @@ uv tool install gridplayer
 
 **Python 3.10 or later required.**
 
-This type of installation will also require VLC installed (Windows & Mac) or a `vlc` package (Linux) present in your
-system.
-Please refer to [VLC official page](https://www.videolan.org/vlc/) for instructions on how to install it.
+This type of installation doesn't come with a player library. It needs libmpv or VLC installed on your system, see
+[libmpv not found](#when-a-mode-isnt-available) for libmpv, or the [VLC official page](https://www.videolan.org/vlc/)
+for VLC (on Linux, the `vlc` package).
 
 Some distros (e.g. Ubuntu) might also require `libxcb-xinerama0` package.
 
@@ -170,7 +177,8 @@ inside their own sandbox: `~/.var/app/com.vzhd1701.gridplayer/data/vzhd1701/Grid
 
 ## Video Decoder settings
 
-GridPlayer plays videos with VLC or MPV, whichever you have installed.
+GridPlayer plays videos with MPV or VLC. The packages come with both (the Snap with VLC only, for
+now), and MPV is the default. Installed with UV or from source, it uses whichever you have.
 
 Each can decode in two ways:
 
@@ -199,17 +207,39 @@ and later, and on Linux with NVIDIA. Elsewhere Auto decodes on the GPU.
 If memory keeps growing as you close videos that way, as it can on NVIDIA, turn off "Hand frames
 straight to the GPU". It costs a little more CPU, which only shows once the CPU can't keep up.
 
+### MPV's video output
+
+Hardware with MPV gets the picture to the screen in one of three ways ("Video output"; the **?**
+next to it compares them on your system):
+
+- **Copy** copies each frame back into memory and GridPlayer draws it. It works everywhere and uses the
+  most CPU. The default on Linux.
+- **Shared** draws all the videos with OpenGL on one surface, with no copy. The default on macOS. A
+  change to or from Shared works after a restart.
+- **Direct** lets MPV draw each video into a window of its own, with Direct3D 11 on Windows. It uses
+  the least CPU and video memory, but the edges of the videos flicker while you resize the window.
+  The default on Windows. On Linux it needs X11, and macOS doesn't have it.
+
+"Picture quality" sets how sharp a video looks when it's scaled. Auto uses Fast for small videos and
+High for big ones.
+
+To add your own mpv options, turn on "Use mpv.conf" under Experimental. "Open" makes the file in the
+[data directory](#default-data-directory-locations), and "Check" shows the lines mpv can't use.
+
 ### When a mode isn't available
 
 Settings show modes that can't run greyed out, with the reason. Here's how to fix each one.
 
-**libmpv not found** (MPV needs libmpv, not only the MPV player):
+**libmpv not found:** the packages come with libmpv, so this is for an install with UV or from
+source. MPV needs libmpv, not only the MPV player:
 
 - Windows: there's no official installer. Download an `mpv-dev-x86_64` archive from
   [mpv-winbuild](https://github.com/shinchiro/mpv-winbuild-cmake/releases), extract
-  `libmpv-2.dll` with [7-Zip](https://www.7-zip.org/) and put it next to `gridplayer.exe`.
-- Linux: install your distribution's libmpv package. On Debian and Ubuntu it's `libmpv2`.
-- macOS: `brew install mpv`.
+  `libmpv-2.dll` with [7-Zip](https://www.7-zip.org/) and put it in `%LOCALAPPDATA%\Programs\mpv`, or
+  next to `mpv.exe` if you have MPV on your `PATH`.
+- Linux: install your distribution's libmpv package. On Debian and Ubuntu it's `libmpv2`. It has to be
+  0.37 or later.
+- macOS: `brew install mpv`, or on an Intel Mac `sudo port install mpv` with [MacPorts](https://www.macports.org/).
 
 **VLC not found:** install [VLC](https://www.videolan.org/vlc/).
 
@@ -335,13 +365,17 @@ running:
 sudo snap connect gridplayer:mount-observe
 ```
 
-### Linux: black screen issue when using hardware decoder
+### Linux: black screen issue with VLC Hardware or MPV Direct
 
-If no compositor is running, GridPlayer switches the overlay to opaque automatically. If the overlay is still a black
-screen, switch on "Opaque overlay (fix black screen)" checkbox in settings.
+The simplest fix is a mode that GridPlayer draws itself: MPV with the Copy or Shared video output, or Software (VLC
+or MPV). See [Video Decoder settings](#video-decoder-settings).
 
-Depending on the window manager, the overlay might be a bit glitchy with the hardware decoder. Enabling compositor might
-help.
+To keep VLC Hardware or MPV Direct:
+
+- If no compositor is running, GridPlayer switches the overlay to opaque automatically. If the overlay is still a black
+  screen, switch on "Opaque overlay (fix black screen)" checkbox in settings.
+- Depending on the window manager, the overlay might be a bit glitchy with these modes. Enabling compositor might
+  help.
 
 ## Geting help
 
@@ -362,6 +396,12 @@ This software was build using
   - Licensed under *GPL 2.0, GPL 3.0, and LGPL 3.0*
 - **VLC** by [VideoLAN](https://www.videolan.org/)
   - Licensed under *GPL 2.0 or later*
+- **MPV** by [mpv contributors](https://mpv.io/)
+  - Licensed under *GPL 2.0 or later*
+- **FFmpeg** by [FFmpeg developers](https://ffmpeg.org/)
+  - Licensed under *GPL 2.0 or later*
+- **MPVKit** by [mpvkit](https://github.com/mpvkit/MPVKit), the libmpv built for macOS
+  - Licensed under *LGPL 3.0*
 
 ### Python packages
 
@@ -369,6 +409,8 @@ This software was build using
   - Licensed under *Riverbank Commercial License and GPL v3*
 - **python-vlc** by [Olivier Aubert](https://github.com/oaubert/python-vlc)
   - Licensed under *GPL 2.0 and LGPL 2.1*
+- **python-mpv** by [jaseg](https://github.com/jaseg/python-mpv)
+  - Licensed under *GPL 2.0 or later, or LGPL 2.1 or later*
 - **pydantic** by [Samuel Colvin](https://github.com/samuelcolvin/pydantic)
   - Licensed under *MIT License*
 - **streamlink** by [Christopher Rosell, Streamlink Team](https://github.com/streamlink/streamlink)
@@ -395,6 +437,11 @@ This software was build using
 
 - **SponsorBlock** by [Ajay Ramachandran and contributors](https://sponsor.ajay.app/)
   - Licensed under *CC BY-NC-SA 4.0*
+
+### Ideas
+
+- **[gridplayermpv](https://github.com/Brick2892/gridplayermpv)**, a fork by [Brick2892](https://github.com/Brick2892):
+  MPV drawing into windows of its own (Direct), Picture quality and your own mpv options
 
 ## Translations
 
