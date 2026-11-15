@@ -377,6 +377,13 @@ To keep VLC Hardware or MPV Direct:
 - Depending on the window manager, the overlay might be a bit glitchy with these modes. Enabling compositor might
   help.
 
+### macOS: some deinterlace modes and subtitle files are greyed out
+
+The MPV that comes with the macOS package is a smaller build. It has no Discard, Blend, Bob, Linear or Film NTSC
+(IVTC) deinterlacing, and reads only SRT, ASS/SSA, WebVTT and MKS subtitle files, not VobSub (`.idx`/`.sub`),
+MicroDVD, SAMI and others. These show greyed out. VLC has them all: pick it in **Settings -> Advanced -> Video
+Decoder**.
+
 ## Geting help
 
 If you found a bug or have a feature request,
