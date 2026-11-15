@@ -706,10 +706,13 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
   live DASH formats are marked (`Stream.is_live_dash`); MPV asks for them as `dash_live` (`VideoFrameMpv.stream_to_play`),
   the video at most as tall as the pane. The proxy (`DASHLiveHLS`, `stream_proxy/dash_live.py`) reads the manifest each
   time mpv asks for a playlist again, by the server's clock (its Date), and writes a master playlist of the video and the
-  sound picked (the language asked for, else the main one) and a live media playlist of each: what's out, at most 60 s
-  back, numbered so a segment keeps its number from one reading to the next, the init segment as `EXT-X-MAP`. Templates
-  with a duration or a timeline, numbered or timed, segment lists, base URLs at every level. Not: periods spliced
-  together (the current one only), anything with DRM (plays nowhere here). VLC as before.
+  sound in every language (the one asked for the default, else the main one), and a live media playlist of each: what's
+  out, at most 60 s back and no further than the manifest keeps, numbered so a segment keeps its number from one reading
+  to the next, the init segment as `EXT-X-MAP`. What's served is named by what it is (`video`, `audio:en`), so a new
+  period has it picked again by the same rule, the break an `EXT-X-DISCONTINUITY`, the numbers going on. Templates with a
+  duration or a timeline, numbered or timed, segment lists (pieces of one file too), base URLs at every level; the
+  lowest level that says how wins. Dates and lengths by isodate, as Streamlink reads them. Not: anything with DRM (plays
+  nowhere here). VLC as before.
   - Tried: the ffmpeg-made stream for a minute, steady at 6 requests every 2 s, paused and played again, with a cookie
     too; livesim2's three shapes (numbered, timeline by time, timeline by number) at the live edge, no request refused.
   - FFmpeg's HLS reader asks for the init segment again after each reading of the playlist (21 times in a minute,
@@ -723,6 +726,15 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     number every few minutes with lengths that vary; the manifest fetched once a second for the picture's playlist and
     the sound's. Left: the picture's size is picked as it loads, as the pane is then; a pane made bigger later keeps it
     (a live stream loaded again to follow it would take seconds to come back).
+  - From a second `/code-review` (2026-11-16), fixed: periods (a new one, an ad put in, failed the stream or numbered it
+    backwards); every language offered, so mpv's Audio Track menu has them as VLC's does; a Date with no zone ("-0000")
+    taken as UTC, where it failed every playlist; a finished stream whose length is only on its period; never more listed
+    than the manifest keeps (the floor of 3 from the first review is 1); numbers counted on by time after a while
+    unread, where they started anew; a segment list on a higher level no longer beats a template on the representation;
+    a manifest a second old let go of. Not taken: Streamlink's DASH reader in place of this one, which is made for its
+    own downloader (it waits for each segment to come out, from behind the live edge, and keeps its place itself).
+  - Tried after: livesim2's period-a-minute stream for over two minutes on MPV, across two new periods, no request
+    refused; the break marked and numbered on in the playlists.
   - Scenario `live_dash`, on VLC and both MPVs: a server that refuses a segment until it's out (`Driver.serve_live_dash`).
     Without the proxy's HLS, MPV never plays it there.
 
