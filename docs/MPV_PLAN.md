@@ -1232,6 +1232,46 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     Debian 13+, Fedora 40+), on GitHub's arm runners. Until then arm64 has the Flatpak: Flathub builds aarch64 too (no
     `flathub.json` holds it back), the libmpv module untried there before the next release.
   - **Your call (2026-11-14): macOS after its tests (11.4)**, on the real Mac.
+  - **macOS's libmpv, looked for 2026-11-15:** Homebrew has no Intel bottles of mpv any more; IINA's and media-kit's
+    builds have no Vulkan; mpv's own CI makes only the player app. **MPVKit** (GPL, mpv 0.41, FFmpeg 9.0.2, libplacebo,
+    MoltenVK) has both architectures, macOS 12 and up, as static xcframeworks: 30 of them (pinned, SHA-256 from its
+    `Package.swift`) linked by clang into one `libmpv.2.dylib`, 56 MB for x86_64, exporting only `mpv_*`, needing only
+    the system's frameworks and Swift. `mpv_basics` passes on it, Copy and Shared, zero-copy `videotoolbox`.
+  - **Bench, the real Mac, 1080p, fps a cell (CPU %, GPU busy %), MacPorts 0.42 against MPVKit 0.41:**
+
+    | | mix ×4 | mix ×9 | mix ×16 | H.264 60p ×4 | ×9 | ×16 |
+    |---|---|---|---|---|---|---|
+    | Shared, MacPorts | 43 (60, 29) | 39 (123, 57) | 24 (177, 85) | 60 (83, 43) | 60 (149, 79) | 11 |
+    | Shared, MPVKit | 43 (52, 23) | 39 (101, 38) | **36** (206, 63) | 60 (68, 27) | 60 (131, 47) | 12 |
+    | Copy, MacPorts | 41 | 26 | (run cut short) | 52 | 29 | 11 |
+    | Copy, MPVKit | 42 | 31 | 23 | 58 | 39 | 12 |
+    | Direct (prototype), MPVKit | 44 (39) | 39 (82) | 37 (190) | 2 of 4 frozen | 2 of 9 frozen | 13 |
+
+  - **Direct on macOS, prototype:** MPVKit's own `moltenvk` context (its patch) draws with Vulkan into a `CAMetalLayer`
+    passed as `wid`; the layer in a plain `NSView` of our own inside the cell's native view (Qt draws over a layer set on
+    its own view). It draws, `videotoolbox`, no drops, but never follows a resize: the context reads the layer's size
+    only on reconfig, and nothing an app can set reconfigures it on macOS (`android-surface-size` and
+    `d3d11-composition-size` aren't built there). It would take our own libmpv with a patch, or MPVKit taking one. As
+    fast as Shared, a little less CPU, and two cells of 1080p60 froze. Proposed: not offered on macOS for now (your
+    call open).
+  - **Your call (2026-11-15): the Mac ships both, as Linux does,** MPVKit's libmpv bundled and Hardware MPV (Shared)
+    the default there; **VLC leaves the Mac package in the release after with Linux's**, if nothing serious comes back
+    from Mac users. Until then VLC is also what plays on macOS 10.15 and 11, where MPVKit's libmpv (macOS 12 and up)
+    won't load.
+  - **Built 2026-11-15:** `build_mac.sh` fetches what `libmpv_mac.txt` lists (each checked by its SHA-256), takes the
+    target architecture's slice and links `libmpv.2.dylib` into `Contents/MacOS/libmpv`, failing if `mpv_create` isn't
+    there or anything but the system is needed; licences in `Contents/Resources/licenses` (GridPlayer's, VLC's from
+    its repository at the version, as the `.dmg` has none, mpv's and MPVKit's) with `SOURCES.txt`. The macOS default
+    driver is Hardware MPV now (`settings.py`), as on Linux. Checked: the x86_64 `.app` built on the real Mac (438 MB,
+    libVLC 107, libmpv 53) plays with its own libmpv on fresh settings; the arm64 link made there too (54 MB, signed
+    ad hoc by the linker), not run.
+  - Found by the built app: PyInstaller left out `PyQt5._QOpenGLFunctions_4_1_Core`, which `versionFunctions()`
+    imports by name, so Shared crashed at start (Windows the same, with Shared picked). Both specs take every
+    `_QOpenGLFunctions_*` now, and `qt_gl_functions` falls back to its ctypes calls on an `ImportError`. The AppImage
+    and Snap had them taken out on purpose (`blacklist_pyqt.txt`); they keep them now, not yet built.
+  - `get.videolan.org` sent the Mac to a mirror at 5 KB/s for the 63 MB `.dmg` (3 hours); VideoLAN's own server took
+    7 s. Both builds take VLC from `download.videolan.org` now and check it against the SHA-256 VideoLAN publishes beside
+    it, pinned in the script (the Windows zip: 8 s, matched).
   - **Your call (2026-11-15): the builds on Python 3.14**, from 3.10: Windows (x64 and x86), macOS, AppImage, the Flatpak's and
     PyPI's jobs. Not the Snap's, which stays on 22.04 until Qt 6. Windows 7 was gone already: Python 3.9 and later don't run
     there, and the builds have been on 3.10 since 0.5.4 (`763745c`), so the README's "Windows 7, 8" is stale (12.5).
@@ -1275,6 +1315,10 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     their licences with it (`license-files` changed nothing). They now name what they leave out. macOS with its packaging,
     after 11.4.
 - [ ] 12.4 Real-app job in CI for mpv, if the runners can get a GL context
+  - **Built 2026-11-15:** `real-app-mpv` in `test.yml`, beside the VLC job, which skips the MPV scenarios with no libmpv
+    there. Ubuntu's `libmpv2` (0.37, the oldest taken) and Mesa's EGL and llvmpipe, `pytest -m real_app -k mpv`: Hardware
+    MPV on software GL, Software MPV, and the VLC scenarios held to both. Checked in a bare `ubuntu:24.04` container on
+    `test_ubuntu` with the job's packages only: 42 passed in 11 minutes. To tick once it has passed on GitHub.
 - [ ] 12.5 README, CHANGELOG. Short trap list in `AGENTS.md`, rules only
 - [ ] 12.6 Remove this file, or keep it as you like
 
