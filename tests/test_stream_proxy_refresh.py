@@ -312,7 +312,7 @@ def test_a_live_dash_manifest_served_as_hls_stays_that_once_renewed():
         is_audio_only=True,
         max_height=720,
         languages_asked="de",
-        representation="a1",
+        rendition="audio:de",
         origin=StreamOrigin(url=PAGE_URL, quality="best"),
     )
 
@@ -324,8 +324,8 @@ def test_a_live_dash_manifest_served_as_hls_stays_that_once_renewed():
         renewed.is_audio_only,
         renewed.max_height,
         renewed.languages_asked,
-        renewed.representation,
-    ) == ("dash_live", True, 720, "de", "a1")
+        renewed.rendition,
+    ) == ("dash_live", True, 720, "de", "audio:de")
 
 
 def test_a_file_being_read_as_a_file_stays_one_once_renewed(upstream, proxy):

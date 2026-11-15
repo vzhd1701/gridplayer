@@ -460,7 +460,7 @@ def _pick_stream(streams: Streams, stream: Stream) -> Stream | None:
             is_audio_only=stream.is_audio_only,
             max_height=stream.max_height,
             languages_asked=stream.languages_asked,
-            representation=stream.representation,
+            rendition=stream.rendition,
         )
 
     return fresh_stream

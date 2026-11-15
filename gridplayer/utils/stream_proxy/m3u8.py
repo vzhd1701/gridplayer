@@ -1,5 +1,6 @@
 import math
 from collections.abc import Sequence
+from dataclasses import dataclass
 
 from streamlink.stream.hls import M3U8, ByteRange, HLSSegment, Key, Map
 
@@ -182,16 +183,26 @@ def build_media_playlist(
     return "\n".join(res)
 
 
-def build_live_media_playlist(
-    segments: Sequence[tuple[str, float]],
-    first_sequence: int,
-    init_url: str | None = None,
-    is_over: bool = False,
-) -> str:
-    """A live media playlist: what's out now, (url, duration) each, to be asked
-    for again; the first numbered as it was the last time it was listed."""
+@dataclass(frozen=True)
+class LiveEntry:
+    url: str
+    duration: float
+    # "length@offset", where it's a piece of a file
+    byterange: str | None = None
+    init_url: str | None = None
+    init_byterange: str | None = None
+    # its times start anew
+    is_discontinuity: bool = False
 
-    target_duration = max((duration for _, duration in segments), default=1)
+
+def build_live_media_playlist(
+    entries: Sequence[LiveEntry], first_sequence: int, is_over: bool = False
+) -> str:
+    """A live media playlist: what's out now, to be asked for again; the first
+    numbered as it was the last time it was listed. An init segment is said
+    again wherever it changes."""
+
+    target_duration = max((entry.duration for entry in entries), default=1)
 
     res = [
         "#EXTM3U",
@@ -200,14 +211,64 @@ def build_live_media_playlist(
         f"#EXT-X-MEDIA-SEQUENCE:{first_sequence}",
     ]
 
-    if init_url is not None:
-        res += [f'#EXT-X-MAP:URI="{init_url}"']
+    init = None
 
-    for url, duration in segments:
-        res += [f"#EXTINF:{duration:.3f},", url]
+    for entry in entries:
+        if entry.is_discontinuity:
+            res += ["#EXT-X-DISCONTINUITY"]
+
+        if (
+            entry.init_url is not None
+            and (entry.init_url, entry.init_byterange) != init
+        ):
+            init = (entry.init_url, entry.init_byterange)
+            byterange = (
+                f',BYTERANGE="{entry.init_byterange}"' if entry.init_byterange else ""
+            )
+            res += [f'#EXT-X-MAP:URI="{entry.init_url}"{byterange}']
+
+        res += [f"#EXTINF:{entry.duration:.3f},"]
+
+        if entry.byterange:
+            res += [f"#EXT-X-BYTERANGE:{entry.byterange}"]
+
+        res += [entry.url]
 
     if is_over:
         res += ["#EXT-X-ENDLIST"]
+
+    return "\n".join(res)
+
+
+def build_rendition_master_playlist(
+    video_url: str | None, sounds: Sequence[tuple[str, str, bool]]
+) -> str:
+    """A master playlist of the picture and its sound in every language there
+    is, (url, language, is_default) each, so that the player can switch; or of
+    the sound alone, the default one."""
+
+    if video_url is None:
+        default = next((url for url, _, is_default in sounds if is_default), None)
+        return build_variant_playlist(default or sounds[0][0])
+
+    if not sounds:
+        return build_variant_playlist(video_url)
+
+    res = ["#EXTM3U", "#EXT-X-INDEPENDENT-SEGMENTS"]
+
+    for url, language, is_default in sounds:
+        name = _escape_attr(language or "Audio")
+        spoken = f'LANGUAGE="{_escape_attr(language)}",' if language else ""
+        default = "YES" if is_default else "NO"
+        res += [
+            (
+                '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",'
+                f'NAME="{name}",{spoken}'
+                f'DEFAULT={default},AUTOSELECT=YES,URI="{url}"'
+            )
+        ]
+
+    res += ['#EXT-X-STREAM-INF:BANDWIDTH=0,AUDIO="audio"', video_url]
 
     return "\n".join(res)
 

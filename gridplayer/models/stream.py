@@ -86,10 +86,11 @@ class Stream:
     piece_size: int | None = None
     # A live DASH manifest, to be followed: VLC does, mpv can't. For mpv the proxy
     # serves it as live HLS ("dash_live"), the video at most max_height tall, and
-    # each representation as a playlist of its own, by its id.
+    # the picture and the sound in each language as playlists of their own:
+    # rendition "video", "audio:en", see stream_proxy.dash_live.
     is_live_dash: bool = False
     max_height: int = 0
-    representation: str | None = None
+    rendition: str | None = None
     # and its sound by the languages asked for, as they're typed in the settings
     languages_asked: str = ""
 
@@ -115,7 +116,7 @@ class Stream:
             or self.piece_size
             or self.max_height
             or self.languages_asked
-            or self.representation is not None
+            or self.rendition is not None
         )
 
     @property

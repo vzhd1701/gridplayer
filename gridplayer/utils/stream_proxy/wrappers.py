@@ -22,13 +22,14 @@ from streamlink.stream.wrappers import StreamIOIterWrapper, StreamIOThreadWrappe
 from gridplayer.models.stream import Stream, StreamFragment, StreamSessionOpts
 from gridplayer.utils.http_in_playlists import allow_http_in_playlists
 from gridplayer.utils.network_errors import failure_txt
-from gridplayer.utils.stream_proxy.dash_live import LiveManifest
+from gridplayer.utils.stream_proxy.dash_live import VIDEO, LiveManifest
 from gridplayer.utils.stream_proxy.fragments import FRAGMENT_INIT, FRAGMENT_SELF
 from gridplayer.utils.stream_proxy.m3u8 import (
+    LiveEntry,
     build_live_media_playlist,
     build_master_playlist,
     build_media_playlist,
-    build_variant_playlist,
+    build_rendition_master_playlist,
     m3u8_to_str,
 )
 from gridplayer.utils.stream_proxy.mp4 import (
@@ -414,7 +415,7 @@ class DASHLiveHLS(HTTPStreamProxy):
         try:
             manifest = LiveManifest(text, url=url, now=now)
 
-            if self.stream.representation is None:
+            if self.stream.rendition is None:
                 playlist = self._master_playlist(manifest)
             else:
                 playlist = self._media_playlist(manifest)
@@ -447,7 +448,17 @@ class DASHLiveHLS(HTTPStreamProxy):
         text, url, now = self._res.text, self._fetched_from, _server_time(self._res)
 
         with _live_manifests_lock:
-            _live_manifests[key] = (time.monotonic(), text, url, now)
+            fetched_at = time.monotonic()
+
+            # of no more use once a second old
+            for old in [
+                old
+                for old, (at, *_) in _live_manifests.items()
+                if fetched_at - at >= LIVE_MANIFEST_KEPT_S
+            ]:
+                del _live_manifests[old]
+
+            _live_manifests[key] = (fetched_at, text, url, now)
 
             while len(_live_manifests) > MAX_LIVE_MANIFESTS:
                 _live_manifests.pop(next(iter(_live_manifests)))
@@ -460,40 +471,52 @@ class DASHLiveHLS(HTTPStreamProxy):
             if self.stream.is_audio_only
             else manifest.pick("video", max_height=self.stream.max_height)
         )
-        sound = manifest.pick(
+        chosen = manifest.pick(
             "audio", languages=parse_preferences(self.stream.languages_asked)
         )
 
-        if video is None and sound is None:
+        if video is None and chosen is None:
             raise StreamError("The manifest has neither video nor sound")
 
-        if video is None or sound is None:
-            return build_variant_playlist(self._playlist_of(video or sound))
-
-        return build_master_playlist(
-            video_url=self._playlist_of(video),
-            audio_url=self._playlist_of(sound),
-            audio_name=sound.language or "Audio",
-            audio_language=sound.language or None,
+        return build_rendition_master_playlist(
+            video_url=self._playlist_of(VIDEO) if video is not None else None,
+            sounds=[
+                (
+                    self._playlist_of(sound.rendition),
+                    sound.language,
+                    sound.language == chosen.language,
+                )
+                for sound in manifest.sounds()
+            ],
         )
 
-    def _playlist_of(self, representation) -> str:
+    def _playlist_of(self, rendition: str) -> str:
         return self.server.add_stream(
-            dataclasses.replace(self.stream, representation=representation.id)
+            dataclasses.replace(self.stream, rendition=rendition)
         )
 
     def _media_playlist(self, manifest: LiveManifest) -> str:
-        try:
-            window = manifest.window(self.stream.representation)
-        except LookupError as err:
-            raise StreamError(str(err)) from err
-
-        segments = window.segments
+        window = manifest.window(
+            self.stream.rendition, max_height=self.stream.max_height
+        )
 
         return build_live_media_playlist(
-            segments=[(self._proxify_url(s.url), s.duration) for s in segments],
-            first_sequence=segments[0].sequence if segments else 0,
-            init_url=self._proxify_url(window.init_url) if window.init_url else None,
+            entries=[
+                LiveEntry(
+                    url=self._proxify_url(segment.url),
+                    duration=segment.duration,
+                    byterange=segment.byterange,
+                    init_url=(
+                        self._proxify_url(segment.init_url)
+                        if segment.init_url
+                        else None
+                    ),
+                    init_byterange=segment.init_byterange,
+                    is_discontinuity=segment.is_new_part,
+                )
+                for segment in window.segments
+            ],
+            first_sequence=window.segments[0].sequence if window.segments else 0,
             is_over=window.is_over,
         )
 
@@ -508,7 +531,13 @@ def _server_time(response: Response) -> datetime:
 
     if date:
         with suppress(TypeError, ValueError):
-            return parsedate_to_datetime(date)
+            moment = parsedate_to_datetime(date)
+
+            # "-0000" says no zone: UTC, as HTTP has it
+            if moment.tzinfo is None:
+                moment = moment.replace(tzinfo=timezone.utc)
+
+            return moment
 
     return datetime.now(timezone.utc)
 
