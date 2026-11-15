@@ -315,3 +315,12 @@ VLC $VLC_VERSION (Contents/MacOS/libVLC)
     the build: $VLC_URL
 SOURCES
 } > "$LICENSES_DIR/SOURCES.txt"
+
+echo "Signing"
+
+# Ad hoc ("-", no Apple account): PyInstaller signed the bundle before VLC,
+# libmpv and the licences went in, which broke its seal, and macOS calls a
+# downloaded app with a broken seal damaged. Signed again, it's only from an
+# unknown developer, which Privacy & Security's Open Anyway lets through.
+codesign --force --deep --sign - "$DIST_DIR/$APP_NAME.app"
+codesign --verify --deep --strict "$DIST_DIR/$APP_NAME.app"
