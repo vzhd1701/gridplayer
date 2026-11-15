@@ -220,6 +220,11 @@ the entry happens to exist, but never reaches translators.
 * What 0.37 lacks of a newer one is asked of mpv once it's made
   (`option_info`, as `SubtitleLimits` does), not by version: an option it
   doesn't have, given at the start, stops mpv starting.
+* Builds differ as much as versions: the Mac package's libmpv has a small
+  FFmpeg and no zimg, the Flatpak's no Lua (so no `ytdl`). What a feature
+  needs of the libmpv loaded is asked of it once a run
+  (`mpv_player/abilities.py`), and what it hasn't got is greyed out or
+  left out, never assumed from the platform.
 
 ## MPV's Shared output
 

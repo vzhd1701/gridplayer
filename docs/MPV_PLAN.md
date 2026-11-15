@@ -736,6 +736,8 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
   - Tried after: livesim2's period-a-minute stream for over two minutes on MPV, across two new periods, no request
     refused; the break marked and numbered on in the playlists.
   - Scenario `live_dash`, on VLC and both MPVs: a server that refuses a segment until it's out (`Driver.serve_live_dash`).
+  - On the Ubuntu VM too (2026-11-16): every stream scenario (`live_dash`, `mpv_stream_sound`, `cookies` and the rest,
+    23 runs over VLC and both MPVs), all pass.
     Without the proxy's HLS, MPV never plays it there.
 
 ## Stage 10: Hardening
@@ -1390,6 +1392,8 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     libmpv VLC stands in. Who never changed the driver moves to MPV, as a setting at its default isn't saved. **VLC leaves the
     Linux packages in the release after, if MPV holds up**, with the Snap's move to Qt 6; then Settings must hide VLC's choices
     where it can't be had, not offer "How to fix".
+  - **Your call (2026-11-16): MPV the default on Windows too**, with Direct output; VLC stays in the Windows packages.
+    From source without libmpv, VLC stands in, as on Linux.
   - Flatpak: `scripts/flatpak/libmpv/libmpv.yml`, after VLC's module (whose cache stays good): ffmpeg 7.1.5, libass 0.17.5,
     libplacebo v7.387.0 (OpenGL only), mpv v0.42.0 as libmpv alone, no Lua, JavaScript, discs or archives. Its own, though the
     runtime has ffmpeg 7.1: VLC's module leaves ffmpeg 4.4's headers and `libavcodec.so` in `/app`, which a build against the
@@ -1426,7 +1430,9 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     there. Ubuntu's `libmpv2` (0.37, the oldest taken) and Mesa's EGL and llvmpipe, `pytest -m real_app -k mpv`: Hardware
     MPV on software GL, Software MPV, and the VLC scenarios held to both. Checked in a bare `ubuntu:24.04` container on
     `test_ubuntu` with the job's packages only: 42 passed in 11 minutes. To tick once it has passed on GitHub.
-- [ ] 12.5 README, CHANGELOG. Short trap list in `AGENTS.md`, rules only
+- [x] 12.5 README, CHANGELOG. Short trap list in `AGENTS.md`, rules only
+  - 2026-11-16: CHANGELOG from `just changelog-since-last`, Brick2892's fork credited for Picture quality and
+    `mpv.conf`; AGENTS.md: what a libmpv build lacks is asked of it (`abilities.py`), not assumed from the platform.
 - [ ] 12.6 Remove this file, or keep it as you like
 
 ## Stage 13: GL output, a choice beside readback
@@ -1981,6 +1987,8 @@ How it goes in, by what's there already:
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-16: MPV the default on Windows too (your call), so Hardware MPV everywhere but macOS before 12. Every stream
+  scenario passes on the Ubuntu VM as well. CHANGELOG written, AGENTS.md says libmpv builds differ (12.5).
 - 2026-11-15: 10.36 Hardware VLC's slow live resizing measured with drags by hand: what feels like tar is VLC's pictures
   following late, not slow steps. Six ways tried, none kept (your call); MPV is the answer. Findings in `VLC.md`.
 - 2026-11-15: 11.4 overnight on the real Mac: every scenario passes there. Fixed: VLC Software's picture of turned files
