@@ -5,6 +5,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QGuiApplication, QSurfaceFormat
 from PyQt5.QtWidgets import QApplication
 
+from gridplayer.mpv_player.gl_context import macos_gl_format
 from gridplayer.params import env
 from gridplayer.params.static import GLLineFix
 from gridplayer.version import (
@@ -108,6 +109,10 @@ def init_app_env():
             # before Qt makes its first context, which every other shares with
             if gl_line_fix() != GLLineFix.OFF:
                 set_gl_alpha(8)
+        if env.IS_MACOS:
+            # OpenGL 3.2 Core, as the render thread's context is: contexts of
+            # two profiles can't share
+            QSurfaceFormat.setDefaultFormat(macos_gl_format())
         if env.IS_LINUX:
             # EGL, as the render thread's context is
             os.environ.setdefault("QT_XCB_GL_INTEGRATION", "xcb_egl")

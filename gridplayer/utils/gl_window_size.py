@@ -28,6 +28,7 @@ import functools
 import logging
 import math
 import time
+from pathlib import Path
 
 from PyQt5.QtCore import QCoreApplication, QEvent, QObject, Qt, QTimer
 from PyQt5.QtWidgets import QWidget
@@ -57,9 +58,25 @@ _PAINTS = frozenset((QEvent.UpdateRequest, QEvent.Expose))
 logger = logging.getLogger(__name__)
 
 
+def _qt_gui_macos() -> str:
+    """macOS: Qt's QtGui, the framework PyQt5's wheel carries, or one found by
+    its name where Qt is the system's."""
+
+    import PyQt5
+
+    bundled = Path(PyQt5.__file__).parent / "Qt5/lib/QtGui.framework/Versions/5/QtGui"
+    return str(bundled) if bundled.exists() else "QtGui"
+
+
 @functools.cache
 def _qt_flush():
-    library, name = _FLUSH_WINDOWS if env.IS_WINDOWS else _FLUSH_LINUX
+    if env.IS_WINDOWS:
+        library, name = _FLUSH_WINDOWS
+    elif env.IS_MACOS:
+        # the same C++ symbol as Linux's
+        library, name = _qt_gui_macos(), _FLUSH_LINUX[1]
+    else:
+        library, name = _FLUSH_LINUX
 
     try:
         # loaded already, by PyQt5

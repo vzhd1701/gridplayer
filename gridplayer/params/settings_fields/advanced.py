@@ -174,10 +174,6 @@ def _direct_off_when() -> dict:
     }
 
 
-def _is_not_macos() -> bool:
-    return not env.IS_MACOS
-
-
 def _is_windows() -> bool:
     return env.IS_WINDOWS
 
@@ -213,8 +209,6 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
         off_when=_direct_off_when,
         # what runs in its place
         stand_in=MpvOutput.READBACK,
-        # MPV hasn't been run there yet: Stage 11
-        shown_if=_is_not_macos,
         # Software MPV draws on the CPU, always the Copy way
         enabled_when=When("player/video_driver", (VideoDriver.MPV_HW,)),
         tooltip=translate(

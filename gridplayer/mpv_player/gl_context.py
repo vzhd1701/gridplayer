@@ -548,18 +548,63 @@ class WGLContext:
         self._context = self._hdc = self._hwnd = None
 
 
-class QtGLContext:
-    """macOS: Qt's, which needs no trick there and hasn't been run yet."""
+def macos_gl_format():
+    """OpenGL 3.2 Core, rather than Qt's default, the legacy 2.1: only in a
+    Core context does mpv take VideoToolbox's frames on the GPU, as
+    "videotoolbox" and not "videotoolbox-copy". On an Intel HD 4600, 9 cells
+    of mixed clips played at 27 fps rather than 10, on less CPU."""
 
-    def __init__(self, surface):
-        from PyQt5.QtGui import QOpenGLContext
+    from PyQt5.QtGui import QSurfaceFormat
+
+    surface_format = QSurfaceFormat()
+    surface_format.setVersion(3, 2)
+    surface_format.setProfile(QSurfaceFormat.CoreProfile)
+    return surface_format
+
+
+def _format_name(surface_format) -> str:
+    from PyQt5.QtGui import QSurfaceFormat
+
+    profile = {
+        QSurfaceFormat.CoreProfile: "Core",
+        QSurfaceFormat.CompatibilityProfile: "Compatibility",
+    }.get(surface_format.profile(), "")
+    version = f"{surface_format.majorVersion()}.{surface_format.minorVersion()}"
+    return f"{version} {profile}".strip()
+
+
+class QtGLContext:
+    """macOS: Qt's, which needs no trick there. In Qt's group with `share`,
+    a QtShareGroup, for textures drawn by Qt."""
+
+    def __init__(self, surface, share=None):
+        from PyQt5.QtGui import QOpenGLContext, QSurfaceFormat
 
         self._surface = surface
         self._context = QOpenGLContext()
         self._context.setFormat(surface.format())
+        if share is not None:
+            self._context.setShareContext(share.qt_context)
 
         if not self._context.create():
-            raise GLContextError("Could not create a GL context")
+            asked = surface.format()
+            if share is not None:
+                # Qt's group is of the format asked for: no other can share
+                raise GLContextError(
+                    f"No OpenGL {_format_name(asked)} context to share with Qt's"
+                )
+
+            _log.warning("No OpenGL %s context, taking Qt's own", _format_name(asked))
+            self._context.setFormat(QSurfaceFormat())
+
+            if not self._context.create():
+                raise GLContextError("Could not create a GL context")
+
+        # Qt makes one of its own when it can't share, and says nothing
+        if share is not None and not QOpenGLContext.areSharing(
+            self._context, share.qt_context
+        ):
+            raise GLContextError("The GL context doesn't share with Qt's")
 
         if not self._context.makeCurrent(surface):
             raise GLContextError("Could not make the GL context current")
@@ -628,7 +673,11 @@ def qt_gl_functions(context):
 
     profile = QOpenGLVersionProfile()
     profile.setVersion(2, 0)
-    functions = context.versionFunctions(profile) or context.versionFunctions()
+    try:
+        functions = context.versionFunctions(profile) or context.versionFunctions()
+    except (TypeError, RuntimeError, AttributeError):
+        # a Core version PyQt5 has no class for (it has 4.1's), as on macOS
+        functions = None
 
     if functions is None:
         try:
@@ -680,7 +729,10 @@ class QtShareGroup:
         # which is said once
         self._gl = None
 
-        if env.IS_WINDOWS:
+        if env.IS_MACOS:
+            # Qt's own context is what the render thread's shares with there
+            self.handle = self._context
+        elif env.IS_WINDOWS:
             opengl32 = ctypes.WinDLL("opengl32")
             opengl32.wglGetCurrentContext.restype = ctypes.c_void_p
             self.handle = opengl32.wglGetCurrentContext()
@@ -693,6 +745,14 @@ class QtShareGroup:
 
         if not self.handle:
             raise GLContextError("Qt's GL context isn't one this can share with")
+
+    @property
+    def qt_context(self):
+        return self._context
+
+    @property
+    def surface(self):
+        return self._surface
 
     def delete_textures(self, textures: list[int]) -> None:
         """GUI thread: textures of the group gone, whether a widget that showed
@@ -753,4 +813,8 @@ def create_gl_context(qt_platform: str, qt_surface=None, share=None):
     if env.IS_WINDOWS:
         return WGLContext(share.handle if share is not None else None)
 
-    return QtGLContext(qt_surface)
+    if qt_surface is None and share is not None:
+        # trying whether one can share, on the GUI thread
+        qt_surface = share.surface
+
+    return QtGLContext(qt_surface, share)

@@ -318,6 +318,11 @@ if env.IS_LINUX:
 if env.IS_WINDOWS:
     _default_settings["player/mpv_output"] = MpvOutput.WINDOW
 
+# macOS has no Direct; Shared reads no frame back, which on a Mac with an
+# Intel HD 4600 played 9 videos at 39 fps where Copy did 27
+if env.IS_MACOS:
+    _default_settings["player/mpv_output"] = MpvOutput.GL
+
 
 class _Settings:
     def __init__(self):

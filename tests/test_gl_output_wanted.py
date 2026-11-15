@@ -42,10 +42,10 @@ def test_not_with_vlc_standing_in(monkeypatch):
     assert not is_mpv_gl_output(MpvOutput.GL, VideoDriver.MPV_HW)
 
 
-def test_never_on_macos(monkeypatch):
+def test_on_macos_too(monkeypatch):
     monkeypatch.setattr(env, "IS_MACOS", True)
 
-    assert not is_mpv_gl_output(MpvOutput.GL, VideoDriver.MPV_HW)
+    assert is_mpv_gl_output(MpvOutput.GL, VideoDriver.MPV_HW)
 
 
 def _values(driver):

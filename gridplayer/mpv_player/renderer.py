@@ -50,13 +50,14 @@ from contextlib import suppress
 from functools import partial
 
 from PyQt5.QtCore import QElapsedTimer, QObject, Qt, QThread, QTimer, pyqtSignal
-from PyQt5.QtGui import QGuiApplication, QOffscreenSurface, QSurfaceFormat
+from PyQt5.QtGui import QGuiApplication, QOffscreenSurface
 from PyQt5.QtWidgets import QWidget
 
 from gridplayer.mpv_player.gl_context import (
     GLContextError,
     QtShareGroup,
     create_gl_context,
+    macos_gl_format,
 )
 from gridplayer.mpv_player.libmpv import load_mpv
 from gridplayer.params import env
@@ -481,7 +482,12 @@ class VideoRenderer(QThread):
         self._qt_surface = None
         if env.IS_MACOS:
             self._qt_surface = QOffscreenSurface()
-            self._qt_surface.setFormat(QSurfaceFormat())
+            # the group's own, where it shares with Qt's: two can't share
+            self._qt_surface.setFormat(
+                gl_share.qt_context.format()
+                if gl_share is not None
+                else macos_gl_format()
+            )
             self._qt_surface.create()
 
         # called by libmpv for GL functions, for as long as any video is open

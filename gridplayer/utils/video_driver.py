@@ -134,14 +134,9 @@ def session_video_driver(driver: VideoDriver) -> VideoDriver:
 
 def is_mpv_gl_output(output: MpvOutput, picked: VideoDriver) -> bool:
     """Whether MPV's frames are drawn by GL: picked, with Hardware MPV playing,
-    not VLC standing in for it. Software MPV has no GL. Not on macOS, where MPV
-    hasn't been run yet."""
+    not VLC standing in for it. Software MPV has no GL."""
 
-    return (
-        not env.IS_MACOS
-        and output == MpvOutput.GL
-        and session_video_driver(picked) == VideoDriver.MPV_HW
-    )
+    return output == MpvOutput.GL and session_video_driver(picked) == VideoDriver.MPV_HW
 
 
 def is_mpv_window_output(output: MpvOutput) -> bool:
