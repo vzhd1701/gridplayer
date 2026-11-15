@@ -273,6 +273,14 @@ def instrument_mpv():
 
         player_module.MpvPlayer.__init__ = forced_decoder
 
+    if "gl2" in EXP:
+        # macOS: the render thread's context Qt's default, legacy OpenGL 2.1,
+        # as it was before 3.2 Core. Copy only: Shared's context is its
+        # group's, set up before the app starts
+        from PyQt5.QtGui import QSurfaceFormat
+
+        renderer.macos_gl_format = QSurfaceFormat
+
     run = renderer.VideoRenderer.run
 
     def named_run(self):
@@ -715,7 +723,8 @@ def classify(pid, tid, comm, py_names):
     return comm
 
 
-if IS_WIN:
+# macOS has no /proc either
+if IS_WIN or sys.platform == "darwin":
     import psutil
 
     def process_tree():
@@ -759,18 +768,32 @@ class GpuLog:
 
     QUERY = "utilization.gpu,utilization.decoder,memory.used"
 
+    # macOS: what ioreg says of the GPUs, in the same columns: the busiest's
+    # load, no "decoder", the memory in use of the system's, all of theirs
+    IOREG = (
+        "while :; do ioreg -r -d 1 -w 0 -c IOAccelerator | perl -ne '"
+        '$u = $1 if /"Device Utilization %"=(\\d+)/ && $1 > $u;'
+        ' $m += $1 while /"inUseSysMemoryBytes"=(\\d+)/g;'
+        ' END { printf "%d,0,%d\\n", $u, $m / 1048576 }'
+        "'; sleep 1; done"
+    )
+
     def __init__(self, out):
         self.path = out / "gpu.csv"
         self.proc = None
+        if sys.platform == "darwin":
+            command = ["sh", "-c", self.IOREG]
+        else:
+            command = [
+                "nvidia-smi",
+                f"--query-gpu={self.QUERY}",
+                "--format=csv,noheader,nounits",
+                "-l",
+                "1",
+            ]
         try:
             self.proc = subprocess.Popen(
-                [
-                    "nvidia-smi",
-                    f"--query-gpu={self.QUERY}",
-                    "--format=csv,noheader,nounits",
-                    "-l",
-                    "1",
-                ],
+                command,
                 stdout=open(self.path, "w"),
                 stderr=subprocess.DEVNULL,
             )

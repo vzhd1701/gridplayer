@@ -84,6 +84,8 @@ Pass them with `--env NAME=VALUE`:
   - `cpu`: Hardware MPV's "Decode on the CPU", what Software MPV was before it was fully software.
   - `opt.NAME=VALUE`: any mpv option, such as `opt.vd-lavc-skipframe=bidir`.
   - `hwdec=NAME`: an mpv decoder in place of the one the app picks, such as `hwdec=dxva2`.
+  - `gl2`: macOS, MPV's render context Qt's default, legacy OpenGL 2.1, rather than 3.2 Core: VideoToolbox's
+    frames copied through the CPU. With Copy only (`MPV_OUTPUT=readback`).
   - `quality=LEVEL`: the Picture quality setting, `auto` (the default), `fast` or `high`. The scalers of
     `fast` can be changed with `opt.`, such as `opt.scale=catmull_rom` for the middle level measured.
   - `liveskip=VALUE`: set `vd-lavc-skipframe` 3 s after loading.
@@ -104,3 +106,5 @@ Pass them with `--env NAME=VALUE`:
   shell's own command line can hold the same words, and `pkill -f` or the like then kills that shell.
 - Only one thing at a time on a machine: runs clean up with `pkill`, so a second run kills the first.
 - On `test_gpu` the GPU "busy" figure comes from RC6, and reads 100% with room to spare.
+- On macOS the threads have no names the bench can match (psutil numbers them 1 to n): `cpu_app` is right, the
+  split by thread isn't. The GPU's load is `ioreg`'s.

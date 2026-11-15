@@ -68,7 +68,9 @@ def run_one(driver, clip, cells, out_root, extra_env) -> dict:
             [str(REPO), str(HERE), os.environ.get("PYTHONPATH", "")]
         ),
     }
-    if sys.platform != "win32":
+    if sys.platform == "darwin":
+        env["REAL_APP_QT_PLATFORM"] = "cocoa"
+    elif sys.platform != "win32":
         env["REAL_APP_QT_PLATFORM"] = "xcb"
 
     command = [
