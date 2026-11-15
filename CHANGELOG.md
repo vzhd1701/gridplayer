@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 
-- Make MPV the default video driver, VLC stays where libmpv is missing or before macOS 12 ([b0e9771](https://github.com/vzhd1701/gridplayer/commit/b0e97711c9c80e2d2a173402f51d6240ce239aa4)), ([c452f1e](https://github.com/vzhd1701/gridplayer/commit/c452f1e4c3da02b301853ee2bb68afac6df427ce)), ([2a1d41a](https://github.com/vzhd1701/gridplayer/commit/2a1d41a41cf6adbdc5cbf9e2908846979e5c7784))
+- Make MPV the default video driver, VLC stays where libmpv is missing or before macOS 12 ([5a44d5f](https://github.com/vzhd1701/gridplayer/commit/5a44d5fe1e50af989adde21e97267d7b09b9ad3c)), ([b0e9771](https://github.com/vzhd1701/gridplayer/commit/b0e97711c9c80e2d2a173402f51d6240ce239aa4)), ([c452f1e](https://github.com/vzhd1701/gridplayer/commit/c452f1e4c3da02b301853ee2bb68afac6df427ce)), ([2a1d41a](https://github.com/vzhd1701/gridplayer/commit/2a1d41a41cf6adbdc5cbf9e2908846979e5c7784))
 - Build the AppImage on a newer base, it now needs glibc 2.34 or newer (Ubuntu 22.04, Debian 12, RHEL 9) ([fb66034](https://github.com/vzhd1701/gridplayer/commit/fb660346c21b489aec11759c8863592830686658)), ([abecc8a](https://github.com/vzhd1701/gridplayer/commit/abecc8a56da5c8b50a663a0a3d093a0f865189a5))
 - Remove minimum cell size, reduce minimum window size, show only the overlay controls that fit in small cells ([5c17412](https://github.com/vzhd1701/gridplayer/commit/5c17412ade7e115f23fee27beb6b5ff7ef724f98)), ([f5be739](https://github.com/vzhd1701/gridplayer/commit/f5be7392de3e00ac3f4dadd751bea30886cca105))
 - Rename grid Fit Cells to Fill Gaps, and Size to Per Row / Per Column ([7e7b702](https://github.com/vzhd1701/gridplayer/commit/7e7b702ac542fc04c5fdf904e99bbd25cd6fe285))
