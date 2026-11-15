@@ -6,6 +6,7 @@ from streamlink import Streamlink
 from gridplayer.models.stream import Stream, StreamFragment, StreamSessionOpts
 from gridplayer.utils.network import configure_session, session_stamp
 from gridplayer.utils.stream_proxy.wrappers import (
+    DASHLiveHLS,
     DASHManifestProxy,
     DASHPlaylistStream,
     HLSMuxedStream,
@@ -102,6 +103,9 @@ class StreamSession:
             # relayed like the rest, and handed the stream as well, so that
             # its segments can be pointed back at it
             return HLSProxy(**self._relay_args(stream), stream=stream)
+
+        if protocol == "dash_live":
+            return DASHLiveHLS(**self._relay_args(stream), stream=stream)
 
         if protocol in RELAYED_PROTOCOLS:
             return RELAYED_PROTOCOLS[protocol](**self._relay_args(stream))

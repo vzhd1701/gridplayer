@@ -444,13 +444,24 @@ def _pick_stream(streams: Streams, stream: Stream) -> Stream | None:
     The shape has to survive the trip: the video half of a muxed stream was
     handed over without its audio tracks, and serving it with them again
     would turn a plain representation back into a playlist of playlists. And
-    what's being read as a file has no use for a playlist in its place.
+    what's being read as a file has no use for a playlist in its place. A
+    live DASH manifest served as HLS stays that, and the same part of it.
     """
 
     fresh_stream = _pick_same_half(streams, stream)
 
     if fresh_stream is not None and stream.protocol == "http":
         return fresh_stream.as_file()
+
+    if fresh_stream is not None and stream.protocol == "dash_live":
+        return dataclasses.replace(
+            fresh_stream,
+            protocol=stream.protocol,
+            is_audio_only=stream.is_audio_only,
+            max_height=stream.max_height,
+            languages_asked=stream.languages_asked,
+            representation=stream.representation,
+        )
 
     return fresh_stream
 

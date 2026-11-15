@@ -8,10 +8,12 @@ that process. See AGENTS.md, "Driving the real app".
 import json
 import logging
 import os
+import re
 import sys
 import threading
 import time
 import traceback
+from datetime import datetime, timezone
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -320,6 +322,18 @@ class Driver:
 
         return live
 
+    def serve_live_dash(self, directory: Path) -> "LiveDash":
+        """Serve a folder of DASH segments as a live stream that started a little
+        while ago, on a port of its own: each segment refused until it's out."""
+
+        live = LiveDash(directory)
+        base = self._start_server(
+            partial(_LiveDashHandler, live=live, directory=str(directory))
+        )
+        live.url = f"{base}/live.mpd"
+
+        return live
+
     def _start_server(self, handler) -> str:
         server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
         threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -493,6 +507,79 @@ class _LiveHandler(QuietHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+
+class LiveDash:
+    """What a live DASH server says: the folder's manifest made dynamic, as of when
+    this was made less HEAD_START_S, its segments out once their time has come."""
+
+    HEAD_START_S = 10
+
+    _SEGMENT_NUMBER = re.compile(r"-(\d+)\.m4s$")
+
+    def __init__(self, directory: Path):
+        self._manifest = (directory / "manifest.mpd").read_text(encoding="utf-8")
+
+        template = re.search(r'timescale="(\d+)" duration="(\d+)"', self._manifest)
+        self._segment_s = int(template[2]) / int(template[1])
+
+        self._started_at = time.time() - self.HEAD_START_S
+
+        self.url = ""
+        # asked for before they were out: what a player following it never does
+        self.too_early: list[str] = []
+
+    def manifest(self) -> str:
+        started = datetime.fromtimestamp(self._started_at, timezone.utc)
+        now = datetime.now(timezone.utc)
+
+        root = (
+            'type="dynamic"'
+            f' availabilityStartTime="{started.isoformat(timespec="milliseconds")}"'
+            f' publishTime="{now.isoformat(timespec="milliseconds")}"'
+            ' minimumUpdatePeriod="PT2S" timeShiftBufferDepth="PT20S"'
+        )
+
+        manifest = re.sub(r'\s*mediaPresentationDuration="[^"]*"', "", self._manifest)
+
+        return manifest.replace('type="static"', root.replace("+00:00", "Z"))
+
+    def is_out(self, path: str) -> bool:
+        number = self._SEGMENT_NUMBER.search(path)
+
+        if number is None:
+            return True
+
+        ends_at = self._started_at + int(number[1]) * self._segment_s
+
+        return ends_at <= time.time()
+
+
+class _LiveDashHandler(QuietHandler):
+    def __init__(self, *args, live: LiveDash, **kwargs):
+        self._live = live
+
+        super().__init__(*args, **kwargs)
+
+    def do_GET(self):
+        path = self.path.partition("?")[0]
+
+        if path == "/live.mpd":
+            body = self._live.manifest().encode()
+
+            self.send_response(200)
+            self.send_header("Content-Type", "application/dash+xml")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+
+        if not self._live.is_out(path):
+            self._live.too_early.append(path)
+            self.send_error(404)
+            return
+
+        super().do_GET()
 
 
 def _read(block, read):

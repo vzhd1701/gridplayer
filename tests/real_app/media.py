@@ -31,6 +31,9 @@ What there is (every video a test pattern with a tone, small and short):
                               its pixels are only once it is decoded
     shapes/phone.mp4          wide_pixels.mp4 tagged to be turned 90 degrees
                               to show it, so 9:16 on screen
+    dash/manifest.mpd         60s of DASH, picture and sound apart, in segments
+                              of 2s, for serving as a live stream (see
+                              Driver.serve_live_dash)
 
 The HLS ones are for serving over HTTP; see Driver.serve.
 """
@@ -90,6 +93,10 @@ class Media:
     @property
     def shapes(self) -> Path:
         return self.root / "shapes"
+
+    @property
+    def dash(self) -> Path:
+        return self.root / "dash"
 
 
 def is_ffmpeg_installed() -> bool:
@@ -178,6 +185,7 @@ def _make(media: Media) -> None:
     _make_fragmented(media.fragmented)
     _make_dubs(media.dubs)
     _make_shapes(media.shapes)
+    _make_dash(media.dash)
 
 
 def _make_feature(where: Path) -> None:
@@ -280,6 +288,20 @@ def _make_dubs(where: Path) -> None:
         " a:0,agroup:aud,language:en,default:yes,name:english"
         " a:1,agroup:aud,language:es,name:spanish",
         "v%v/index.m3u8",
+        cwd=where,
+    )
+
+
+def _make_dash(where: Path) -> None:
+    where.mkdir()
+
+    _ffmpeg(
+        *_pattern(60, size="640x360", source="testsrc2"),
+        *_tone(440, 60),
+        *("-c:v", "libx264", "-preset", "ultrafast", "-g", "50", "-c:a", "aac"),
+        *("-f", "dash", "-seg_duration", "2", "-use_template", "1"),
+        *("-use_timeline", "0"),
+        "manifest.mpd",
         cwd=where,
     )
 

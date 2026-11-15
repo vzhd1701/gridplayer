@@ -134,6 +134,24 @@ def test_live_dash_is_left_to_vlc():
     assert video.url == MANIFEST
 
 
+def test_live_dash_is_marked_so_for_mpv():
+    resolver = _resolver(
+        {"is_live": True, "formats": [_audio_fmt(), _dash_fmt("video")]}
+    )
+
+    _, video = next(iter(resolver.streams.video_streams.items()))
+
+    assert video.is_live_dash
+
+
+def test_recorded_dash_is_not():
+    resolver = _resolver(
+        {"is_live": False, "formats": [_audio_fmt(), _dash_fmt("video")]}
+    )
+
+    assert not any(stream.is_live_dash for _, stream in resolver.streams.items())
+
+
 def test_webm_dash_video_is_not_offered_without_sound():
     """VLC cannot demux WebM out of a playlist, so it cannot get audio."""
 

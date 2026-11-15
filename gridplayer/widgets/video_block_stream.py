@@ -40,6 +40,9 @@ from gridplayer.widgets.video_block_guards import (
 # as good as one that never follows it at all
 MAX_QUALITY_ADAPT_DELAY_S = 3600
 
+# what a live manifest's picture is picked for in a pane not shown yet
+HIDDEN_PANE_HEIGHT_PX = 720
+
 
 class StreamControl(VideoBlockPart):
     def __init__(self, block):
@@ -358,6 +361,12 @@ class StreamControl(VideoBlockPart):
         # switching quality resets the block, which leaves it without a driver
         self._block._ensure_video_driver()
 
+        stream = self._block.driver_class.stream_to_play(
+            stream,
+            max_height=self._live_height_cap(is_auto),
+            languages=self._languages_asked(),
+        )
+
         stream_audio = None
 
         if stream.protocol == "direct":
@@ -397,6 +406,30 @@ class StreamControl(VideoBlockPart):
                 fill_limit=self._block.view.fill_limit,
             )
         )
+
+    def _live_height_cap(self, is_auto: bool) -> int:
+        """How tall a picture to pick of a live manifest, which offers one rung
+        for all its sizes: on Auto, the pane's, taken once as it loads; a pane not
+        shown yet, which is 0 tall, a middling size rather than the tallest."""
+
+        if not is_auto:
+            return 0
+
+        return self._pane_height_px or HIDDEN_PANE_HEIGHT_PX
+
+    def _languages_asked(self) -> str:
+        """The languages to pick the sound of a live manifest by, as typed in the
+        settings: the one chosen for this video, none for its own sound."""
+
+        selection = self._block.video_params.audio_selection
+
+        if isinstance(selection, AudioLanguage):
+            return selection.tag
+
+        if isinstance(selection, AudioDefault):
+            return ""
+
+        return self._block.video_params.audio_languages
 
     def _add_to_proxy(self, stream) -> tuple[str, StreamAudio | None]:
         """The link to play, and the sound's where the driver opens it apart."""

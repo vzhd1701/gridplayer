@@ -509,6 +509,12 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
     has_adaptive_demuxer = True
 
     @staticmethod
+    def stream_to_play(stream: Stream, max_height: int, languages: str) -> Stream:
+        """A stream as this driver plays it: VLC follows a live DASH manifest itself."""
+
+        return stream
+
+    @staticmethod
     def streams_to_open(stream: Stream) -> tuple[Stream, tuple[str, Stream] | None]:
         """What of a stream the proxy serves it: the picture, and the sound by its name
         where it's opened apart. VLC takes the one playlist the proxy makes of them."""

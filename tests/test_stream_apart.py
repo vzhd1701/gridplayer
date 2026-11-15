@@ -9,10 +9,15 @@ import pytest
 from requests import Response
 from streamlink import StreamError
 
+from gridplayer.models.audio_selection import (
+    AudioDefault,
+    AudioLanguage,
+    AudioPreferred,
+)
 from gridplayer.models.stream import Stream, StreamOrigin, Streams
 from gridplayer.utils.stream_proxy.server import ProxyRequestHandler
 from gridplayer.utils.video_errors import ProxyFailure
-from gridplayer.widgets.video_block_stream import StreamControl
+from gridplayer.widgets.video_block_stream import HIDDEN_PANE_HEIGHT_PX, StreamControl
 from gridplayer.widgets.video_frame_mpv import VideoFrameMpv
 from gridplayer.widgets.video_frame_vlc_base import VideoFrameVLC
 
@@ -279,3 +284,62 @@ def test_with_its_sound_in_one_link_there_is_no_sound_to_fail(apart):
     )
 
     assert apart.sound_failure() is None
+
+
+def test_mpv_is_given_a_live_dash_manifest_as_hls_no_taller_than_the_pane():
+    stream = Stream(url="http://m.mpd", protocol="direct", is_live_dash=True)
+
+    played = VideoFrameMpv.stream_to_play(stream, 480, "de, en")
+
+    assert (played.protocol, played.max_height, played.languages_asked) == (
+        "dash_live",
+        480,
+        "de, en",
+    )
+
+
+def test_vlc_follows_a_live_dash_manifest_itself():
+    stream = Stream(url="http://m.mpd", protocol="direct", is_live_dash=True)
+
+    assert VideoFrameVLC.stream_to_play(stream, 480, "") is stream
+
+
+def test_mpv_is_given_the_rest_as_they_are():
+    stream = Stream(url="http://m.mpd", protocol="direct")
+
+    assert VideoFrameMpv.stream_to_play(stream, 480, "") is stream
+
+
+class TestLivePicks:
+    """What of a live manifest's one rung is asked for."""
+
+    def test_on_auto_no_taller_than_the_pane(self, control):
+        control._block.height.return_value = 360
+        control._block.devicePixelRatioF.return_value = 2.0
+
+        assert control._live_height_cap(is_auto=True) == 720
+
+    def test_a_pane_not_shown_yet_a_middling_size(self, control):
+        control._block.height.return_value = 0
+        control._block.devicePixelRatioF.return_value = 1.0
+
+        assert control._live_height_cap(is_auto=True) == HIDDEN_PANE_HEIGHT_PX
+
+    def test_the_best_where_auto_was_not_asked_for(self, control):
+        assert control._live_height_cap(is_auto=False) == 0
+
+    def test_the_language_chosen_for_the_video(self, control):
+        control._block.video_params.audio_selection = AudioLanguage(tag="de")
+
+        assert control._languages_asked() == "de"
+
+    def test_its_own_sound_by_no_language(self, control):
+        control._block.video_params.audio_selection = AudioDefault()
+
+        assert control._languages_asked() == ""
+
+    def test_else_the_languages_of_the_settings(self, control):
+        control._block.video_params.audio_selection = AudioPreferred()
+        control._block.video_params.audio_languages = "fr, en"
+
+        assert control._languages_asked() == "fr, en"

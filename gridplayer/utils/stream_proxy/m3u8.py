@@ -182,6 +182,42 @@ def build_media_playlist(
     return "\n".join(res)
 
 
+def build_live_media_playlist(
+    segments: Sequence[tuple[str, float]],
+    first_sequence: int,
+    init_url: str | None = None,
+    is_over: bool = False,
+) -> str:
+    """A live media playlist: what's out now, (url, duration) each, to be asked
+    for again; the first numbered as it was the last time it was listed."""
+
+    target_duration = max((duration for _, duration in segments), default=1)
+
+    res = [
+        "#EXTM3U",
+        "#EXT-X-VERSION:7",
+        f"#EXT-X-TARGETDURATION:{math.ceil(target_duration)}",
+        f"#EXT-X-MEDIA-SEQUENCE:{first_sequence}",
+    ]
+
+    if init_url is not None:
+        res += [f'#EXT-X-MAP:URI="{init_url}"']
+
+    for url, duration in segments:
+        res += [f"#EXTINF:{duration:.3f},", url]
+
+    if is_over:
+        res += ["#EXT-X-ENDLIST"]
+
+    return "\n".join(res)
+
+
+def build_variant_playlist(video_url: str) -> str:
+    """A master playlist of one variant and nothing else."""
+
+    return f"#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=0\n{video_url}"
+
+
 def build_master_playlist(
     video_url: str,
     audio_url: str,

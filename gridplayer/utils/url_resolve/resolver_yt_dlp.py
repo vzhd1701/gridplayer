@@ -394,6 +394,11 @@ class YoutubeDLResolver(ResolverBase):
             init_fragment=init_fragment,
             duration=self._duration if protocol in FILE_PROTOCOLS else 0,
             piece_size=_piece_size(stream) if protocol in FILE_PROTOCOLS else None,
+            is_live_dash=(
+                is_live
+                and protocol in MANIFEST_PROTOCOLS
+                and stream.get("protocol") == "http_dash_segments"
+            ),
             session=StreamSessionOpts(
                 service=self._service_id,
                 session_headers=HashableDict(stream.get("http_headers", {})),

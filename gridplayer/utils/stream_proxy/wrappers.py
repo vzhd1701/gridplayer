@@ -1,11 +1,17 @@
 import dataclasses
 import logging
 import re
+import threading
+import time
 from collections.abc import Iterator
+from contextlib import suppress
+from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 from functools import partial
 from io import IOBase
 from itertools import chain
 from urllib.parse import urljoin, urlparse
+from xml.etree import ElementTree as ET
 
 from requests import Response
 from streamlink import StreamError
@@ -16,10 +22,13 @@ from streamlink.stream.wrappers import StreamIOIterWrapper, StreamIOThreadWrappe
 from gridplayer.models.stream import Stream, StreamFragment, StreamSessionOpts
 from gridplayer.utils.http_in_playlists import allow_http_in_playlists
 from gridplayer.utils.network_errors import failure_txt
+from gridplayer.utils.stream_proxy.dash_live import LiveManifest
 from gridplayer.utils.stream_proxy.fragments import FRAGMENT_INIT, FRAGMENT_SELF
 from gridplayer.utils.stream_proxy.m3u8 import (
+    build_live_media_playlist,
     build_master_playlist,
     build_media_playlist,
+    build_variant_playlist,
     m3u8_to_str,
 )
 from gridplayer.utils.stream_proxy.mp4 import (
@@ -28,6 +37,7 @@ from gridplayer.utils.stream_proxy.mp4 import (
     parse_segment_index,
 )
 from gridplayer.utils.stream_proxy.mpd import rewrite_manifest
+from gridplayer.utils.track_language import parse_preferences
 
 CHUNK_SIZE = 8192
 
@@ -41,6 +51,13 @@ SINGLE_SEGMENT_DURATION = 86400.0
 
 M3U8_CONTENT_TYPE = "application/vnd.apple.mpegurl"
 MPD_CONTENT_TYPE = "application/dash+xml"
+
+# A live manifest read for the picture's playlist is kept this long for the
+# sound's, which the player asks for at the same moment.
+LIVE_MANIFEST_KEPT_S = 1.0
+MAX_LIVE_MANIFESTS = 32
+_live_manifests_lock = threading.Lock()
+_live_manifests: dict = {}
 
 # the proxy reads playlists itself, and may be the first thing that does
 allow_http_in_playlists()
@@ -170,6 +187,13 @@ class HTTPStreamProxy(HTTPStream):
             exception=StreamError,
             timeout=self._timeout,
             **reqargs,
+        )
+
+    def _proxify_url(self, url: str) -> str:
+        """One of ours for a URL the host gave, fetched as this was."""
+
+        return self.server.add_stream(
+            Stream(url=url, protocol="http", session=self.session_opts)
         )
 
     def _replace_body(self, body: str, content_type: str) -> None:
@@ -323,14 +347,6 @@ class HLSProxy(HTTPStreamProxy):
 
         return dataclasses.replace(key, uri=self._proxify_url(key.uri))
 
-    def _proxify_url(self, url):
-        stream = Stream(
-            url=url,
-            protocol="http",
-            session=self.session_opts,
-        )
-        return self.server.add_stream(stream)
-
 
 def _playlist_segments(
     hls_playlist: M3U8,
@@ -376,6 +392,125 @@ class DASHManifestProxy(HTTPStreamProxy):
 
     def _proxify_base(self, url: str) -> str:
         return self.server.add_base(url, self.session_opts)
+
+
+class DASHLiveHLS(HTTPStreamProxy):
+    """Serves a live DASH manifest as live HLS: see dash_live.
+
+    Asked for as the manifest, it's a master playlist of the video and the
+    sound picked; asked for as one of those, that one's media playlist, made
+    of the manifest as it is now each time the player asks again.
+    """
+
+    def __init__(self, *args, stream: Stream, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.stream = stream
+
+    def open(self):
+        text, url, now = self._manifest()
+
+        # what a host sends that isn't a manifest, or one this can't read
+        try:
+            manifest = LiveManifest(text, url=url, now=now)
+
+            if self.stream.representation is None:
+                playlist = self._master_playlist(manifest)
+            else:
+                playlist = self._media_playlist(manifest)
+        except (
+            ET.ParseError,
+            LookupError,
+            ValueError,
+            TypeError,
+            ArithmeticError,
+        ) as e:
+            raise StreamError(f"Can't read the live manifest: {e}") from e
+
+        self._replace_body(playlist, M3U8_CONTENT_TYPE)
+
+    def _manifest(self) -> tuple[str, str, datetime]:
+        """The manifest, where it came from and the server's time: fetched once
+        for the picture's playlist and the sound's, asked for again together."""
+
+        key = (self.stream.url, self.session_opts)
+
+        with _live_manifests_lock:
+            fetched = _live_manifests.get(key)
+
+        if fetched is not None and time.monotonic() - fetched[0] < LIVE_MANIFEST_KEPT_S:
+            at, text, url, now = fetched
+            self._res = Response()
+            return text, url, now + timedelta(seconds=time.monotonic() - at)
+
+        self._res = self._fetch()
+        text, url, now = self._res.text, self._fetched_from, _server_time(self._res)
+
+        with _live_manifests_lock:
+            _live_manifests[key] = (time.monotonic(), text, url, now)
+
+            while len(_live_manifests) > MAX_LIVE_MANIFESTS:
+                _live_manifests.pop(next(iter(_live_manifests)))
+
+        return text, url, now
+
+    def _master_playlist(self, manifest: LiveManifest) -> str:
+        video = (
+            None
+            if self.stream.is_audio_only
+            else manifest.pick("video", max_height=self.stream.max_height)
+        )
+        sound = manifest.pick(
+            "audio", languages=parse_preferences(self.stream.languages_asked)
+        )
+
+        if video is None and sound is None:
+            raise StreamError("The manifest has neither video nor sound")
+
+        if video is None or sound is None:
+            return build_variant_playlist(self._playlist_of(video or sound))
+
+        return build_master_playlist(
+            video_url=self._playlist_of(video),
+            audio_url=self._playlist_of(sound),
+            audio_name=sound.language or "Audio",
+            audio_language=sound.language or None,
+        )
+
+    def _playlist_of(self, representation) -> str:
+        return self.server.add_stream(
+            dataclasses.replace(self.stream, representation=representation.id)
+        )
+
+    def _media_playlist(self, manifest: LiveManifest) -> str:
+        try:
+            window = manifest.window(self.stream.representation)
+        except LookupError as err:
+            raise StreamError(str(err)) from err
+
+        segments = window.segments
+
+        return build_live_media_playlist(
+            segments=[(self._proxify_url(s.url), s.duration) for s in segments],
+            first_sequence=segments[0].sequence if segments else 0,
+            init_url=self._proxify_url(window.init_url) if window.init_url else None,
+            is_over=window.is_over,
+        )
+
+
+def _server_time(response: Response) -> datetime:
+    """The time by the server that sent this, near enough: a live manifest says
+    what's out by the server's clock, and a few seconds out on this one's has a
+    player ask for segments not out yet. By its Date, to the second, behind
+    rather than ahead."""
+
+    date = response.headers.get("Date")
+
+    if date:
+        with suppress(TypeError, ValueError):
+            return parsedate_to_datetime(date)
+
+    return datetime.now(timezone.utc)
 
 
 class HLSProxyLive(HLSStream):

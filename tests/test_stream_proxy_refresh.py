@@ -300,6 +300,34 @@ def test_a_renewed_video_half_is_not_handed_its_audio_tracks_back():
     assert _pick_stream(fresh_streams, served).audio_tracks is None
 
 
+def test_a_live_dash_manifest_served_as_hls_stays_that_once_renewed():
+    fresh_streams = Streams(
+        {"best": Stream(url="http://new.mpd", protocol="direct", is_live_dash=True)}
+    )
+
+    # the sound's playlist of it, as mpv was handed it
+    served = Stream(
+        url="http://old.mpd",
+        protocol="dash_live",
+        is_audio_only=True,
+        max_height=720,
+        languages_asked="de",
+        representation="a1",
+        origin=StreamOrigin(url=PAGE_URL, quality="best"),
+    )
+
+    renewed = _pick_stream(fresh_streams, served)
+
+    assert renewed.url == "http://new.mpd"
+    assert (
+        renewed.protocol,
+        renewed.is_audio_only,
+        renewed.max_height,
+        renewed.languages_asked,
+        renewed.representation,
+    ) == ("dash_live", True, 720, "de", "a1")
+
+
 def test_a_file_being_read_as_a_file_stays_one_once_renewed(upstream, proxy):
     # a playlist in its place, under the same link, would end the video
     upstream.replies = {

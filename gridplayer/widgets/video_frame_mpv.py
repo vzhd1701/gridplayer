@@ -12,6 +12,8 @@ of the picture, and letterboxing, zoom, pan and flips are all just how it's
 painted.
 """
 
+from dataclasses import replace
+
 from PyQt5.QtCore import QRectF, Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QImage
 
@@ -717,6 +719,24 @@ class MpvFrame:
     must_reload_for_automatic_deinterlace = False
     media_lib = MediaLib.MPV
     has_adaptive_demuxer = False
+
+    @staticmethod
+    def stream_to_play(stream: Stream, max_height: int, languages: str) -> Stream:
+        """A live DASH manifest as the live HLS the proxy makes of it, the video
+        at most so tall (0 for the best), the sound in the first of these
+        languages it has: FFmpeg's DASH reader, which mpv plays DASH with, reads
+        what's out at once, asks for what isn't yet until it gives up, and plays
+        what it had. See stream_proxy.dash_live."""
+
+        if not stream.is_live_dash:
+            return stream
+
+        return replace(
+            stream,
+            protocol="dash_live",
+            max_height=max_height,
+            languages_asked=languages,
+        )
 
     @staticmethod
     def streams_to_open(stream: Stream) -> tuple[Stream, tuple[str, Stream] | None]:

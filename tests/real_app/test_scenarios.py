@@ -57,6 +57,7 @@ ALSO_ON_MPV = (
     "external_audio_jump",
     "list_shape",
     "live",
+    "live_dash",
     "marks",
     "navigation",
     "pixel_shape",
