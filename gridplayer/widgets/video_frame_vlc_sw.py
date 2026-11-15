@@ -7,6 +7,7 @@ from gridplayer.params.static import PLAYER_ID_LENGTH
 from gridplayer.utils.qt import qt_connect
 from gridplayer.vlc_player.image_decoder import ImageDecoder
 from gridplayer.vlc_player.instance import InstanceProcessVLC
+from gridplayer.vlc_player.player_base import software_decoding_options
 from gridplayer.vlc_player.player_base_threaded import VlcPlayerThreaded
 from gridplayer.vlc_player.rgb_buffer import FrameReader, holding
 from gridplayer.vlc_player.video_driver_base_threaded import VLCVideoDriverThreaded
@@ -81,10 +82,7 @@ class PlayerProcessSingleVLCSW(VlcPlayerThreaded):
         self.shared_memory = init_data["shared_memory"]
         self.decoder = None
 
-        # Disable hardware decoding. This has to stay a media option: libvlc
-        # ignores avcodec-hw passed as an instance option, where the hw decoder
-        # lookup silently falls back to "any" and decodes on the GPU anyway.
-        self._media_options.append("avcodec-hw=none")
+        self._media_options.extend(software_decoding_options())
 
         self.start()
 

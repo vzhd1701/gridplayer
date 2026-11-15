@@ -147,6 +147,23 @@ DEAD_INPUT_PASSES = 50
 # every hardware format, and rebuilds the video output for each one it rejects.
 SOFTWARE_DECODERS = MappingProxyType({"av01": "dav1d"})
 
+
+def software_decoding_options() -> list[str]:
+    """Media options that keep VLC decoding on the CPU.
+
+    Media options, as libvlc ignores avcodec-hw passed as an instance option,
+    where the hw decoder lookup silently falls back to "any" and decodes on
+    the GPU anyway. On macOS VideoToolbox is a decoder of its own beside
+    avcodec, taken first for H.264: its frames can't be turned, so a file
+    that says to turn it got no video output at all.
+    """
+
+    options = ["avcodec-hw=none"]
+    if env.IS_MACOS:
+        options.append("no-videotoolbox")
+    return options
+
+
 # the headers VLC's http access lets an input set, by its options' names
 HTTP_HEADER_OPTIONS = MappingProxyType(
     {"user-agent": "http-user-agent", "referer": "http-referrer"}

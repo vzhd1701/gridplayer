@@ -13,7 +13,10 @@ from gridplayer.utils.glibc_malloc import give_back_freed_memory
 from gridplayer.utils.qt import MILLISECONDS, QABC, qt_connect
 from gridplayer.vlc_player.image_decoder import ImageDecoder
 from gridplayer.vlc_player.instance import InstanceVLC
-from gridplayer.vlc_player.player_base import VlcPlayerBase
+from gridplayer.vlc_player.player_base import (
+    VlcPlayerBase,
+    software_decoding_options,
+)
 from gridplayer.vlc_player.rgb_buffer import FrameReader, InProcessRgbBuffer
 from gridplayer.vlc_player.static import Media, MediaInput
 from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
@@ -58,10 +61,7 @@ class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
         self.shared_memory = shared_memory
         self.decoder = None
 
-        # Disable hardware decoding. This has to stay a media option: libvlc
-        # ignores avcodec-hw passed as an instance option, where the hw decoder
-        # lookup silently falls back to "any" and decodes on the GPU anyway.
-        self._media_options.append("avcodec-hw=none")
+        self._media_options.extend(software_decoding_options())
 
         # Commands and the steps of a load run on this thread, as a VLC process
         # runs them on its own: they wait for VLC, up to the load timeout each,
