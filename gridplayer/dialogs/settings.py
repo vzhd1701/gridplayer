@@ -512,7 +512,7 @@ class SettingsDialog(PagedDialog):
     def show_mpv_output_help(self):
         """What each of MPV's outputs does and when to pick it, which a name
         can't say and a tooltip has no room for. One table for Windows, one for
-        Linux, where Direct takes X11."""
+        macOS, which has no Direct, one for Linux, where Direct takes X11."""
 
         if env.IS_WINDOWS:
             help_text = translate(
@@ -534,6 +534,20 @@ class SettingsDialog(PagedDialog):
                 " per video on NVIDIA, a CPU copy per frame on AMD and Intel.</p>"
                 "<p><b>Use Direct.</b> For smooth resizing: Copy, or Shared where it's"
                 " lighter (not on NVIDIA).</p>",
+            )
+        elif env.IS_MACOS:
+            help_text = translate(
+                "SettingsDialog",
+                "<table cellspacing='0' cellpadding='4'>"
+                "<tr><td></td><td><b>Frames go</b></td><td><b>CPU</b></td></tr>"
+                "<tr><td><b>Copy</b></td>"
+                "<td>OpenGL &rarr; RAM &rarr; GridPlayer</td>"
+                "<td>more</td></tr>"
+                "<tr><td><b>Shared</b></td>"
+                "<td>OpenGL &rarr; GridPlayer</td>"
+                "<td>less</td></tr>"
+                "</table>"
+                "<p><b>Use Shared</b>, or Copy if it misbehaves.</p>",
             )
         else:
             help_text = translate(
