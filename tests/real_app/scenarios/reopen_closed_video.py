@@ -110,8 +110,10 @@ def scenario(d):
     d.wait_until(lambda: len(d.cells) == 3, "a reopened")
     d.check("all back in order", _names(d) == ["a.mp4", "b.mp4", "c.mp4"], _names(d))
 
-    # closed at its end: back from its start
+    # closed at its end: back from its start. Reopened a moment ago, it's to have
+    # loaded first: a loading video's commands are dropped
     last = _by_name(d, "c.mp4")
+    d.wait_until(lambda: last.is_video_initialized, "c loaded again")
     d.run(last, "active", "set_end_action", VideoEndAction.CLOSE)
     d.run(last, "active", "set_pause", False)
     d.act(last, "90%")
