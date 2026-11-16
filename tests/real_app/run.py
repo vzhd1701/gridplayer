@@ -41,6 +41,9 @@ from tests.real_app import media
 
 HANG_FILE = "hung.txt"
 
+# open for the run, for faulthandler to write to
+_hang_file = None
+
 
 def _load(scenario: str):
     if scenario.endswith(".py"):
@@ -57,14 +60,31 @@ def _watch_for_a_hang(out: Path) -> None:
     of faulthandler's own, which needs nothing of a Python thread stuck in
     VLC or mpv."""
 
+    global _hang_file
+
     hang_s = os.environ.get("REAL_APP_HANG_S")
 
     if not hang_s:
         return
 
-    # kept open for the run, and for faulthandler to write to
-    hang_file = (out / HANG_FILE).open("w", encoding="utf-8")
-    faulthandler.dump_traceback_later(float(hang_s), exit=True, file=hang_file)
+    _hang_file = (out / HANG_FILE).open("w", encoding="utf-8")
+    faulthandler.dump_traceback_later(float(hang_s), exit=True, file=_hang_file)
+
+
+def _stop_watching(out: Path) -> None:
+    """A run that ended leaves no hung.txt."""
+
+    if _hang_file is None:
+        return
+
+    faulthandler.cancel_dump_traceback_later()
+    # closed first: Windows deletes no open file
+    _hang_file.close()
+
+    hang_file = out / HANG_FILE
+
+    if not hang_file.stat().st_size:
+        hang_file.unlink()
 
 
 def main() -> int:
@@ -96,6 +116,8 @@ def main() -> int:
         module.scenario(driver)
     except Exception:
         driver.error(*sys.exc_info())
+
+    _stop_watching(out)
 
     report = driver.report()
     (out / "report.json").write_text(json.dumps(report, indent=1, default=str))

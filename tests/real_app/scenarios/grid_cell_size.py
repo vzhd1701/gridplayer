@@ -151,26 +151,26 @@ def scenario(d):
 
     # narrow cells: under the name and the close button
     d.player.resize(700, 520)
-    d.pump(0.8)
     overlay = _overlay(a)
-    d.check(
+    # laid out again once the resize has reached it, on a slow Mac past 0.8 s
+    d.wait_until(
+        lambda: (
+            overlay.info_bar.indexOf(overlay.cell_bigger_button) >= 0
+            and overlay.cell_bigger_button.isVisibleTo(overlay)
+        ),
         "under the name",
-        overlay.info_bar.indexOf(overlay.cell_bigger_button) >= 0
-        and overlay.cell_bigger_button.isVisibleTo(overlay),
-        overlay.width(),
     )
     d.shot("4_narrow")
 
     d.player.resize(WIDTH, HEIGHT)
-    d.pump(0.8)
     # as the pointer coming over it shows it
     a.show_overlay()
-    d.pump(0.3)
-    d.check(
+    d.wait_until(
+        lambda: (
+            overlay.title_bar.indexOf(overlay.cell_bigger_button) >= 0
+            and overlay.cell_bigger_button.isVisibleTo(overlay)
+        ),
         "back in the title",
-        overlay.title_bar.indexOf(overlay.cell_bigger_button) >= 0
-        and overlay.cell_bigger_button.isVisibleTo(overlay),
-        (overlay.isVisible(), overlay.width()),
     )
 
     d.check(

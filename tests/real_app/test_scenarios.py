@@ -163,7 +163,7 @@ def _run_scenario(scenario, out, env=None):
 
     report_file = out / "report.json"
     hang_file = out / HANG_FILE
-    if not report_file.exists() and hang_file.exists():
+    if not report_file.exists() and hang_file.exists() and hang_file.stat().st_size:
         pytest.fail(
             f"hung, still going after {HANG_SEC} s; where each thread was:\n"
             f"{hang_file.read_text(encoding='utf-8', errors='replace')[-6000:]}"
