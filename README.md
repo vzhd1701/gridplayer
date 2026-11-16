@@ -136,6 +136,7 @@ dash-prefixed filenames.
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `--user-data-dir PATH` | Store settings and log files in `PATH` instead of the default location. Relative paths are resolved against the current working directory. |
 | `--platform {auto,xcb,wayland}` | Linux only. Display server to run on, in place of the Window system setting: `xcb` (X11 or Xwayland) or `wayland`. `auto` goes by the setting. VLC Hardware needs `xcb`. |
+| `--self-check`        | Check that GridPlayer can play the given files with VLC and MPV, showing and sounding nothing, print what it found and exit. |
 | `--version`           | Show the application version and exit.                                                                                 |
 | `--help`              | Show the available options and exit.                                                                                   |
 

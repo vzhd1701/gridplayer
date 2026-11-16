@@ -195,3 +195,12 @@ def test_platform_linux_only(monkeypatch):
 
     with pytest.raises(SystemExit):
         init_cli_args()
+
+
+def test_self_check_is_said_and_leaves_the_files(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["gridplayer", "--self-check", "a.mp4"])
+
+    args = init_cli_args()
+
+    assert args.self_check
+    assert sys.argv == ["gridplayer", "a.mp4"]

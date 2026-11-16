@@ -44,6 +44,12 @@ def init_cli_args(argv=None):
             " xcb (X11 or Xwayland) or wayland; VLC hardware video needs xcb",
         )
     parser.add_argument(
+        "--self-check",
+        action="store_true",
+        help="check that GridPlayer can play FILEs with VLC and MPV, showing and"
+        " sounding nothing, print what was found and exit",
+    )
+    parser.add_argument(
         "--version",
         action="version",
         version=f"{__app_name__} {__version__}",
@@ -67,3 +73,5 @@ def init_cli_args(argv=None):
 
     if getattr(args, "platform", "auto") != "auto":
         env.QT_PLATFORM = args.platform
+
+    return args

@@ -24,11 +24,17 @@ def main():
 
     freeze_support()
 
-    init_cli_args()
+    args = init_cli_args()
 
     init_app_env()
 
     init_log()
+
+    # its files are only to play, not to hand to a GridPlayer already running
+    if args.self_check:
+        from gridplayer.main.self_check import run_self_check
+
+        sys.exit(run_self_check(sys.argv[1:]))
 
     sys.excepthook = excepthook
 
