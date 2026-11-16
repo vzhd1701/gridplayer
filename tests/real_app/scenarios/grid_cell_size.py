@@ -152,7 +152,9 @@ def scenario(d):
     # narrow cells: under the name and the close button
     d.player.resize(700, 520)
     overlay = _overlay(a)
-    # laid out again once the resize has reached it, on a slow Mac past 0.8 s
+    # as the pointer coming over it shows it: one hidden by then (on a slow
+    # Mac) is laid out again only once shown
+    a.show_overlay()
     d.wait_until(
         lambda: (
             overlay.info_bar.indexOf(overlay.cell_bigger_button) >= 0
