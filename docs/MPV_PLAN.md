@@ -1447,6 +1447,10 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     and `real-app-desktop` runs every scenario on Windows (VLC and Software MPV: a runner has no OpenGL for Hardware
     MPV, `REAL_APP_MPV_DRIVERS=mpv_sw`; libmpv as the package has it, pins in `scripts/windows/libmpv_pins.sh`) and
     macOS (both MPVs, Homebrew's libmpv). It doesn't hold a release up (`continue-on-error`) until it has passed there.
+  - Its first run: Windows passed (16 min) and holds releases up from now; macOS never started, GitHub had no arm64
+    runner free. `real-app (ubuntu-26.04)` failed `cookies`, as it had once on Windows here: VLC is given 1 s to know a
+    video's length before it's taken for a live stream, and an HLS video through the proxy took 0.2 to 1 s, now and
+    then more. 3 s now (`LENGTH_WAIT_S`); every VLC scenario passed on 26.04 with it.
 - [x] 12.5 README, CHANGELOG. Short trap list in `AGENTS.md`, rules only
   - 2026-11-16: CHANGELOG from `just changelog-since-last`, Brick2892's fork credited for Picture quality and
     `mpv.conf`; AGENTS.md: what a libmpv build lacks is asked of it (`abilities.py`), not assumed from the platform.

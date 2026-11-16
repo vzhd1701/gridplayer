@@ -161,8 +161,8 @@ jobs:
             build/real-app
             !build/real-app/**/home
 
-  # Every scenario, VLC and MPV, on Windows and macOS. Not holding a release
-  # up until they have passed there: see continue-on-error
+  # Every scenario, VLC and MPV, on Windows and macOS. macOS isn't holding a
+  # release up until it has passed there
   real-app-desktop:
     strategy:
       fail-fast: false
@@ -170,9 +170,9 @@ jobs:
         include:
           # no OpenGL Hardware MPV can draw with on a runner, Software only
           - { os: windows-latest, mpv-drivers: mpv_sw }
-          - { os: macos-15, mpv-drivers: "mpv_hw,mpv_sw" }
+          - { os: macos-15, mpv-drivers: "mpv_hw,mpv_sw", trial: true }
     runs-on: ${{ matrix.os }}
-    continue-on-error: true
+    continue-on-error: ${{ matrix.trial == true }}
     timeout-minutes: 60
     defaults:
       run:
