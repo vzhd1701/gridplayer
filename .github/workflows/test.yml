@@ -78,7 +78,12 @@ jobs:
 
   # the real app driven through its menus, see tests/real_app
   real-app:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # side by side: the oldest Ubuntu taken and the newest
+        os: [ ubuntu-24.04, ubuntu-26.04 ]
+    runs-on: ${{ matrix.os }}
     env:
       UV_PYTHON: "3.14"
     steps:
@@ -108,14 +113,19 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: real-app-runs
+          name: real-app-runs-${{ matrix.os }}
           path: |
             build/real-app
             !build/real-app/**/home
 
   # the MPV scenarios, which the job above skips with no libmpv there
   real-app-mpv:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # libmpv 0.37, the oldest taken, and 0.41
+        os: [ ubuntu-24.04, ubuntu-26.04 ]
+    runs-on: ${{ matrix.os }}
     env:
       UV_PYTHON: "3.14"
     steps:
@@ -129,8 +139,8 @@ jobs:
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
 
-      # libmpv 0.37, the oldest taken; with no GPU, Hardware MPV draws with
-      # Mesa's llvmpipe. libvlc too, which is loaded on import
+      # with no GPU, Hardware MPV draws with Mesa's llvmpipe. libvlc too,
+      # which is loaded on import
       - name: Install requirements
         run: |
           sudo apt-get update
@@ -146,7 +156,72 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: real-app-mpv-runs
+          name: real-app-mpv-runs-${{ matrix.os }}
+          path: |
+            build/real-app
+            !build/real-app/**/home
+
+  # Every scenario, VLC and MPV, on Windows and macOS. Not holding a release
+  # up until they have passed there: see continue-on-error
+  real-app-desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # no OpenGL Hardware MPV can draw with on a runner, Software only
+          - { os: windows-latest, mpv-drivers: mpv_sw }
+          - { os: macos-15, mpv-drivers: "mpv_hw,mpv_sw" }
+    runs-on: ${{ matrix.os }}
+    continue-on-error: true
+    timeout-minutes: 60
+    defaults:
+      run:
+        # Not pwsh, the Windows default: it carries on past a failed command
+        shell: bash
+    env:
+      UV_PYTHON: "3.14"
+      REAL_APP_MPV_DRIVERS: ${{ matrix.mpv-drivers }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+
+      # libmpv as the Windows package has it, see scripts/windows/libmpv_pins.sh.
+      # choco carries on when the feed fails to give it a package
+      - name: Install requirements
+        if: runner.os == 'Windows'
+        run: |
+          choco install vlc ffmpeg --yes --no-progress
+          test -f "/c/Program Files/VideoLAN/VLC/libvlc.dll"
+          command -v ffmpeg
+          BUILD_ARCH=win64
+          . scripts/windows/libmpv_pins.sh
+          mkdir -p build/libmpv
+          curl -fsSL -o "build/$LIBMPV_ARCHIVE" "$LIBMPV_URL"
+          echo "$LIBMPV_SHA256 *build/$LIBMPV_ARCHIVE" | sha256sum -c -
+          7z e -y -obuild/libmpv "build/$LIBMPV_ARCHIVE" libmpv-2.dll > /dev/null
+          echo "GP_LIBMPV_PATH=$(cygpath -w "$PWD/build/libmpv/libmpv-2.dll")" >> "$GITHUB_ENV"
+
+      - name: Install requirements
+        if: runner.os == 'macOS'
+        run: |
+          brew install ffmpeg mpv
+          brew install --cask vlc
+
+      - name: Run the real app
+        run: uv run --locked pytest -m real_app --basetemp=build/real-app
+
+      - name: Keep what the runs left
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: real-app-runs-${{ matrix.os }}
           path: |
             build/real-app
             !build/real-app/**/home

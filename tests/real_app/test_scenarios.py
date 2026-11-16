@@ -69,6 +69,12 @@ ALSO_ON_MPV = (
 )
 MPV_DRIVERS = ("mpv_hw", "mpv_sw")
 
+# The MPV drivers to run, REAL_APP_MPV_DRIVERS=mpv_sw for Software only: a
+# Windows runner has no OpenGL Hardware MPV can draw with
+MPV_DRIVERS_RUN = os.environ.get("REAL_APP_MPV_DRIVERS", ",".join(MPV_DRIVERS)).split(
+    ","
+)
+
 # The MPV scenarios written for Hardware MPV that Software MPV is held to too:
 # with libmpv's software renderer it turns, flips and deinterlaces by filters.
 ALSO_ON_SOFTWARE_MPV = ("mpv_basics", "mpv_deinterlace", "mpv_subtitles", "mpv_view")
@@ -103,6 +109,10 @@ def test_scenario(scenario, tmp_path):
     if scenario in NEEDS_LIBMPV and find_libmpv() is None:
         pytest.skip("needs libmpv")
 
+    # Hardware MPV's own, which Software MPV is held to apart, as far as it can be
+    if scenario in NEEDS_LIBMPV and "mpv_hw" not in MPV_DRIVERS_RUN:
+        pytest.skip("Hardware MPV not run here")
+
     _run_scenario(scenario, tmp_path / scenario)
 
 
@@ -111,6 +121,9 @@ def test_scenario(scenario, tmp_path):
 def test_scenario_on_mpv(scenario, driver, tmp_path):
     if find_libmpv() is None:
         pytest.skip("needs libmpv")
+
+    if driver not in MPV_DRIVERS_RUN:
+        pytest.skip(f"{driver} not run here")
 
     _run_scenario(
         scenario,
@@ -123,6 +136,9 @@ def test_scenario_on_mpv(scenario, driver, tmp_path):
 def test_mpv_scenario_on_software(scenario, tmp_path):
     if find_libmpv() is None:
         pytest.skip("needs libmpv")
+
+    if "mpv_sw" not in MPV_DRIVERS_RUN:
+        pytest.skip("mpv_sw not run here")
 
     _run_scenario(
         scenario,
