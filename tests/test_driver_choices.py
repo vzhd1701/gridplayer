@@ -578,6 +578,8 @@ def test_floating_overlay_workarounds_with_direct_output(
 ):
     monkeypatch.setattr(env, "IS_LINUX", True)
     monkeypatch.setattr(env, "IS_WINDOWS", False)
+    # Direct is offered on Linux only with an X server to put its window on
+    monkeypatch.setenv("DISPLAY", ":0")
     dialog = make_dialog()
     output = dialog.widget("player/mpv_output")
 

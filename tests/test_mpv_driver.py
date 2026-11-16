@@ -5,7 +5,6 @@ import ctypes
 import logging
 import threading
 import time
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -5069,11 +5068,11 @@ def test_a_live_stream_opened_again_is_loaded_once_with_its_tracks_read_again():
     assert player._media is changed[-1]
 
 
-def test_files_added_to_a_live_stream_are_opened_again_with_it():
+def test_files_added_to_a_live_stream_are_opened_again_with_it(tmp_path):
     player = _stream_player(is_live=True)
 
     player.add_audio_file("C:/dub.mka")
-    subtitles = Path("C:/subs.srt")
+    subtitles = tmp_path / "subs.srt"
     player.add_subtitle_file(subtitles.as_uri())
 
     commands = player.mpv.commands
