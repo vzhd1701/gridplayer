@@ -8,6 +8,7 @@ does comes through command(), which never waits.
 import collections
 import dataclasses
 import logging
+import os
 import re
 import threading
 import time
@@ -152,6 +153,33 @@ _HEADER_OPTIONS = {"user-agent": "user-agent", "referer": "referrer"}
 # server's 64 clients takes PipeWire's output, as it fails at once.
 _LINUX_AUDIO_OUTPUTS = ("pulse", "pipewire", "alsa")
 
+
+def _linux_audio_outputs() -> tuple[str, ...]:
+    """Those, PipeWire's left out with no PipeWire server to be had. Giving up on
+    one, mpv's output could wait for good on a thread of PipeWire's that never
+    stopped (libmpv 0.41, Ubuntu 26.04), and the video with it."""
+
+    if _has_pipewire_server():
+        return _LINUX_AUDIO_OUTPUTS
+
+    return tuple(output for output in _LINUX_AUDIO_OUTPUTS if output != "pipewire")
+
+
+def _has_pipewire_server() -> bool:
+    """Whether PipeWire's socket is there, looked for where its library does."""
+
+    remote = Path(os.environ.get("PIPEWIRE_REMOTE") or "pipewire-0")
+
+    if remote.is_absolute():
+        return remote.exists()
+
+    runtime_dir = os.environ.get("PIPEWIRE_RUNTIME_DIR") or os.environ.get(
+        "XDG_RUNTIME_DIR"
+    )
+
+    return bool(runtime_dir) and (Path(runtime_dir) / remote).exists()
+
+
 # The proxy's links look like no file, and an FFmpeg that's picky about that turns down a
 # playlist's segments. Debian 12's is, with a libmpv too old to say otherwise: mpv then
 # reads one segment as if it were the video, says it plays, and runs out of it. Left as
@@ -193,6 +221,9 @@ _SYSTEM_DEVICE = "auto"
 
 # How long the list of those lasts: long enough for a whole grid opening to share one
 _AUDIO_DEVICES_KEPT_S = 5
+# How long mpv has to list them. Ubuntu 26.04's, with no PipeWire server running,
+# could never come back (in pw_thread_loop_stop), and every video waited behind it
+_AUDIO_DEVICES_WAIT_S = 5
 
 # Told by what the filter says as it starts, for the whole run: what stops it stops it
 # for every video, the file or a libmpv made without the filter
@@ -407,16 +438,53 @@ class _AudioDevices:
         self._lock = threading.Lock()
         self._read_at = None
         self._devices: tuple[AudioDevice, ...] = ()
+        # mpv never came back with them: not asked again, there'd be a thread
+        # stuck for each time
+        self._is_stuck = False
 
     def read(self, mpv_module) -> tuple[AudioDevice, ...]:
         with self._lock:
+            if self._is_stuck:
+                return ()
+
             now = time.monotonic()
 
             if self._read_at is None or now - self._read_at > _AUDIO_DEVICES_KEPT_S:
-                self._devices = self._read_from_mpv(mpv_module)
+                devices = self._read_in_time(mpv_module)
+
+                if devices is None:
+                    self._is_stuck = True
+                    return ()
+
+                self._devices = devices
                 self._read_at = now
 
             return self._devices
+
+    def _read_in_time(self, mpv_module) -> tuple[AudioDevice, ...] | None:
+        """None if mpv hasn't said in time, the thread asking left to it."""
+
+        read = []
+
+        def _read():
+            try:
+                read.append(self._read_from_mpv(mpv_module))
+            except Exception:
+                _log.exception("Could not read the audio devices")
+                read.append(())
+
+        reader = threading.Thread(target=_read, name="AudioDevices", daemon=True)
+        reader.start()
+        reader.join(_AUDIO_DEVICES_WAIT_S)
+
+        if not read:
+            _log.warning(
+                f"mpv didn't list the audio devices in {_AUDIO_DEVICES_WAIT_S} s,"
+                " going on without them"
+            )
+            return None
+
+        return read[0]
 
     @staticmethod
     def _read_from_mpv(mpv_module) -> tuple[AudioDevice, ...]:
@@ -435,7 +503,7 @@ class _AudioDevices:
         try:
             return devices_of_first_output(
                 reader.audio_device_list or [],
-                _LINUX_AUDIO_OUTPUTS if env.IS_LINUX else None,
+                _linux_audio_outputs() if env.IS_LINUX else None,
             )
         finally:
             reader.terminate()
@@ -708,7 +776,7 @@ class MpvPlayer(QObject):
             # output it knows: JACK and SDL don't take being started by several
             # videos at once, which hangs or crashes. Without a sound device
             # the video just plays on.
-            options["ao"] = ",".join(_LINUX_AUDIO_OUTPUTS)
+            options["ao"] = ",".join(_linux_audio_outputs())
             options["audio_fallback_to_null"] = True
 
         # The software renderer scales with zimg by default, lanczos with

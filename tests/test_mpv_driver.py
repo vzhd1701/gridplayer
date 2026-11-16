@@ -1372,12 +1372,46 @@ def test_options_leave_the_file_to_say_with_no_turn(transform):
     assert "video_rotate" not in _player(transform=transform).mpv.options
 
 
-def test_options_on_linux_try_pulse_before_pipewires_own(monkeypatch):
+def test_options_on_linux_try_pulse_before_pipewires_own(monkeypatch, tmp_path):
     """mpv's PipeWire output starts slow on a sink gone to sleep."""
 
     monkeypatch.setattr(player_module.env, "IS_LINUX", True)
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path))
+    monkeypatch.delenv("PIPEWIRE_REMOTE", raising=False)
+    monkeypatch.delenv("PIPEWIRE_RUNTIME_DIR", raising=False)
+    (tmp_path / "pipewire-0").touch()
 
     assert _player().mpv.options["ao"] == "pulse,pipewire,alsa"
+
+
+def test_options_on_linux_with_no_pipewire_server_leave_its_output_out(
+    monkeypatch, tmp_path
+):
+    """Giving up on a server that isn't there, it could wait for good."""
+
+    monkeypatch.setattr(player_module.env, "IS_LINUX", True)
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path))
+    monkeypatch.delenv("PIPEWIRE_REMOTE", raising=False)
+    monkeypatch.delenv("PIPEWIRE_RUNTIME_DIR", raising=False)
+
+    assert _player().mpv.options["ao"] == "pulse,alsa"
+
+
+def test_a_pipewire_server_is_found_where_its_library_looks(monkeypatch, tmp_path):
+    for name in ("PIPEWIRE_REMOTE", "PIPEWIRE_RUNTIME_DIR", "XDG_RUNTIME_DIR"):
+        monkeypatch.delenv(name, raising=False)
+
+    assert not player_module._has_pipewire_server()
+
+    socket = tmp_path / "studio"
+    socket.touch()
+    monkeypatch.setenv("PIPEWIRE_RUNTIME_DIR", str(tmp_path))
+    monkeypatch.setenv("PIPEWIRE_REMOTE", "studio")
+    assert player_module._has_pipewire_server()
+
+    monkeypatch.setenv("PIPEWIRE_REMOTE", str(socket))
+    monkeypatch.delenv("PIPEWIRE_RUNTIME_DIR")
+    assert player_module._has_pipewire_server()
 
 
 def test_options_into_its_own_window_on_windows(monkeypatch):
@@ -3868,6 +3902,27 @@ def test_the_devices_are_read_again_later(monkeypatch, audio_devices):
     audio_devices.read(module)
 
     assert len(made) == 2
+
+
+def test_devices_mpv_never_lists_are_none_and_not_asked_for_again(
+    monkeypatch, audio_devices
+):
+    # Ubuntu 26.04's libmpv with no PipeWire server: stuck in pw_thread_loop_stop
+    monkeypatch.setattr(player_module, "_AUDIO_DEVICES_WAIT_S", 0.05)
+    module, made = _device_reader(_PULSE_LISTED)
+    let_go = threading.Event()
+
+    def hangs(**options):
+        made.append(options)
+        let_go.wait(5)
+        raise OSError("let go")
+
+    try:
+        assert audio_devices.read(SimpleNamespace(MPV=hangs)) == ()
+        assert audio_devices.read(module) == ()
+        assert len(made) == 1
+    finally:
+        let_go.set()
 
 
 def test_devices_that_cant_be_read_are_none(audio_devices):
