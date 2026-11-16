@@ -1437,6 +1437,16 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     `test_ubuntu` with the job's packages only: 42 passed in 11 minutes. To tick once it has passed on GitHub.
   - 2026-11-16: passed on GitHub (14 minutes). The unit tests failed there, twice on Linux only: fixed, and the unit
     tests now run on Windows and macOS too.
+  - 2026-11-16, next push: `ubuntu-latest` had become 26.04 (libmpv 0.41, Mesa 26), and `playback` on Hardware MPV and
+    `mpv_audio` hung now and then. Caught in an `ubuntu:26.04` container on `test_ubuntu` with gdb: with no sound
+    server, giving up on PipeWire's output, libmpv waits in `pw_thread_loop_stop` for a PipeWire thread idle in
+    `epoll_wait`, for good. Hit when listing the audio devices (every video's load waited on its lock) and when a
+    video opens its sound. Fixed: the list has 5 s and isn't asked again after, PipeWire's left out of `ao` with no
+    PipeWire socket. 4 failures in 10 became 15 passes of 15 on 1.5 CPUs, and all 47 MPV scenarios passed there.
+  - Then (your call): both real-app jobs run on `ubuntu-24.04` (libmpv 0.37) and `ubuntu-26.04` (0.41) side by side,
+    and `real-app-desktop` runs every scenario on Windows (VLC and Software MPV: a runner has no OpenGL for Hardware
+    MPV, `REAL_APP_MPV_DRIVERS=mpv_sw`; libmpv as the package has it, pins in `scripts/windows/libmpv_pins.sh`) and
+    macOS (both MPVs, Homebrew's libmpv). It doesn't hold a release up (`continue-on-error`) until it has passed there.
 - [x] 12.5 README, CHANGELOG. Short trap list in `AGENTS.md`, rules only
   - 2026-11-16: CHANGELOG from `just changelog-since-last`, Brick2892's fork credited for Picture quality and
     `mpv.conf`; AGENTS.md: what a libmpv build lacks is asked of it (`abilities.py`), not assumed from the platform.
@@ -1994,6 +2004,8 @@ How it goes in, by what's there already:
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-16: libmpv 0.41 with no sound server hung in PipeWire's output now and then: the audio device list is
+  time-limited, PipeWire left out of `ao` with no server. Real-app jobs on Ubuntu 24.04 and 26.04, and on Windows and macOS (not blocking yet).
 - 2026-11-16: `real-app-mpv` passed on GitHub (12.4). `--self-check` for packages, run in CI on each one built (12.2);
   unit tests on Windows and macOS as well.
 - 2026-11-16: MPV the default on Windows too (your call), so Hardware MPV everywhere but macOS before 12. Every stream

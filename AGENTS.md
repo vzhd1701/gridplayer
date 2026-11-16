@@ -225,6 +225,10 @@ the entry happens to exist, but never reaches translators.
   needs of the libmpv loaded is asked of it once a run
   (`mpv_player/abilities.py`), and what it hasn't got is greyed out or
   left out, never assumed from the platform.
+* With no PipeWire server, libmpv 0.41 (Ubuntu 26.04) can hang for good
+  giving up on PipeWire's output: opening the sound, or listing the devices
+  (`audio-device-list` tries every output). Nothing waits on that list
+  without a time limit, and PipeWire's output is left out of `ao` then.
 
 ## MPV's Shared output
 
