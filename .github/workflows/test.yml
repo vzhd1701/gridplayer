@@ -32,9 +32,12 @@ jobs:
           # the oldest supported and the newest, which the release builds use
           - { os: ubuntu-latest, python-version: "3.10" }
           - { os: ubuntu-latest, python-version: "3.14" }
-          # what is only true on the other two shows there
+          # what is only true on the other two shows there. macOS on Intel:
+          # GitHub has arm64 Macs to spare for one job at a time, which the
+          # real app's takes (see real-app-desktop), and a job left waiting
+          # 15 min is cancelled
           - { os: windows-latest, python-version: "3.14" }
-          - { os: macos-15, python-version: "3.14" }
+          - { os: macos-15-intel, python-version: "3.14" }
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -164,15 +167,18 @@ jobs:
             build/real-app
             !build/real-app/**/home
 
-  # Every scenario on Windows and macOS, the VLC ones and the MPV ones side
-  # by side, as on Linux. A system new here goes in with trial: true (an
-  # include), which holds no release up, until it has passed
+  # Every scenario on Windows and macOS. Windows's VLC ones and MPV ones side
+  # by side, as on Linux; macOS's on one arm64 runner, all that GitHub has to
+  # spare at a time (more were left waiting and cancelled). A system new here
+  # goes in with trial: true, which holds no release up, until it has passed
   real-app-desktop:
     strategy:
       fail-fast: false
       matrix:
-        os: [ windows-latest, macos-15 ]
-        part: [ vlc, mpv ]
+        include:
+          - { os: windows-latest, part: vlc, select: "not mpv" }
+          - { os: windows-latest, part: mpv, select: mpv }
+          - { os: macos-15, part: all, select: "" }
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.trial == true }}
     timeout-minutes: 60
@@ -223,7 +229,7 @@ jobs:
       - name: Run the real app
         run: >-
           uv run --locked pytest -m real_app --basetemp=build/real-app
-          -k "${{ matrix.part == 'mpv' && 'mpv' || 'not mpv' }}" --durations=15
+          -k "${{ matrix.select }}" --durations=15
           ${{ matrix.trial && '--maxfail=3' || '' }}
 
       - name: Keep what the runs left

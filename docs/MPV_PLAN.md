@@ -1461,6 +1461,13 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     releases up now as Windows's does.
   - It took 26 min against Windows's 14 for the same 56 runs (3 CPUs, no GPU), and each did both halves the two Linux
     jobs share. Now split as on Linux, VLC's and MPV's side by side, and every real-app job lists its 15 slowest runs.
+  - Next run: GitHub had one arm64 Mac to spare, and the two other macOS jobs were cancelled after 15 min waiting.
+    macOS's real app is one job on arm64 again, and its unit tests run on `macos-15-intel` (your call); Windows keeps
+    the split.
+  - That run's macOS VLC half failed twice. `grid_cell_size` checked the overlay's layout a fixed 0.8 s after a
+    resize: it waits for it now. `tracks`: VLC took the commentary file and listed no track at all through every
+    try, and the player gave up without a word, so the cell never fell back to opening the video with the file; it's
+    told as a file that brought no track now. Its slowest: the stream scenarios (`stream_stalls` 126 s).
 - [x] 12.5 README, CHANGELOG. Short trap list in `AGENTS.md`, rules only
   - 2026-11-16: CHANGELOG from `just changelog-since-last`, Brick2892's fork credited for Picture quality and
     `mpv.conf`; AGENTS.md: what a libmpv build lacks is asked of it (`abilities.py`), not assumed from the platform.
