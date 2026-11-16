@@ -55,6 +55,10 @@ from gridplayer.vlc_player.static import (
 from gridplayer.vlc_player.vlc_errors import note_video_thread, vlc_errors_since
 
 MEDIA_EXTRACT_RETRY_TIME = 0.1
+# How long VLC has to know a video's length, past which it's taken for a live
+# stream: no seeking, and pausing stops it. 1 s was too little: an HLS video
+# through the proxy took up to 1 s on a quiet machine, now and then more
+LENGTH_WAIT_S = 3
 
 # What VLC sends on the threads it opens, reads and decodes a video on.
 # Not Stopped: that comes on whichever thread stopped the player, which is
@@ -1881,7 +1885,7 @@ class VlcPlayerBase(ABC):
         length = self._get_duration()
 
         if not self.media_input.is_live and length == -1:
-            if self._get_time_retries < 10:
+            if self._get_time_retries < LENGTH_WAIT_S / MEDIA_EXTRACT_RETRY_TIME:
                 self._get_time_retries += 1
                 self._log.debug(
                     f"Video time not initialized yet,"
