@@ -22,9 +22,13 @@ What it leaves in DIR (a new temporary folder by default): report.json,
 app.log, the screenshots the scenario took and, in screenshots/, those the
 app saved. Exits 0 when every check passed and nothing raised, 1 when not,
 2 when the run could not start.
+
+With REAL_APP_HANG_S set, a run still going after that many seconds is taken
+for hung: every thread's stack goes into hung.txt and the process ends.
 """
 
 import argparse
+import faulthandler
 import importlib
 import importlib.util
 import json
@@ -34,6 +38,8 @@ import tempfile
 from pathlib import Path
 
 from tests.real_app import media
+
+HANG_FILE = "hung.txt"
 
 
 def _load(scenario: str):
@@ -46,6 +52,21 @@ def _load(scenario: str):
     return importlib.import_module(f"tests.real_app.scenarios.{scenario}")
 
 
+def _watch_for_a_hang(out: Path) -> None:
+    """Where every thread was, should the run not end in time: from a thread
+    of faulthandler's own, which needs nothing of a Python thread stuck in
+    VLC or mpv."""
+
+    hang_s = os.environ.get("REAL_APP_HANG_S")
+
+    if not hang_s:
+        return
+
+    # kept open for the run, and for faulthandler to write to
+    hang_file = (out / HANG_FILE).open("w", encoding="utf-8")
+    faulthandler.dump_traceback_later(float(hang_s), exit=True, file=hang_file)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("scenario")
@@ -54,6 +75,8 @@ def main() -> int:
 
     out = args.out or Path(tempfile.mkdtemp(prefix="gridplayer-run-"))
     out.mkdir(parents=True, exist_ok=True)
+
+    _watch_for_a_hang(out)
 
     if not media.is_ffmpeg_installed():
         print("ffmpeg is needed to make the media", file=sys.stderr)

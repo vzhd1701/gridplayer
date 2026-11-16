@@ -110,7 +110,7 @@ jobs:
 
       # each run's report.json, app.log and screenshots
       - name: Keep what the runs left
-        if: failure()
+        if: failure() || cancelled()
         uses: actions/upload-artifact@v7
         with:
           name: real-app-runs-${{ matrix.os }}
@@ -153,7 +153,7 @@ jobs:
         run: uv run --locked pytest -m real_app -k mpv --basetemp=build/real-app
 
       - name: Keep what the runs left
-        if: failure()
+        if: failure() || cancelled()
         uses: actions/upload-artifact@v7
         with:
           name: real-app-mpv-runs-${{ matrix.os }}
@@ -168,9 +168,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # no OpenGL Hardware MPV can draw with on a runner, Software only
+          # Software MPV only: Windows runners have no OpenGL Hardware MPV can
+          # draw with, and on macOS's each of its scenarios hung till the time
+          # limit (2026-11-16)
           - { os: windows-latest, mpv-drivers: mpv_sw }
-          - { os: macos-15, mpv-drivers: "mpv_hw,mpv_sw", trial: true }
+          - { os: macos-15, mpv-drivers: mpv_sw, trial: true }
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.trial == true }}
     timeout-minutes: 60
@@ -214,11 +216,14 @@ jobs:
           brew install ffmpeg mpv
           brew install --cask vlc
 
+      # on trial, three failures are enough to say it's not there yet
       - name: Run the real app
-        run: uv run --locked pytest -m real_app --basetemp=build/real-app
+        run: >-
+          uv run --locked pytest -m real_app --basetemp=build/real-app
+          ${{ matrix.trial && '--maxfail=3' || '' }}
 
       - name: Keep what the runs left
-        if: failure()
+        if: failure() || cancelled()
         uses: actions/upload-artifact@v7
         with:
           name: real-app-runs-${{ matrix.os }}

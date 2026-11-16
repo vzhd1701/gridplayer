@@ -1451,6 +1451,12 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     runner free. `real-app (ubuntu-26.04)` failed `cookies`, as it had once on Windows here: VLC is given 1 s to know a
     video's length before it's taken for a live stream, and an HLS video through the proxy took 0.2 to 1 s, now and
     then more. 3 s now (`LENGTH_WAIT_S`); every VLC scenario passed on 26.04 with it.
+  - Second run: macOS's runner ran at last, and its unit tests passed. Its real-app job: every VLC scenario passed, and
+    each of the 11 Hardware MPV ones hung till its 5 minutes were up, so the job ran out of its hour at 46% and nothing
+    was kept. macOS runs Software MPV only now, as Windows does, and a cancelled run's files are kept. Why Hardware MPV
+    hangs on a GitHub macOS VM (no GPU) is not known yet; on the real Mac it plays.
+  - A run still going after 280 s now writes every thread's stack into `hung.txt` and ends (`REAL_APP_HANG_S`,
+    faulthandler), which the test fails with; a job on trial stops at its third failure (`--maxfail=3`).
 - [x] 12.5 README, CHANGELOG. Short trap list in `AGENTS.md`, rules only
   - 2026-11-16: CHANGELOG from `just changelog-since-last`, Brick2892's fork credited for Picture quality and
     `mpv.conf`; AGENTS.md: what a libmpv build lacks is asked of it (`abilities.py`), not assumed from the platform.

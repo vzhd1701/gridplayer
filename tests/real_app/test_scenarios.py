@@ -20,6 +20,7 @@ import pytest
 
 from gridplayer.utils.media_libs import find_libmpv
 from tests.real_app import media
+from tests.real_app.run import HANG_FILE
 
 SCENARIOS_DIR = Path(__file__).parent / "scenarios"
 SCENARIOS = sorted(
@@ -80,6 +81,8 @@ MPV_DRIVERS_RUN = os.environ.get("REAL_APP_MPV_DRIVERS", ",".join(MPV_DRIVERS)).
 ALSO_ON_SOFTWARE_MPV = ("mpv_basics", "mpv_deinterlace", "mpv_subtitles", "mpv_view")
 
 RUN_TIMEOUT_SEC = 300
+# a run gone this long says where each thread was stuck, before it's killed
+HANG_SEC = RUN_TIMEOUT_SEC - 20
 
 pytestmark = [
     pytest.mark.real_app,
@@ -151,7 +154,7 @@ def _run_scenario(scenario, out, env=None):
     run = subprocess.run(
         [sys.executable, "-m", "tests.real_app.run", scenario, "--out", str(out)],
         cwd=media.REPO,
-        env=env,
+        env={**(env or os.environ), "REAL_APP_HANG_S": str(HANG_SEC)},
         capture_output=True,
         text=True,
         timeout=RUN_TIMEOUT_SEC,
@@ -159,6 +162,12 @@ def _run_scenario(scenario, out, env=None):
     )
 
     report_file = out / "report.json"
+    hang_file = out / HANG_FILE
+    if not report_file.exists() and hang_file.exists():
+        pytest.fail(
+            f"hung, still going after {HANG_SEC} s; where each thread was:\n"
+            f"{hang_file.read_text(encoding='utf-8', errors='replace')[-6000:]}"
+        )
     if not report_file.exists():
         pytest.fail(
             f"the run ended without a report:\n{run.stdout[-3000:]}{run.stderr[-3000:]}"
