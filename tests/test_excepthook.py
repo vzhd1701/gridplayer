@@ -40,7 +40,7 @@ def test_said_at_once(told):
 
 
 def test_during_a_drag_the_drag_is_called_off(told, mocker):
-    cancel = mocker.patch.object(hook_module.QDrag, "cancel")
+    cancel = mocker.patch.object(hook_module.QDrag, "cancel", create=True)
 
     with hook_module.dragging():
         hook_module.excepthook(*_raise("broken"))
@@ -54,8 +54,20 @@ def test_during_a_drag_the_drag_is_called_off(told, mocker):
     hook_module.force_terminate.assert_called_once()
 
 
+def test_on_macos_with_no_cancel_it_waits_for_the_drop(told, mocker):
+    # PyQt5 has QDrag.cancel on Windows and X11 only
+    mocker.patch.object(hook_module, "QDrag", object())
+
+    with hook_module.dragging():
+        hook_module.excepthook(*_raise("broken"))
+
+        assert told == []
+
+    assert len(told) == 1
+
+
 def test_the_first_said_of_several(told, mocker):
-    mocker.patch.object(hook_module.QDrag, "cancel")
+    mocker.patch.object(hook_module.QDrag, "cancel", create=True)
 
     with hook_module.dragging():
         hook_module.excepthook(*_raise("first"))

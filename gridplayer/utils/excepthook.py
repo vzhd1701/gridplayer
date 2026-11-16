@@ -54,7 +54,10 @@ def excepthook(exc_type, exc_value, exc_tb):
         if _untold is None:
             _untold = exception_txt
 
-        QDrag.cancel()
+        # Windows and X11 only: on macOS it's told once the drag is dropped
+        cancel = getattr(QDrag, "cancel", None)
+        if cancel is not None:
+            cancel()
         return
 
     _tell_and_quit(exception_txt)

@@ -876,6 +876,15 @@ def _keys(menu):
     ]
 
 
+def _shown(keys):
+    """Keys as a menu shows them here: macOS has ⌘C for Ctrl+C."""
+
+    return [
+        QKeySequence(key).toString(QKeySequence.NativeText) if key else ""
+        for key in keys
+    ]
+
+
 def _item(menu, title):
     return next(
         action for action in menu.actions() if action.text().split("	")[0] == title
@@ -923,16 +932,9 @@ class TestTheRowMenu:
 
         dialog._list.menu_requested.emit(QPoint(10, 10))
 
-        assert _keys(shown[0]) == [
-            "Enter",
-            "F2",
-            "Shift+F2",
-            "Ctrl+M",
-            "",
-            "Ctrl+C",
-            "",
-            "Del",
-        ]
+        assert _keys(shown[0]) == _shown(
+            ["Enter", "F2", "Shift+F2", "Ctrl+M", "", "Ctrl+C", "", "Del"]
+        )
 
     def test_a_row_right_clicked_has_it(self, block, open_dialog, shown):
         dialog = open_dialog(block, selected=(1,))
@@ -1005,7 +1007,7 @@ class TestTheListMenu:
         _right_click(dialog, _under_the_rows(dialog))
 
         assert _titles(shown[0]) == self.ITEMS
-        assert _keys(shown[0]) == ["Ins", "", "", "Ctrl+V", ""]
+        assert _keys(shown[0]) == _shown(["Ins", "", "", "Ctrl+V", ""])
 
     def test_paste_waits_for_timestamps_in_the_clipboard(self, dialog, shown):
         _right_click(dialog, _under_the_rows(dialog))

@@ -5,6 +5,7 @@ from PyQt5.QtCore import QRect
 from PyQt5.QtWidgets import QApplication
 
 import gridplayer.utils.win32_vlc_vout as vlc_vout
+from gridplayer.params import env
 from gridplayer.widgets.video_frame_vlc_hw import VideoFrameVLCHW
 from gridplayer.widgets.video_frame_vlc_hw_sp import VideoFrameVLCHWSP
 
@@ -196,10 +197,12 @@ def _hw_frame(frame_cls):
 
 
 @pytest.mark.parametrize("frame_cls", [VideoFrameVLCHW, VideoFrameVLCHWSP])
-def test_vlc_told_about_the_view_after_its_windows_are_sized(frame_cls):
+def test_vlc_told_about_the_view_after_its_windows_are_sized(frame_cls, monkeypatch):
     """Woken by the view while its windows are being sized, VLC could place
     its picture where they are about to be overruled (see
     fit_vlc_vout_windows)."""
+    # macOS has no VLC Hardware in processes of its own
+    monkeypatch.setattr(env, "IS_MACOS", False)
     frame = _hw_frame(frame_cls)
     frame.media = MagicMock(is_audio_only=False, cur_video_track=None)
     calls = MagicMock()

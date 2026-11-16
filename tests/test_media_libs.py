@@ -34,6 +34,8 @@ def _nothing_known(monkeypatch):
         monkeypatch.delenv(name, raising=False)
 
     monkeypatch.setattr(video_driver, "is_hw_video_available", lambda: True)
+    # where VLC runs in its own processes too; macOS's tests say so
+    monkeypatch.setattr(env, "IS_MACOS", False)
 
     yield
 
