@@ -28,9 +28,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # the oldest supported, which the release builds use, and the newest
-        python-version: [ "3.10", "3.14" ]
-    runs-on: ubuntu-latest
+        include:
+          # the oldest supported and the newest, which the release builds use
+          - { os: ubuntu-latest, python-version: "3.10" }
+          - { os: ubuntu-latest, python-version: "3.14" }
+          # what is only true on the other two shows there
+          - { os: windows-latest, python-version: "3.14" }
+          - { os: macos-15, python-version: "3.14" }
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        # Not pwsh, the Windows default: it carries on past a failed command
+        shell: bash
     env:
       UV_PYTHON: ${{ matrix.python-version }}
     steps:
@@ -46,11 +55,23 @@ jobs:
 
       # libvlc is loaded on import, Qt draws offscreen but still wants GL and fonts
       - name: Install requirements
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             libvlc5 vlc-plugin-base \
             libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3
+
+      - name: Install VLC
+        if: runner.os == 'Windows'
+        # choco carries on when the feed fails to give it a package
+        run: |
+          choco install vlc --yes --no-progress
+          test -f "/c/Program Files/VideoLAN/VLC/libvlc.dll"
+
+      - name: Install VLC
+        if: runner.os == 'macOS'
+        run: brew install --cask vlc
 
       - name: Run tests
         run: uv run --locked pytest

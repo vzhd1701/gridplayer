@@ -117,6 +117,20 @@ jobs:
           just ${{ matrix.arch == 'arm64' && 'build-macos-package-arm64' || 'build-macos-package' }}
           just clean-pyinstaller-dist
 
+      # The app in the DMG, as shipped: its seal whole (macOS calls it damaged
+      # otherwise), then started once to load VLC and libmpv and play a clip
+      # with each, see gridplayer/main/self_check.py
+      - name: Self-check
+        run: |
+          for dmg in dist/*.dmg; do
+            hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$RUNNER_TEMP/dmg"
+          done
+          app="$RUNNER_TEMP/dmg/GridPlayer.app"
+          codesign --verify --deep --strict "$app"
+          "$app/Contents/MacOS/GridPlayer" --self-check \
+            --user-data-dir "$RUNNER_TEMP/self-check" "$PWD/tests/data/self_check.mp4"
+          hdiutil detach "$RUNNER_TEMP/dmg"
+
       - name: Save release binaries for macos ${{ matrix.arch }}
         uses: actions/upload-artifact@v7
         with:
@@ -174,6 +188,19 @@ jobs:
           just build-win-package
           just clean-pyinstaller-dist
 
+      # The portable zip, as shipped, started once to load VLC and libmpv and
+      # play a clip with each, see gridplayer/main/self_check.py. With no
+      # console, an exe that can't print writes the report into its data folder
+      - name: Self-check
+        run: |
+          7z x -bd -o"$RUNNER_TEMP/portable" dist/*-portable.zip > /dev/null
+          app="$RUNNER_TEMP/portable/GridPlayer"
+          "$app/GridPlayer.exe" --self-check "$PWD/tests/data/self_check.mp4" \
+            > "$RUNNER_TEMP/self-check.txt" || failed=1
+          cat "$RUNNER_TEMP/self-check.txt"
+          cat "$app/portable_data/self-check.txt" 2> /dev/null || true
+          [ -z "$failed" ]
+
       - name: Save release binaries for windows ${{ matrix.arch }}
         uses: actions/upload-artifact@v7
         with:
@@ -202,9 +229,11 @@ jobs:
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
 
+      # Xvfb for the self-check
       - name: Install requirements
         run: |
-          sudo apt-get install -y desktop-file-utils appstream-util
+          sudo apt-get update
+          sudo apt-get install -y desktop-file-utils appstream-util xvfb
 
       # The wheel is stamped already, this is for the metadata built from the checkout
       - name: Stamp dev version
@@ -214,6 +243,16 @@ jobs:
       - name: Build
         run: |
           just build-linux-appimage
+
+      # The AppImage started once, on an X server of its own, to load VLC and
+      # libmpv and play a clip with each, see gridplayer/main/self_check.py.
+      # Unpacked to run: the runner has no FUSE
+      - name: Self-check
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: 1
+        run: |
+          xvfb-run -a dist/*.AppImage --self-check \
+            --user-data-dir "$RUNNER_TEMP/self-check" "$PWD/tests/data/self_check.mp4"
 
       - name: Save release binaries for linux x64
         uses: actions/upload-artifact@v7

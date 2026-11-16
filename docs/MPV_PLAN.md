@@ -1413,6 +1413,11 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
 - [ ] 12.2 PyInstaller, AppImage, Flatpak, Snap, Chocolatey as decided. Fail loudly, keep the
   existing tools. Flatpak and Snap can't see a system libmpv, so the README's "How to fix" won't
   work there unless they ship it: check, and say so in the README
+  - 2026-11-16: each package built is started once in `build.yml`, `GridPlayer --self-check tests/data/self_check.mp4`
+    (`main/self_check.py`): Qt's platform, libVLC and libmpv found and loaded, a 1 s H.264 + AAC clip decoded by each,
+    exit 1 otherwise. The Windows portable zip, the app in each DMG (with `codesign --verify --deep --strict` first) and
+    the AppImage under Xvfb. Run on a local Windows PyInstaller build: all five checks pass, the windowed exe prints to
+    redirected output. VLC on Windows refuses a `C:/` path, so the check passes it native.
 - [x] 12.3 About box, licences (python-mpv and libmpv are GPL or LGPL, compatible)
   - MPV and python-mpv were in the About box already. Every libmpv shipped is a GPL build (shinchiro's, EPEL's, the
     Flatpak's), so MPV says "GPL 2.0 or later" rather than "or LGPL", and FFmpeg, inside both libraries, is listed too.
@@ -1425,11 +1430,13 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     `share/licenses/<id>/<module>`, and then the module's `cleanup` runs: VLC's, both ffmpegs' and mpv's took all of `/share`,
     their licences with it (`license-files` changed nothing). They now name what they leave out. macOS with its packaging,
     after 11.4.
-- [ ] 12.4 Real-app job in CI for mpv, if the runners can get a GL context
+- [x] 12.4 Real-app job in CI for mpv, if the runners can get a GL context
   - **Built 2026-11-15:** `real-app-mpv` in `test.yml`, beside the VLC job, which skips the MPV scenarios with no libmpv
     there. Ubuntu's `libmpv2` (0.37, the oldest taken) and Mesa's EGL and llvmpipe, `pytest -m real_app -k mpv`: Hardware
     MPV on software GL, Software MPV, and the VLC scenarios held to both. Checked in a bare `ubuntu:24.04` container on
     `test_ubuntu` with the job's packages only: 42 passed in 11 minutes. To tick once it has passed on GitHub.
+  - 2026-11-16: passed on GitHub (14 minutes). The unit tests failed there, twice on Linux only: fixed, and the unit
+    tests now run on Windows and macOS too.
 - [x] 12.5 README, CHANGELOG. Short trap list in `AGENTS.md`, rules only
   - 2026-11-16: CHANGELOG from `just changelog-since-last`, Brick2892's fork credited for Picture quality and
     `mpv.conf`; AGENTS.md: what a libmpv build lacks is asked of it (`abilities.py`), not assumed from the platform.
@@ -1987,6 +1994,8 @@ How it goes in, by what's there already:
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-16: `real-app-mpv` passed on GitHub (12.4). `--self-check` for packages, run in CI on each one built (12.2);
+  unit tests on Windows and macOS as well.
 - 2026-11-16: MPV the default on Windows too (your call), so Hardware MPV everywhere but macOS before 12. Every stream
   scenario passes on the Ubuntu VM as well. CHANGELOG written, AGENTS.md says libmpv builds differ (12.5).
 - 2026-11-15: 10.36 Hardware VLC's slow live resizing measured with drags by hand: what feels like tar is VLC's pictures
