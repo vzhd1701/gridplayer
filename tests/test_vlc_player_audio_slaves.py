@@ -341,6 +341,16 @@ class TestAddingOneToAVideoAlreadyPlaying:
 
         assert player.media_input.selected_audio_slave is None
 
+    def test_no_tracks_listed_at_all_is_told_as_none_brought(self):
+        """So the video opens with the file instead (see the block's audio)."""
+
+        media = _FakeMedia([])
+        player = _playing_player(media)
+
+        player._await_audio_slave_track(2, 0)
+
+        assert player.tracks_changes == [player.media]
+
     def test_a_player_released_mid_wait_asks_nothing_more(self):
         """The player goes before the media does, and the wait outlives both."""
 

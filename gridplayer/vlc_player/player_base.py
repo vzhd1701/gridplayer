@@ -961,6 +961,15 @@ class VlcPlayerBase(ABC):
             return
 
         if media_tracks is None:
+            # released meanwhile: nobody left to tell
+            if self._media_player is None:
+                return
+
+            # VLC listing no track at all as it takes the file, which a slow
+            # Mac did past every try (CI): told as a file that brought none,
+            # which the video then opens with it instead
+            self._log.warning("Audio slave brought no track, VLC listed none")
+            self.notify_tracks_changed(self.media)
             return
 
         if not is_arrived:
