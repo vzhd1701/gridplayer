@@ -106,7 +106,8 @@ jobs:
             libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3
 
       - name: Run the real app
-        run: uv run --locked pytest -m real_app --basetemp=build/real-app
+        # and the 15 slowest runs, to see where a job's time went
+        run: uv run --locked pytest -m real_app --basetemp=build/real-app --durations=15
 
       # each run's report.json, app.log and screenshots
       - name: Keep what the runs left
@@ -150,7 +151,9 @@ jobs:
             libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3
 
       - name: Run the real app on MPV
-        run: uv run --locked pytest -m real_app -k mpv --basetemp=build/real-app
+        run: >-
+          uv run --locked pytest -m real_app -k mpv --basetemp=build/real-app
+          --durations=15
 
       - name: Keep what the runs left
         if: failure() || cancelled()
@@ -161,18 +164,15 @@ jobs:
             build/real-app
             !build/real-app/**/home
 
-  # Every scenario, VLC and MPV, on Windows and macOS. macOS isn't holding a
-  # release up until it has passed there
+  # Every scenario on Windows and macOS, the VLC ones and the MPV ones side
+  # by side, as on Linux. A system new here goes in with trial: true (an
+  # include), which holds no release up, until it has passed
   real-app-desktop:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          # Software MPV only: Windows runners have no OpenGL Hardware MPV can
-          # draw with, and on macOS's each of its scenarios hung till the time
-          # limit (2026-11-16)
-          - { os: windows-latest, mpv-drivers: mpv_sw }
-          - { os: macos-15, mpv-drivers: mpv_sw, trial: true }
+        os: [ windows-latest, macos-15 ]
+        part: [ vlc, mpv ]
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.trial == true }}
     timeout-minutes: 60
@@ -182,7 +182,10 @@ jobs:
         shell: bash
     env:
       UV_PYTHON: "3.14"
-      REAL_APP_MPV_DRIVERS: ${{ matrix.mpv-drivers }}
+      # Software MPV only: Windows runners have no OpenGL Hardware MPV can draw
+      # with, and on macOS's each of its scenarios hung till the time limit
+      # (2026-11-16)
+      REAL_APP_MPV_DRIVERS: mpv_sw
     steps:
       - uses: actions/checkout@v7
 
@@ -220,13 +223,14 @@ jobs:
       - name: Run the real app
         run: >-
           uv run --locked pytest -m real_app --basetemp=build/real-app
+          -k "${{ matrix.part == 'mpv' && 'mpv' || 'not mpv' }}" --durations=15
           ${{ matrix.trial && '--maxfail=3' || '' }}
 
       - name: Keep what the runs left
         if: failure() || cancelled()
         uses: actions/upload-artifact@v7
         with:
-          name: real-app-runs-${{ matrix.os }}
+          name: real-app-runs-${{ matrix.os }}-${{ matrix.part }}
           path: |
             build/real-app
             !build/real-app/**/home

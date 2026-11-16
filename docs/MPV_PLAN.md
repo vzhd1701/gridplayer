@@ -1457,6 +1457,10 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     hangs on a GitHub macOS VM (no GPU) is not known yet; on the real Mac it plays.
   - A run still going after 280 s now writes every thread's stack into `hung.txt` and ends (`REAL_APP_HANG_S`,
     faulthandler), which the test fails with; a job on trial stops at its third failure (`--maxfail=3`).
+  - Third run: everything passed, macOS's real-app job too (56 passed, Hardware MPV skipped, 26 min), and it holds
+    releases up now as Windows's does.
+  - It took 26 min against Windows's 14 for the same 56 runs (3 CPUs, no GPU), and each did both halves the two Linux
+    jobs share. Now split as on Linux, VLC's and MPV's side by side, and every real-app job lists its 15 slowest runs.
 - [x] 12.5 README, CHANGELOG. Short trap list in `AGENTS.md`, rules only
   - 2026-11-16: CHANGELOG from `just changelog-since-last`, Brick2892's fork credited for Picture quality and
     `mpv.conf`; AGENTS.md: what a libmpv build lacks is asked of it (`abilities.py`), not assumed from the platform.
