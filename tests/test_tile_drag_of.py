@@ -67,3 +67,38 @@ def test_in_free_tiles_it_snaps_to_any():
     near_b = _drag_of(is_mosaic=False, overlap=TileOverlap.ON).moved((150 + 102, 100))
 
     assert near_b.right == pytest.approx(400)
+
+
+@pytest.mark.parametrize(
+    ("at", "is_found"),
+    [
+        # on the bottom-right corner of the tile in the window's corner
+        ((1098, 598), True),
+        # just off the window there, on its frame: the window's resized
+        ((1102, 602), False),
+    ],
+)
+def test_an_edge_is_found_only_on_the_page(monkeypatch, at, is_found):
+    from PyQt5.QtCore import QPoint, QRect
+
+    from gridplayer.player.managers import free_tiles
+
+    tiles = FreeTiles({"A": Box(0.5, 0.5, 1.0, 1.0)}, WIDTH / HEIGHT)
+    page = SimpleNamespace(rect=QRect(100, 100, WIDTH, HEIGHT), tiles=tiles)
+    manager = SimpleNamespace(
+        _ctx=SimpleNamespace(
+            is_drag_ui=False,
+            commands=SimpleNamespace(free_page=lambda: page),
+        ),
+        _is_pointer_taken=lambda: False,
+        is_elsewhere_at=lambda _pos: False,
+        _is_control_at=lambda _video_id, _pos: False,
+    )
+    monkeypatch.setattr(free_tiles, "is_modal_open", lambda: False)
+    monkeypatch.setattr(free_tiles.QCursor, "pos", staticmethod(lambda: QPoint(*at)))
+
+    pointed = FreeTilesManager._tile_under_pointer(manager)
+
+    assert (pointed is not None) == is_found
+    if is_found:
+        assert pointed.handle == (1, 1)

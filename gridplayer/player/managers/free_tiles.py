@@ -226,10 +226,12 @@ class FreeTilesManager(LayoutDragManager):
             return None
 
         pos = QCursor.pos()
-        if self.is_elsewhere_at(pos):
+        page = free.rect
+        # an edge is found a little outside it, but not off the page: on
+        # the window's frame, the window is resized
+        if not page.contains(pos) or self.is_elsewhere_at(pos):
             return None
 
-        page = free.rect
         local = pos - page.topLeft()
         found = free.tiles.handle_at(local.x(), local.y(), page.width(), page.height())
         if found is None:
