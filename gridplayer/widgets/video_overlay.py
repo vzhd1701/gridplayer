@@ -23,7 +23,10 @@ from PyQt5.QtWidgets import (
 
 from gridplayer.params import env
 from gridplayer.params.static import OVERLAY_ACTIVITY_EVENT
-from gridplayer.utils.compositor_linux import should_make_overlay_opaque
+from gridplayer.utils.compositor_linux import (
+    is_compositor_running,
+    should_make_overlay_opaque,
+)
 from gridplayer.utils.drop_zone import DropIndicator
 from gridplayer.utils.qt import MILLISECONDS, qt_connect, translate
 from gridplayer.utils.time_txt import get_time_txt
@@ -984,6 +987,13 @@ class OverlayBlock(QWidget):
     def is_shown(self) -> bool:
         return self.isVisible()
 
+    def set_out_of_sight(self, is_out: bool) -> None:
+        """Out of sight while a tile, or a line between cells, is dragged:
+        hidden. Back in sight, it is for its cell to show it again."""
+
+        if is_out:
+            self.hide()
+
     def set_covered(self, covered: QRegion) -> None:
         """The part of its cell another cell in front covers (in Free
         Tiles), in its own pixels: nothing for an overlay that is its
@@ -1080,6 +1090,11 @@ class OverlayBlockFloating(OverlayBlock):
     def __init__(self, parent=None):
         super().__init__(parent)
 
+        # see-through while a tile is dragged, and how see-through it was
+        # before; and whether it was hidden meanwhile (see set_out_of_sight)
+        self._sight_opacity: float | None = None
+        self._is_hidden_meanwhile = False
+
         self.ensure_black_text()
 
         self.init_flags()
@@ -1117,6 +1132,47 @@ class OverlayBlockFloating(OverlayBlock):
     def set_drop_indicator(self, indicator: DropIndicator):
         super().set_drop_indicator(indicator)
         self.refresh_opaque_mask()
+
+    @property
+    def is_shown(self) -> bool:
+        return self.isVisible() and self._sight_opacity is None
+
+    def set_out_of_sight(self, is_out: bool) -> None:
+        """A window of its own, it may have the press the drag began with:
+        hidden while the button is held, on Xwayland the desktop lets go of
+        the button there, and the drag ends at once. So it is see-through
+        till the drag is over, where a compositor draws it so; with none,
+        the X server keeps the press, and it is hidden. Elsewhere, hidden
+        too: nothing lets go of the press there."""
+
+        if is_out:
+            is_kept = env.IS_LINUX and is_compositor_running()
+            if not self.isVisible() or not is_kept:
+                self.hide()
+            elif self._sight_opacity is None:
+                self._sight_opacity = self.windowOpacity()
+                self.setWindowOpacity(0)
+            return
+
+        if self._sight_opacity is None:
+            return
+        opacity, self._sight_opacity = self._sight_opacity, None
+        # hidden before it can be seen again, not a frame after
+        if self._is_hidden_meanwhile:
+            self._is_hidden_meanwhile = False
+            self.hide()
+        self.setWindowOpacity(opacity)
+
+    def hide(self):
+        if self._sight_opacity is not None:
+            # not while the drag goes on: once it is over
+            self._is_hidden_meanwhile = True
+            return
+        super().hide()
+
+    def show(self):
+        self._is_hidden_meanwhile = False
+        super().show()
 
     def set_covered(self, covered: QRegion) -> None:
         if covered == self._covered:
@@ -1364,6 +1420,11 @@ class OverlayFakeInvisible(OverlayBlockFloating):
     @property
     def is_shown(self) -> bool:
         return self._is_visible
+
+    def set_out_of_sight(self, is_out: bool) -> None:
+        # its hide never takes the window away, the press with it
+        if is_out:
+            self.hide()
 
     def move_beyond_screen(self):
         self.move(QPoint(-self.width(), -self.height()))

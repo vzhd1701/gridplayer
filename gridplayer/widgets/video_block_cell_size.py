@@ -50,7 +50,7 @@ class CellSizeControl(VideoBlockPart):
         or under the pointer, the others once the pointer comes to them."""
 
         self._are_steps_known = False
-        if not self._block.overlay.isVisible():
+        if not self._block.overlay.is_shown:
             return
         if self._is_stepped or self._block.is_under_cursor():
             self._is_stepped = False

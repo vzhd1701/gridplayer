@@ -205,7 +205,7 @@ class StatusControl(VideoBlockPart):
         repaint_now(self._block)
 
         # a window of its own is not painted along with the cell
-        if self._block.overlay.isWindow() and self._block.overlay.isVisible():
+        if self._block.overlay.isWindow() and self._block.overlay.is_shown:
             repaint_now(self._block.overlay)
 
     def _overlay_mode(self) -> OverlayMode:

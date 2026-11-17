@@ -315,7 +315,10 @@ class VideoBlock(QWidget):
 
         return cls.func if isinstance(cls, partial) else cls
 
-    def _driver_has_native_surface(self) -> bool:
+    def has_native_surface(self) -> bool:
+        """Its video is drawn by the player into a window of its own (VLC's
+        Hardware, MPV's Direct)."""
+
         return bool(getattr(self.driver_class, "is_native_surface", False))
 
     def init_video_driver(self) -> VideoFrameVLC:
@@ -466,7 +469,7 @@ class VideoBlock(QWidget):
         self.reset_url_resolver()
 
     def init_overlay(self):
-        if not self._driver_has_native_surface():
+        if not self.has_native_surface():
             overlay = OverlayBlock(self)
         elif is_layered_child_supported():
             overlay = OverlayBlockChild(self)
@@ -1199,12 +1202,16 @@ class VideoBlock(QWidget):
         if is_layout_drag:
             self._is_overlay_held_back = self.overlay.is_shown
             self.overlay_hide_timer.stop()
-            self.overlay.hide()
+            self.overlay.set_out_of_sight(True)
             return
 
+        # shown again while still out of sight, or hidden, if it is not
+        # to be now: not seen a moment at the drag's end, either way
         if self._is_overlay_held_back:
             self._is_overlay_held_back = False
-            self.show_overlay()
+            if not self.show_overlay():
+                self.overlay.hide()
+        self.overlay.set_out_of_sight(False)
 
     @property
     def is_stopped(self) -> bool:
@@ -1234,25 +1241,29 @@ class VideoBlock(QWidget):
 
         return self.video_params is not None and not self.is_stopped
 
-    def show_overlay(self):
+    def show_overlay(self) -> bool:
+        """Its overlay shown, unless it is not to be now. Returns whether it
+        was."""
+
         # shown while loading too, and once it failed: for what it shows.
         # Kept in step even while it stays hidden: dragging shows it, and
         # its drop disc is solid over a cell with no picture, see-through
         # over a playing one
         self.status.sync_overlay_mode()
         if self._ctx.is_drag_ui or self._ctx.is_disable_overlay:
-            return
+            return False
         if self._is_layout_drag:
-            return
+            return False
         # Hardware overlays are windows of their own; do not remap them while
         # this cell is hidden (single-mode background, minimized, etc.).
         if not self.isVisible():
-            return
+            return False
 
         self.overlay.show()
         self.cell_size.sync_steps()
         if self._ctx.is_overlay_hide_on_timeout:
             self.overlay_hide_timer.start(1000 * self._ctx.overlay_timeout)
+        return True
 
     def hide_overlay(self):
         if self._ctx.is_drag_ui:

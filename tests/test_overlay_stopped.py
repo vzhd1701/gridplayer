@@ -7,6 +7,7 @@ from PyQt5.QtCore import QPoint, QRect, Qt
 from PyQt5.QtGui import QColor, QImage, QRegion
 from PyQt5.QtWidgets import QApplication, QWidget
 
+from gridplayer.params import env
 from gridplayer.params.actions import ACTIONS
 from gridplayer.params.static import VideoEndAction
 from gridplayer.player.managers.active_block import ActiveBlockManager
@@ -864,13 +865,111 @@ def test_overlays_are_hidden_while_a_tile_is_dragged_and_shown_again(mocker):
 
     VideoBlock.set_layout_drag(block, True)
 
-    block.overlay.hide.assert_called_once()
+    block.overlay.set_out_of_sight.assert_called_once_with(True)
     block.overlay_hide_timer.stop.assert_called_once()
 
     VideoBlock.set_layout_drag(block, False)
 
+    block.overlay.set_out_of_sight.assert_called_with(False)
     block.show_overlay.assert_called_once()
     assert not block._is_layout_drag
+
+
+@pytest.fixture
+def floating():
+    holder = QWidget()
+    holder.setAttribute(Qt.WA_DontShowOnScreen)
+    holder.resize(320, 180)
+    overlay = OverlayBlockFloating(holder)
+    overlay.setAttribute(Qt.WA_DontShowOnScreen)
+    overlay.resize(320, 180)
+    holder.show()
+    overlay.show()
+    opacity = overlay.windowOpacity()
+
+    yield overlay, opacity
+
+    overlay.close()
+    holder.close()
+
+
+def test_a_floating_overlay_dragged_over_stays_up_see_through(mocker, floating):
+    overlay, opacity = floating
+    mocker.patch(
+        "gridplayer.widgets.video_overlay.is_compositor_running", return_value=True
+    )
+    mocker.patch.object(env, "IS_LINUX", True)
+
+    overlay.set_out_of_sight(True)
+
+    # not taken away: the press may be its, held still (see set_out_of_sight)
+    assert overlay.isVisible()
+    assert overlay.windowOpacity() == 0
+    assert not overlay.is_shown
+
+    overlay.set_out_of_sight(False)
+
+    assert overlay.windowOpacity() == pytest.approx(opacity)
+    assert overlay.is_shown
+
+
+def test_a_floating_overlay_hidden_meanwhile_is_hidden_once_it_is_over(
+    mocker, floating
+):
+    overlay, _opacity = floating
+    mocker.patch(
+        "gridplayer.widgets.video_overlay.is_compositor_running", return_value=True
+    )
+    mocker.patch.object(env, "IS_LINUX", True)
+    overlay.set_out_of_sight(True)
+
+    overlay.hide()
+    assert overlay.isVisible()
+
+    overlay.set_out_of_sight(False)
+    assert not overlay.isVisible()
+
+
+def test_with_no_compositor_a_floating_overlay_dragged_over_is_hidden(mocker, floating):
+    overlay, opacity = floating
+    mocker.patch(
+        "gridplayer.widgets.video_overlay.is_compositor_running", return_value=False
+    )
+
+    overlay.set_out_of_sight(True)
+
+    assert not overlay.isVisible()
+    assert overlay.windowOpacity() == pytest.approx(opacity)
+
+
+def test_elsewhere_than_linux_a_floating_overlay_dragged_over_is_hidden(
+    mocker, floating
+):
+    overlay, _opacity = floating
+    mocker.patch(
+        "gridplayer.widgets.video_overlay.is_compositor_running", return_value=True
+    )
+    mocker.patch.object(env, "IS_LINUX", False)
+
+    overlay.set_out_of_sight(True)
+
+    assert not overlay.isVisible()
+
+
+def test_an_overlay_not_to_be_shown_once_a_tile_is_let_go_of_is_hidden(mocker):
+    block = mocker.Mock()
+    block.overlay.is_shown = True
+    # the overlay turned off meanwhile, say
+    block.show_overlay.return_value = False
+    order = []
+    block.overlay.hide.side_effect = lambda: order.append("hide")
+    block.overlay.set_out_of_sight.side_effect = lambda is_out: order.append(is_out)
+
+    VideoBlock.set_layout_drag(block, True)
+    VideoBlock.set_layout_drag(block, False)
+
+    # hidden while still out of sight: never seen again
+    assert order == [True, "hide", False]
 
 
 def test_an_overlay_hidden_before_a_tile_is_dragged_stays_hidden(mocker):
