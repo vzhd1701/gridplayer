@@ -49,20 +49,6 @@ def no_hw_video_reason() -> str:
     )
 
 
-def _restart_for_hw_video(display: DisplayServer) -> str:
-    """Running on Wayland, with Xwayland there to run on instead."""
-
-    if display == DisplayServer.WAYLAND:
-        return translate(
-            "SettingsDialog",
-            "VLC Hardware needs X11. Set Window system to Auto or X11.",
-        )
-
-    return translate(
-        "SettingsDialog", "VLC Hardware needs X11. Works after you restart GridPlayer."
-    )
-
-
 def no_hw_video() -> str | None:
     # these only ever touch Hardware video
     return None if is_hw_video_available() else no_hw_video_reason()
@@ -94,9 +80,7 @@ def _standing_in_title(stored: VideoDriver, running: VideoDriver) -> str:
     return translate("SettingsDialog", "VLC can't run. Playing with MPV for now.")
 
 
-def driver_notice(
-    stored: VideoDriver, shown: VideoDriver, display=DisplayServer.AUTO
-) -> DriverNotice | None:
+def driver_notice(stored: VideoDriver, shown: VideoDriver) -> DriverNotice | None:
     """What isn't available and why; first of all, the pick that can't run,
     until another one is made. None if everything is.
 
@@ -135,7 +119,13 @@ def driver_notice(
                 )
             )
         elif stored in VLC_HW_DRIVERS:
-            lines.append(_restart_for_hw_video(display))
+            # running on Wayland, with Xwayland there to run on instead
+            lines.append(
+                translate(
+                    "SettingsDialog",
+                    "VLC Hardware needs X11. Works after you restart GridPlayer.",
+                )
+            )
 
     if not lines:
         return None
@@ -161,17 +151,6 @@ _UNDER_FLOATING_OVERLAY = AnyOf(
         When("player/mpv_output", (MpvOutput.WINDOW,)),
     )
 )
-
-
-def _direct_off_when() -> dict:
-    """Direct on Wayland would be Copy: mpv draws into an X11 window."""
-
-    return {
-        MpvOutput.WINDOW: (
-            When("player/display_server", (DisplayServer.WAYLAND,)),
-            translate("SettingsDialog", "Needs X11"),
-        )
-    }
 
 
 def _is_windows() -> bool:
@@ -206,9 +185,6 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "Video output"),
         choices=choices.mpv_outputs,
         buttons=True,
-        off_when=_direct_off_when,
-        # what runs in its place
-        stand_in=MpvOutput.READBACK,
         # Software MPV draws on the CPU, always the Copy way
         enabled_when=When("player/video_driver", (VideoDriver.MPV_HW,)),
         tooltip=translate(
@@ -348,10 +324,14 @@ ADVANCED_FIELDS: tuple[SettingField, ...] = (
         buttons=True,
         # elsewhere there's only the one
         shown_if=is_window_system_choice,
+        # a video in an X11 window of its own: X11, whatever was picked
+        forced_when=_UNDER_FLOATING_OVERLAY,
+        forced_value=DisplayServer.X11,
         tooltip=translate(
             "SettingsDialog",
-            "Auto uses Wayland if your desktop draws the window frames, and X11"
-            " for VLC Hardware, which needs it. Works after you restart GridPlayer.",
+            "Auto uses Wayland if your desktop draws the window frames. VLC Hardware"
+            " and Direct video output always use X11. Works after you restart"
+            " GridPlayer.",
         ),
     ),
     CheckboxField(

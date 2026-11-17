@@ -61,7 +61,8 @@ def _desktop(monkeypatch, wayland_display, display, is_linux=True, frames=True):
         ("wayland-0", ":0", AUTO, VideoDriver.VLC_HW, "xcb"),
         ("wayland-0", ":0", AUTO, VideoDriver.VLC_HW_SP, "xcb"),
         ("wayland-0", ":0", X11, VideoDriver.MPV_HW, "xcb"),
-        ("wayland-0", ":0", WAYLAND, VideoDriver.VLC_HW, "wayland"),
+        # an X11 window of its own, whatever was picked
+        ("wayland-0", ":0", WAYLAND, VideoDriver.VLC_HW, "xcb"),
         # only one of them there: that one, whatever is asked
         ("wayland-0", None, X11, VideoDriver.VLC_HW, "wayland"),
         (None, ":0", WAYLAND, VideoDriver.MPV_HW, "xcb"),

@@ -94,18 +94,19 @@ def qt_platform_for(
     if not env.has_x_server():
         return "wayland"
 
-    if display == DisplayServer.X11:
-        return "xcb"
-
-    if display == DisplayServer.WAYLAND:
-        return "wayland"
-
-    # VLC Hardware draws into an X11 window, as MPV's Direct does
+    # VLC Hardware draws into an X11 window, as MPV's Direct does: whatever
+    # the Window system says, which the settings show as X11 for them
     if driver in VLC_HW_DRIVERS:
         return "xcb"
 
     if driver == VideoDriver.MPV_HW and mpv_output == MpvOutput.WINDOW:
         return "xcb"
+
+    if display == DisplayServer.X11:
+        return "xcb"
+
+    if display == DisplayServer.WAYLAND:
+        return "wayland"
 
     # Without a frame from the desktop, Qt 5's own is a thick flat band with
     # no shadow, around dialogs too: Xwayland looks like every other app

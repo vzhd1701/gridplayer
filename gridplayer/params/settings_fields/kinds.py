@@ -35,7 +35,7 @@ class SettingField:
     shown_when: When | AnyOf | None = None
     # while met, it shows forced_value, greyed out; its own value is kept
     # meanwhile, saved and reset as its own, and shown again once not met
-    forced_when: When | None = None
+    forced_when: When | AnyOf | None = None
     forced_value: object = True
     # or what works it out, called when the form is built; None for none
     tooltip: str | Callable[[], str | None] | None = None
@@ -67,12 +67,6 @@ class ComboField(SettingField):
     buttons: bool = False
     # value -> why it can't be picked here: listed, greyed out with the reason
     unavailable_choices: Callable[[], dict] | None = None
-    # value -> (When, why), called when the form is built: while the rule is met
-    # that choice is greyed out, with the reason for a tooltip (buttons only). A
-    # field on it shows stand_in meanwhile and keeps its own, shown again once
-    # the choice is back, unless another one is picked in between.
-    off_when: Callable[[], dict] | None = None
-    stand_in: object = None
 
 
 @dataclass(frozen=True, kw_only=True)

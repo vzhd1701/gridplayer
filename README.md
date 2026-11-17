@@ -250,8 +250,9 @@ match GridPlayer's architecture (64-bit or 32-bit).
 **VLC Hardware needs X11:** VLC can't draw into a Wayland window directly. Install Xwayland or
 log in to an X11 session, and GridPlayer will use it. Software and MPV work without it.
 On a Wayland desktop, the Window system setting picks X11 or Wayland. On Auto, GridPlayer runs
-on Wayland where the desktop draws the window frames (KDE, sway and most others, not GNOME), unless
-the decoder is VLC Hardware. A change works after a restart.
+on Wayland where the desktop draws the window frames (KDE, sway and most others, not GNOME).
+VLC Hardware and MPV's Direct video output always run on X11, and the setting shows it. A change
+works after a restart.
 
 ## Streaming cookies
 

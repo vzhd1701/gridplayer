@@ -314,12 +314,7 @@ class SettingsDialog(PagedDialog):
     def video_driver_selected(self, *_):
         driver = self.value("player/video_driver")
 
-        # the Window system as the page has it, on the page too
-        notice = driver_notice(
-            Settings().get("player/video_driver"),
-            driver,
-            self.value("player/display_server"),
-        )
+        notice = driver_notice(Settings().get("player/video_driver"), driver)
         if notice is None:
             self.driverNotice.hide()
         else:

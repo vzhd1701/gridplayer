@@ -391,10 +391,6 @@ class SettingsForm(QWidget):
         # does now
         self._forceable: list[str] = []
         self._forced: dict[str, object] = {}
-        # the choices another field can grey out, by field (ComboField.off_when),
-        # and the own value of those on one greyed out now
-        self._off_rules: dict[str, dict] = {}
-        self._stood_in: dict[str, object] = {}
         self._drafts: dict[str, FieldDraft] = {}
         # as of the last sync: what can be changed, and what is changed
         self._enabled: dict[str, bool] = {}
@@ -584,10 +580,6 @@ class SettingsForm(QWidget):
         self._drafts[key] = FieldDraft()
         if spec.forced_when is not None:
             self._forceable.append(key)
-        off_when = getattr(spec, "off_when", None)
-        if off_when is not None:
-            assert spec.buttons, "off_when is for buttons"
-            self._off_rules[key] = off_when()
 
         lay = row.line
 
@@ -713,7 +705,7 @@ class SettingsForm(QWidget):
                 enabled[key] = self._is_on(key, is_on)
             return enabled[key]
 
-        forced = self._follow_forced(is_on) + self._follow_stand_ins(is_on)
+        forced = self._follow_forced(is_on)
         if keys is not None and forced:
             keys = (*keys, *forced)
 
@@ -859,51 +851,12 @@ class SettingsForm(QWidget):
 
         return changed
 
-    def _choices_off(self, key, is_on) -> dict:
-        """Value -> why, of the choices of a field greyed out now."""
-
-        return {
-            value: why
-            for value, (rule, why) in self._off_rules.get(key, {}).items()
-            if self._is_met(rule, is_on)
-        }
-
-    def _follow_stand_ins(self, is_on) -> list[str]:
-        """The choices another field greys out now greyed out, and a field on
-        one showing its stand-in, its own kept meanwhile and shown again once
-        it can be. The fields that went from one to the other."""
-
-        changed = []
-        for key in self._off_rules:
-            editor = self._editors[key]
-            off = self._choices_off(key, is_on)
-            editor.set_choices_off(off)
-
-            is_stood_in = self._own_value(key) in off
-            if is_stood_in == (key in self._stood_in):
-                continue
-
-            self._updating = True
-            try:
-                if is_stood_in:
-                    self._stood_in[key] = editor.value()
-                    editor.set_value(editor.spec.stand_in)
-                else:
-                    editor.set_value(self._stood_in.pop(key))
-            finally:
-                self._updating = False
-            changed.append(key)
-
-        return changed
-
     def _own_value(self, key):
         """What a field has of its own: what its editor shows, unless
-        another field forces it, or greys out the choice it's on."""
+        another field forces it."""
 
         if key in self._forced:
             return self._forced[key]
-        if key in self._stood_in:
-            return self._stood_in[key]
         return self._editors[key].value()
 
     def _is_on(self, key, is_on) -> bool:
@@ -959,9 +912,6 @@ class SettingsForm(QWidget):
     def _on_edited(self, key):
         if self._updating:
             return
-
-        # another choice picked: its own now, whatever it stood in for
-        self._stood_in.pop(key, None)
 
         self._drafts[key].edit()
         self._refresh((key,))
@@ -1214,9 +1164,6 @@ class SettingsForm(QWidget):
         self._forced = {
             key: own for key, own in self._forced.items() if key not in values
         }
-        self._stood_in = {
-            key: own for key, own in self._stood_in.items() if key not in values
-        }
 
         self._updating = True
         try:
@@ -1338,9 +1285,6 @@ class SettingsForm(QWidget):
                 if key in self._forced:
                     # its own value, shown once it isn't forced
                     self._forced[key] = self._shown(key, default)
-                elif key in self._stood_in:
-                    # shown once it can be, if it can't now
-                    self._stood_in[key] = self._shown(key, default)
                 else:
                     self._put(key, default)
             self._drafts[key].reset(self._own_value(key))

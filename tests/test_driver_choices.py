@@ -883,9 +883,10 @@ def test_reset_goes_back_to_the_default_of_both(libs, make_dialog, settings):
             DisplayServer.X11,
             "VLC Hardware needs X11. Works after you restart GridPlayer.",
         ),
+        # VLC Hardware runs on X11 whatever was picked
         (
             DisplayServer.WAYLAND,
-            "VLC Hardware needs X11. Set Window system to Auto or X11.",
+            "VLC Hardware needs X11. Works after you restart GridPlayer.",
         ),
     ],
 )
@@ -920,19 +921,34 @@ def test_hardware_picked_with_platform_given(libs, make_dialog, settings, monkey
     )
 
 
-@pytest.mark.usefixtures("wayland_with_xwayland")
-def test_the_notice_follows_the_window_system_on_the_page(
+def test_window_system_shows_x11_greyed_for_a_video_in_an_x11_window(
     libs, make_dialog, settings, monkeypatch
 ):
+    # on Xwayland now: VLC Hardware plays
+    monkeypatch.setattr(video_driver, "_qt_platform_name", lambda: "xcb")
     monkeypatch.setattr(env, "IS_LINUX", True)
     monkeypatch.setenv("WAYLAND_DISPLAY", "wayland-0")
+    monkeypatch.setenv("DISPLAY", ":0")
     settings.set(DRIVER, VideoDriver.VLC_HW)
     settings.set("player/display_server", DisplayServer.WAYLAND)
 
     dialog = make_dialog()
-    assert "Set Window system to Auto or X11" in _note(dialog)
-
     buttons = dialog.widget("player/display_server")
-    buttons.setCurrentIndex(buttons.findData(DisplayServer.AUTO))
+    assert buttons.currentData() == DisplayServer.X11
+    assert not buttons.isEnabled()
 
-    assert "Works after you restart GridPlayer" in _note(dialog)
+    # a driver that runs on either: its own again
+    _pick_decoder(dialog, VideoDriver.VLC_SW)
+    assert buttons.currentData() == DisplayServer.WAYLAND
+    assert buttons.isEnabled()
+
+    # Direct, Hardware MPV's own window
+    _pick_decoder(dialog, VideoDriver.MPV_HW)
+    output = dialog.widget("player/mpv_output")
+    output.setCurrentIndex(output.findData(MpvOutput.WINDOW))
+    assert output.currentData() == MpvOutput.WINDOW
+    assert buttons.currentData() == DisplayServer.X11
+    assert not buttons.isEnabled()
+
+    output.setCurrentIndex(output.findData(MpvOutput.READBACK))
+    assert buttons.currentData() == DisplayServer.WAYLAND

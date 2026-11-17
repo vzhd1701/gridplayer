@@ -382,10 +382,6 @@ class SegmentedChoice(QWidget):
         self._icons: list[QIcon | None] = []
         self._current = -1
         self._hovered = -1
-        # index -> why it can't be picked
-        self._off: dict[int, str] = {}
-        # the row's own tip, while the reason one can't be picked is up instead
-        self._own_tip: str | None = None
 
         self.setMouseTracking(True)
         self.setFocusPolicy(Qt.TabFocus)
@@ -405,7 +401,6 @@ class SegmentedChoice(QWidget):
     def clear(self):
         self._items = []
         self._icons = []
-        self._off = {}
         self._current = -1
         self.updateGeometry()
         self.update()
@@ -440,20 +435,6 @@ class SegmentedChoice(QWidget):
         self._current = index
         self.update()
         self.currentIndexChanged.emit(index)
-
-    def set_unavailable(self, reasons: dict) -> None:
-        """Value -> why it can't be picked: greyed out, the reason the tip over
-        it. The rest can be picked again."""
-
-        self._off = {
-            index: reasons[data]
-            for index, (_, data) in enumerate(self._items)
-            if data in reasons
-        }
-        self.update()
-
-    def reason_of(self, value) -> str | None:
-        return self._off.get(self.findData(value))
 
     # drawn
 
@@ -509,7 +490,7 @@ class SegmentedChoice(QWidget):
         for index, segment in enumerate(segments):
             if index == self._current:
                 painter.fillRect(segment, theme_color(self, "text"))
-            elif index == self._hovered and is_enabled and index not in self._off:
+            elif index == self._hovered and is_enabled:
                 painter.fillRect(segment, theme_color(self, "highlight"))
         painter.restore()
 
@@ -530,10 +511,6 @@ class SegmentedChoice(QWidget):
         ):
             is_current = index == self._current
             color = theme_color(self, "base" if is_current else "text")
-            # greyed out as the whole row is, unless it is
-            painter.setOpacity(
-                DISABLED_OPACITY if not is_enabled or index in self._off else 1.0
-            )
             if icon is not None:
                 place = QRectF(0, 0, SEGMENT_ICON, SEGMENT_ICON)
                 place.moveCenter(segment.center())
@@ -562,7 +539,7 @@ class SegmentedChoice(QWidget):
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             index = self._segment_at(event.pos())
-            if index >= 0 and index not in self._off:
+            if index >= 0:
                 self.setCurrentIndex(index)
         super().mousePressEvent(event)
 
@@ -570,14 +547,6 @@ class SegmentedChoice(QWidget):
         hovered = self._segment_at(event.pos())
         if hovered != self._hovered:
             self._hovered = hovered
-            if hovered in self._off:
-                # why it can't be picked, the tip over it
-                if self._own_tip is None:
-                    self._own_tip = self.toolTip()
-                self.setToolTip(self._off[hovered])
-            elif self._own_tip is not None:
-                self.setToolTip(self._own_tip)
-                self._own_tip = None
             if hovered >= 0 and self._icons[hovered] is not None:
                 # an icon's text, the tip over it
                 self.setToolTip(self._items[hovered][0])
@@ -592,11 +561,7 @@ class SegmentedChoice(QWidget):
     def keyPressEvent(self, event):
         steps = {Qt.Key_Left: -1, Qt.Key_Right: 1}
         if event.key() in steps and self._items:
-            # past any that can't be picked, staying put if there's none
             index = self._current + steps[event.key()]
-            while index in self._off:
-                index += steps[event.key()]
-            if 0 <= index < len(self._items):
-                self.setCurrentIndex(index)
+            self.setCurrentIndex(max(0, min(index, len(self._items) - 1)))
             return
         super().keyPressEvent(event)
