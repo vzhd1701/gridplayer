@@ -1,8 +1,10 @@
+from PyQt5 import sip
 from PyQt5.QtCore import QEvent, Qt, QTimer
-from PyQt5.QtGui import QWindow
+from PyQt5.QtGui import QCursor, QWindow
 from PyQt5.QtWidgets import QApplication
 
 from gridplayer.player.managers.base import ManagerBase
+from gridplayer.utils.keymap import KEY_MODIFIERS, modifiers_after
 
 # how often to look whether the pointer is still where it was: it leaves
 # for somewhere no move of it is ever seen, another application's window,
@@ -25,7 +27,8 @@ class LayoutDragManager(ManagerBase):
     While it is dragged, it is one change to undo, no video's overlay is
     shown, and the mouse is the player window's, whatever window under it
     the press went to (see _begin_drag). Another button pressed, or Esc,
-    puts it back (see _cancel).
+    puts it back (see _cancel). Alt or Shift pressed or let go of counts
+    at once, not at the next move of the pointer.
     """
 
     def __init__(self, **kwargs):
@@ -37,6 +40,9 @@ class LayoutDragManager(ManagerBase):
         # else's
         self._swallowed_buttons: set = set()
         self._is_cursor_set = False
+
+        # the last Alt or Shift that counted (see key_release)
+        self._key_seen: tuple | None = None
 
         self._check_timer = QTimer(self)
         self._check_timer.setInterval(CHECK_MS)
@@ -52,6 +58,7 @@ class LayoutDragManager(ManagerBase):
             QEvent.MouseButtonDblClick: self.mouse_double_click,
             QEvent.ShortcutOverride: self.shortcut_override,
             QEvent.KeyPress: self.key_press,
+            QEvent.KeyRelease: self.key_release,
         }
 
     def eventFilter(self, event_object, event) -> bool:
@@ -59,7 +66,11 @@ class LayoutDragManager(ManagerBase):
             # the application's, at no window
             return super().eventFilter(event_object, event)
 
-        is_key = event.type() in {QEvent.ShortcutOverride, QEvent.KeyPress}
+        is_key = event.type() in {
+            QEvent.ShortcutOverride,
+            QEvent.KeyPress,
+            QEvent.KeyRelease,
+        }
 
         # the mouse at the window it comes to, the keys at the widget
         if is_key == isinstance(event_object, QWindow):
@@ -110,11 +121,31 @@ class LayoutDragManager(ManagerBase):
         return True
 
     def key_press(self, event):
-        if self._drag is None or event.key() != Qt.Key_Escape:
+        if self._drag is None:
             return None
 
-        self._cancel()
-        return True
+        if event.key() == Qt.Key_Escape:
+            self._cancel()
+            return True
+
+        return self.key_release(event)
+
+    def key_release(self, event):
+        # held where it is, it snaps or stops snapping there
+        if self._drag is None or event.key() not in KEY_MODIFIERS:
+            return None
+        if event.isAutoRepeat():
+            return None
+
+        # not taken, the same key comes again at each widget up from the
+        # one it is for: it counts once
+        seen = (sip.unwrapinstance(event), event.type(), event.timestamp())
+        if seen == self._key_seen:
+            return None
+        self._key_seen = seen
+
+        self._move_to(QCursor.pos(), modifiers_after(event))
+        return None
 
     # --- for each kind ---
 
@@ -129,6 +160,11 @@ class LayoutDragManager(ManagerBase):
         raise NotImplementedError
 
     def _hover_under_pointer(self):
+        raise NotImplementedError
+
+    def _move_to(self, global_pos, modifiers):
+        """Dragged to there, these keys held."""
+
         raise NotImplementedError
 
     def _finish(self):

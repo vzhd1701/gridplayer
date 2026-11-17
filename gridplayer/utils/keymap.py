@@ -522,6 +522,28 @@ def is_gesture_press(gesture_id: str, event) -> bool:
     return drag.sequence in gesture_shortcuts(gesture_id)
 
 
+# the modifier each modifier key is
+KEY_MODIFIERS = {
+    Qt.Key_Shift: Qt.ShiftModifier,
+    Qt.Key_Control: Qt.ControlModifier,
+    Qt.Key_Alt: Qt.AltModifier,
+    Qt.Key_Meta: Qt.MetaModifier,
+}
+
+
+def modifiers_after(event) -> Qt.KeyboardModifiers:
+    """The modifiers held once a key is pressed or let go of: the event of
+    a modifier's own key may still have them as they were before it."""
+
+    modifiers = event.modifiers()
+    modifier = KEY_MODIFIERS.get(event.key())
+    if modifier is None:
+        return modifiers
+    if event.type() == QEvent.KeyRelease:
+        return modifiers & ~modifier
+    return modifiers | modifier
+
+
 def drop_switch_modifier(
     overrides: dict[str, list[str]] | KeymapOverrides | None = None,
 ) -> Qt.KeyboardModifier | None:
