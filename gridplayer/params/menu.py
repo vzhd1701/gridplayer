@@ -9,6 +9,7 @@ from gridplayer.params.static import (
     TILE_CROPS,
     GridMode,
     TileOverlap,
+    TilePull,
     TileResize,
 )
 from gridplayer.utils.command_helpers import NOT
@@ -80,6 +81,10 @@ SUBMENUS = MappingProxyType(
         "Tile Crop Limit": {
             "title": translate("Tile Crop", "Crop Limit"),
             "icon": "crop",
+        },
+        "Pull to Edge": {
+            "title": translate("Pull to Edge", "Pull to Edge"),
+            "icon": "grid-pull-to-edge",
         },
         "Tile Overlap": {
             "title": translate("Tile Overlap", "Tile Overlap"),
@@ -793,6 +798,11 @@ SECTIONS = MappingProxyType(
                     "Arrange Reorder to Fit",
                     ("Tile Crop Limit", *(f"Tile Crop {crop}%" for crop in TILE_CROPS)),
                 ),
+                (
+                    "Pull to Edge",
+                    *(f"Pull to Edge {pull.name.title()}" for pull in TilePull),
+                ),
+                "Animate Tiles",
                 "Fit Tiles to Window",
                 (
                     "On Window Resize",

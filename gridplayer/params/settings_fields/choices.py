@@ -41,6 +41,7 @@ from gridplayer.params.static import (
     SubtitleOutline,
     SubtitleTrackMode,
     TileOverlap,
+    TilePull,
     TileResize,
     TileSnap,
     UnsavedChangesMode,
@@ -87,6 +88,14 @@ def tile_overlap() -> dict:
         TileOverlap.OFF: translate("Tile Overlap", "Off"),
         TileOverlap.ON: translate("Tile Overlap", "On"),
         TileOverlap.PUSH: translate("Tile Overlap", "Push Aside"),
+    }
+
+
+def tile_pull() -> dict:
+    return {
+        TilePull.OFF: translate("Pull to Edge", "Off"),
+        TilePull.NEAR: translate("Pull to Edge", "Near"),
+        TilePull.FAR: translate("Pull to Edge", "Far"),
     }
 
 

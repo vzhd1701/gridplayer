@@ -7,10 +7,11 @@ import pytest
 from gridplayer.utils.layout.arrange import (
     ArrangeCache,
     _biggest_room,
+    _tile_score,
     arrange_around,
     open_pieces,
 )
-from gridplayer.utils.layout.flow_layout import FlowLayout, FlowMode
+from gridplayer.utils.layout.flow_layout import SWITCH_GAIN, FlowLayout, FlowMode
 from gridplayer.utils.layout.free_tiles import Rect
 
 WIDTH, HEIGHT = 1600, 900
@@ -240,10 +241,99 @@ def test_with_what_was_worked_out_kept_it_comes_to_the_same():
         walls = [Rect(left, 250, left + 600, 650)]
         return arrange_around(WIDTH, HEIGHT, walls, ids, {}, shapes, 20, cache=cache)
 
-    for left in (300, 500):
-        assert arranged(left, cache) == arranged(left)
+    # nothing arranged before: as without it
+    assert arranged(300, cache) == arranged(300)
+    arranged(500, cache)
     found = cache.find_splits.cache_info().misses
 
     # back where it was: no splits to find anew
-    assert arranged(300, cache) == arranged(300)
+    arranged(300, cache)
     assert cache.find_splits.cache_info().misses == found
+
+
+def _dragged(count, top, cache_of):
+    """A wall moved across the area a little at a time, as a tile held is:
+    how many times the others jumped, and how many times smaller their
+    pictures were, at the worst, than arranged with nothing kept."""
+
+    ids, shapes = _videos(count)
+
+    def score(rects):
+        return sum(_tile_score(rects[i], shapes[i]) for i in ids)
+
+    cache = cache_of()
+    jumps = 0
+    worst = 0.0
+    last = None
+    for left in range(0, 1101, 8):
+        walls = [Rect(left, top, left + 500, top + 300)]
+        args = (WIDTH, HEIGHT, walls, ids, {}, shapes, 20)
+        rects = _rects(arrange_around(*args, cache=cache))
+        if last is not None and any(
+            math.hypot(
+                rects[i].center_x - last[i].center_x,
+                rects[i].center_y - last[i].center_y,
+            )
+            > 40
+            for i in ids
+        ):
+            jumps += 1
+        last = rects
+        if cache is not None:
+            fresh = _rects(arrange_around(*args))
+            worst = max(worst, (score(fresh) - score(rects)) / count)
+    return jumps, math.exp(worst)
+
+
+@pytest.mark.parametrize(("count", "top"), [(8, 0), (12, 300)])
+def test_round_a_wall_moved_a_little_they_stay_as_arranged(count, top):
+    fresh_jumps, _ = _dragged(count, top, lambda: None)
+    jumps, smaller = _dragged(count, top, ArrangeCache)
+
+    assert jumps <= fresh_jumps / 2
+    # while no other way shows them much better
+    assert smaller <= SWITCH_GAIN + 1e-9
+
+
+def test_a_way_that_shows_them_much_better_is_taken():
+    ids, shapes = _videos(8)
+    cache = ArrangeCache()
+
+    def arranged(wall, cache=None):
+        return arrange_around(WIDTH, HEIGHT, [wall], ids, {}, shapes, 20, cache=cache)
+
+    # down the left side, then along the top: the room is another shape
+    arranged(Rect(0, 0, 500, 900), cache)
+    along = Rect(0, 0, 1600, 300)
+
+    assert arranged(along, cache) == arranged(along)
+
+
+def test_what_was_arranged_is_not_kept_for_other_videos():
+    ids, shapes = _videos(8)
+    cache = ArrangeCache()
+    walls = [Rect(500, 250, 1100, 650)]
+
+    def arranged(ids, cache=None):
+        return arrange_around(WIDTH, HEIGHT, walls, ids, {}, shapes, 20, cache=cache)
+
+    arranged(ids, cache)
+
+    # one gone, as a video closed while a tile is held
+    assert arranged(ids[1:], cache) == arranged(ids[1:])
+
+
+def test_reordered_what_was_arranged_is_not_kept():
+    ids, shapes = _videos(8)
+    cache = ArrangeCache()
+
+    def arranged(left, cache=None, is_reordered=True):
+        walls = [Rect(left, 250, left + 600, 650)]
+        return arrange_around(
+            WIDTH, HEIGHT, walls, ids, {}, shapes, 20, is_reordered, cache
+        )
+
+    arranged(300, cache, is_reordered=False)
+
+    for left in (304, 500):
+        assert arranged(left, cache) == arranged(left)

@@ -96,6 +96,8 @@ PLAYLIST_PAGE = (
         "playlist/tile_overlap",
         "playlist/tile_resize",
         "playlist/tile_crop",
+        "playlist/tile_pull",
+        "playlist/tile_animate",
     ),
     Section(
         translate("SettingsDialog", "Drag-n-Drop"),

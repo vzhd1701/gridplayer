@@ -21,10 +21,17 @@ from gridplayer.utils.layout.flow_layout import (
     DEFAULT_SHAPE,
     FlowLayout,
     FlowMode,
+    Lines,
+    is_much_better,
     reorder_candidates,
 )
 from gridplayer.utils.layout.free_tiles import Rect, read_in_rows
-from gridplayer.utils.layout.justified import STRETCH_WORTH, Split, best_splits
+from gridplayer.utils.layout.justified import (
+    STRETCH_WORTH,
+    Split,
+    best_splits,
+    justified_boxes,
+)
 from gridplayer.utils.layout.lines import MIN_CELL
 
 # how much of each picture a piece's tiles may leave out to fill it, in
@@ -51,12 +58,35 @@ _NEAR = 0.5
 SplitFinder = Callable[[tuple, tuple | None], tuple[Split, ...]]
 
 
+class _Run(NamedTuple):
+    """A piece's videos in the lines they were laid out in: in the order
+    they go in them, rows or columns of so many each."""
+
+    ids: tuple[str, ...]
+    lines: Lines
+
+
 class _Laid(NamedTuple):
-    """Videos laid out in a piece: how well that shows them (see
-    _tile_score), and where each goes, in the area's pixels."""
+    """Videos laid out in a piece, or in them all: how well that shows them
+    (see _tile_score), where each goes, in the area's pixels, and each
+    piece's run."""
 
     score: float
     rects: dict[str, Rect]
+    runs: tuple[_Run, ...]
+
+
+class _Plan(NamedTuple):
+    """How the videos were arranged: the room cut down first or along
+    (see open_pieces), and each piece's run."""
+
+    is_down: bool
+    runs: tuple[_Run, ...]
+
+
+_NO_RUN = _Run((), Lines((), False))
+# a piece with no videos
+_NONE_LAID = _Laid(0.0, {}, (_NO_RUN,))
 
 
 # how many of the lines' splits ArrangeCache keeps, the last found
@@ -66,13 +96,15 @@ SPLITS_KEPT = 2048
 class ArrangeCache:
     """What arrange_around works out, kept from one call to the next for
     the same videos, shapes and crop limit: the lines' splits, which do not
-    change as the pieces do. Kept while a tile is held, the others arranged
-    around it as it goes."""
+    change as the pieces do, and how they were arranged the last time, to
+    stay so while no other way shows them much better (see _kept). Kept
+    while a tile is held, the others arranged around it as it goes."""
 
     def __init__(self):
         self.find_splits: SplitFinder = functools.lru_cache(maxsize=SPLITS_KEPT)(
             best_splits.__wrapped__
         )
+        self.plan: _Plan | None = None
 
 
 def arrange_around(
@@ -98,19 +130,24 @@ def arrange_around(
     order that shows them best, wherever their tiles are (see _reordered).
     shapes has each video's width for its height; a video not in it is
     taken to be DEFAULT_SHAPE. cache keeps what was worked out, for the
-    same videos, shapes and crop limit (see ArrangeCache).
+    same videos, shapes and crop limit (see ArrangeCache): with it, and not
+    reordered, they stay arranged as the last time, in the room there is
+    now, unless another way shows the pictures SWITCH_GAIN times bigger.
+    A wall moved a little at a time would else flip them to and fro where
+    two ways show them about as well.
     """
 
     if not ids:
         return {}
 
     area = Rect(0, 0, width, height)
-    # with no walls, all of it, however small
-    cuts: list[list[Rect]] = [] if walls else [[area]]
-    for is_down in (True, False) if walls else ():
-        pieces = open_pieces(area, walls, is_down)
-        if pieces and pieces not in cuts:
-            cuts.append(pieces)
+    ways = _ways_to_cut(area, walls)
+    # cut the same both ways, the once
+    cuts = {
+        is_down: pieces
+        for is_down, pieces in ways.items()
+        if pieces and (is_down or pieces != ways[True])
+    }
     if not cuts:
         return None
 
@@ -122,32 +159,93 @@ def arrange_around(
     else:
         find_splits = cache.find_splits
     laid: dict[tuple, _Laid] = {}
-    sharings = [_Sharing(pieces, shapes, crops, find_splits, laid) for pieces in cuts]
+    sharings = {
+        is_down: _Sharing(pieces, shapes, crops, find_splits, laid)
+        for is_down, pieces in cuts.items()
+    }
 
-    def laid_out(at: Mapping[str, Rect]) -> dict[str, Rect]:
+    def laid_out(at: Mapping[str, Rect]) -> tuple[_Laid, bool]:
         found = []
-        for sharing in sharings:
+        for is_down, sharing in sharings.items():
             pieces = sharing.pieces
             if is_reordered:
                 order, counts = _reordered(sharing, ids, shapes)
-                found.append(sharing.laid(order, counts))
+                found.append((sharing.laid(order, counts), is_down))
             else:
                 rows = _read_by_piece(pieces, ids, at, is_columns=False)
                 columns = _read_by_piece(pieces, ids, at, is_columns=True)
                 counts = sharing.climb(rows, column_ids=columns)[0]
-                found.append(sharing.laid(rows, counts, columns))
+                found.append((sharing.laid(rows, counts, columns), is_down))
         # on a tie, the first
-        return max(found, key=lambda laid: laid.score).rects
+        return max(found, key=lambda one: one[0].score)
 
-    rects = laid_out(at)
+    best, is_down = laid_out(at)
     # reordered, where they are counts for nothing: once is enough
     for _ in range(ARRANGE_ROUNDS - 1 if not is_reordered else 0):
-        again = laid_out(rects)
-        if again == rects:
+        again, again_is_down = laid_out(best.rects)
+        if again.rects == best.rects:
             break
-        rects = again
+        best, is_down = again, again_is_down
 
-    return {video_id: rect.as_box(width, height) for video_id, rect in rects.items()}
+    if cache is not None and not is_reordered:
+        plan = _Plan(is_down, best.runs)
+        if cache.plan is not None and plan != cache.plan:
+            kept = _kept(cache.plan, ways, ids, shapes, crops)
+            if kept is not None and not is_much_better(
+                best.score, kept.score, len(ids)
+            ):
+                best, plan = kept, cache.plan
+        cache.plan = plan
+
+    return {i: rect.as_box(width, height) for i, rect in best.rects.items()}
+
+
+def _ways_to_cut(area: Rect, walls: Sequence[Rect]) -> dict[bool, list[Rect]]:
+    """The room the walls leave in pieces, cut down first and along first
+    (see open_pieces)."""
+
+    if not walls:
+        # all of it, however small
+        return {True: [area], False: [area]}
+    return {is_down: open_pieces(area, walls, is_down) for is_down in (True, False)}
+
+
+def _kept(
+    plan: _Plan,
+    ways: Mapping[bool, Sequence[Rect]],
+    ids: Sequence[str],
+    shapes: Mapping[str, float],
+    crops: Sequence[int],
+) -> _Laid | None:
+    """The videos arranged as the plan has them, in the room there is now:
+    cut the same way, each piece's videos in the lines they had. None if
+    that cannot be: the room is in more pieces, or fewer, or the videos
+    are others."""
+
+    pieces = ways[plan.is_down]
+    planned = [video_id for run in plan.runs for video_id in run.ids]
+    if len(pieces) != len(plan.runs) or sorted(planned) != sorted(ids):
+        return None
+
+    return _all_laid(
+        [
+            _lay_out_as(piece, run, shapes, crops)
+            for piece, run in zip(pieces, plan.runs, strict=True)
+        ]
+    )
+
+
+def _all_laid(runs: Sequence[_Laid]) -> _Laid:
+    """The pieces' videos, each laid out in its own, all together."""
+
+    rects = {}
+    for run in runs:
+        rects.update(run.rects)
+    return _Laid(
+        sum(run.score for run in runs),
+        rects,
+        tuple(piece_run for run in runs for piece_run in run.runs),
+    )
 
 
 def open_pieces(area: Rect, walls: Sequence[Rect], is_down: bool) -> list[Rect]:
@@ -401,11 +499,7 @@ class _Sharing:
         counts: Sequence[int],
         column_ids: Sequence[str] | None = None,
     ) -> _Laid:
-        runs = self.runs(ids, counts, column_ids)
-        rects = {}
-        for run in runs:
-            rects.update(run.rects)
-        return _Laid(sum(run.score for run in runs), rects)
+        return _all_laid(self.runs(ids, counts, column_ids))
 
     def _run(
         self, piece: int, run: tuple[str, ...], column_ids: Sequence[str] | None
@@ -455,23 +549,63 @@ def _lay_out(
     them in the order they go down columns in."""
 
     if not ids:
-        return _Laid(0.0, {})
+        return _NONE_LAID
 
     shown = {video_id: shapes.get(video_id) or DEFAULT_SHAPE for video_id in ids}
+    run = _NO_RUN
     boxes = []
     for crop in crops:
         flow = FlowLayout(
             mode=FlowMode.SHAPES, ids=list(ids), column_ids=list(column_ids), crop=crop
         )
         flow.fit_to(piece.width, piece.height, shown, find_splits)
-        boxes = flow.boxes()
-        covered = sum((b.right - b.left) * (b.bottom - b.top) for _, b in boxes)
-        if covered >= FILLED:
+        run = _Run(tuple(flow.order()), flow.lines())
+        boxes = [box for _, box in flow.boxes()]
+        if _is_filled(boxes):
             break
 
-    rects = {video_id: Rect.of_box(box, piece) for video_id, box in boxes}
+    return _laid_in(piece, run, boxes, shown)
+
+
+def _lay_out_as(
+    piece: Rect, run: _Run, shapes: Mapping[str, float], crops: Sequence[int]
+) -> _Laid:
+    """The videos laid out in the piece in the lines they had, whatever
+    its size is now: cut as in _lay_out."""
+
+    if not run.ids:
+        return _NONE_LAID
+
+    shown = {video_id: shapes.get(video_id) or DEFAULT_SHAPE for video_id in run.ids}
+    boxes = []
+    for crop in crops:
+        boxes = justified_boxes(
+            [shown[video_id] for video_id in run.ids],
+            *run.lines,
+            piece.width,
+            piece.height,
+            crop / 100,
+        )
+        if _is_filled(boxes):
+            break
+
+    return _laid_in(piece, run, boxes, shown)
+
+
+def _is_filled(boxes: Sequence[Box]) -> bool:
+    covered = sum((b.right - b.left) * (b.bottom - b.top) for b in boxes)
+    return covered >= FILLED
+
+
+def _laid_in(
+    piece: Rect, run: _Run, boxes: Sequence[Box], shown: Mapping[str, float]
+) -> _Laid:
+    rects = {
+        video_id: Rect.of_box(box, piece)
+        for video_id, box in zip(run.ids, boxes, strict=True)
+    }
     score = sum(_tile_score(rect, shown[i]) for i, rect in rects.items())
-    return _Laid(score, rects)
+    return _Laid(score, rects, (run,))
 
 
 def _tile_score(rect: Rect, shape: float) -> float:

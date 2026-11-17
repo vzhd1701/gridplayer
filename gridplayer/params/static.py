@@ -85,6 +85,14 @@ class TileResize(AutoName):
     KEEP = auto()
 
 
+# Mosaic: a tile moved lands against an edge of the window it is let go of
+# near: never, near it, or further from it too
+class TilePull(AutoName):
+    OFF = auto()
+    NEAR = auto()
+    FAR = auto()
+
+
 # Free Tiles: what a tile moved or sized can snap to, each on or off: the
 # other tiles' edges, their middles, the page's (the window's) edges, its
 # middle, where the tile started, its video's shape, and gaps as big as

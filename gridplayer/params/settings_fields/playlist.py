@@ -407,6 +407,28 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         ),
     ),
     ComboField(
+        settings_key="playlist/tile_pull",
+        label=translate("Pull to Edge", "Pull to edge"),
+        choices=choices.tile_pull,
+        buttons=True,
+        shown_when=When("playlist/grid_mode", (GridMode.MOSAIC,)),
+        tooltip=translate(
+            "Pull to Edge",
+            "A tile dropped close to the window edge lands against it, so no"
+            " thin strip is left. Far pulls from further away. Hold Alt to"
+            " drop it anywhere.",
+        ),
+    ),
+    CheckboxField(
+        settings_key="playlist/tile_animate",
+        label=translate("Animate Tiles", "Animate tiles"),
+        shown_when=When("playlist/grid_mode", (GridMode.MOSAIC,)),
+        tooltip=translate(
+            "Animate Tiles",
+            "The other tiles slide to their new places as you move one.",
+        ),
+    ),
+    ComboField(
         settings_key="playlist/drop_action_internal",
         label=translate("SettingsDialog", "In-window drag"),
         choices=choices.drop_internal,

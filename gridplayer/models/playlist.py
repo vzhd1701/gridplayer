@@ -30,6 +30,7 @@ from gridplayer.params.static import (
     StripSide,
     SubtitleTrackMode,
     TileOverlap,
+    TilePull,
     UnsavedChangesMode,
     VideoAnchor,
     VideoCellViewMode,
@@ -158,6 +159,8 @@ class Playlist(BaseModel):
     grid_line_snap: bool | None = None
     tile_snaps: TileSnaps | None = None
     tile_overlap: TileOverlap | None = None
+    tile_pull: TilePull | None = None
+    tile_animate: bool | None = None
     overlay_hide_on_timeout: bool | None = None
     overlay_timeout: int | None = None
     unsaved_changes: UnsavedChangesMode | None = None

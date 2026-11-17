@@ -1,3 +1,6 @@
+from collections.abc import Callable
+from typing import NamedTuple
+
 from PyQt5.QtCore import QPointF, QRect, QRectF, Qt
 from PyQt5.QtGui import (
     QColor,
@@ -27,6 +30,10 @@ from gridplayer.widgets.video_overlay_elements import (
 # hairline, the edges it is sized by a bar
 OUTLINE = 1
 LIT = 3
+# where the tile would land, in Mosaic: its line, and how round its
+# corners
+LANDING = 2
+LANDING_ROUND = 4
 
 # the bar lit: how far in from the tile's edge, how far short of a side's
 # ends, how long each arm of a corner's at most, and how round its bend
@@ -58,6 +65,24 @@ DISC_COLOR = QColor(0, 0, 0)
 GLYPH_COLOR = QColor(255, 255, 255)
 
 
+class _Line(NamedTuple):
+    """A line of a tile's frame, as one piece shows it: the path, on the
+    screen, and the window that shows what of it is there."""
+
+    path: QPainterPath
+    window: QRect
+
+
+def _window_around(path: QPainterPath) -> QRect:
+    # with room for the line's width and its shadow
+    rect = path.boundingRect().toAlignedRect()
+    return rect.adjusted(-MARGIN, -MARGIN, MARGIN + 1, MARGIN + 1)
+
+
+def _alone(path: QPainterPath) -> _Line:
+    return _Line(path, _window_around(path))
+
+
 class _Piece(FloatingMark):
     """One line of a tile's frame: a side of the outline, the lit edges,
     or a side of where it started, seen over the tiles in front too.
@@ -75,22 +100,25 @@ class _Piece(FloatingMark):
         self._pen = QPen()
         self._shaded = QRect()
         self._under: QPen | None = None
+        # the lines drawn, as shapes filled with their colours
+        self._strokes: list[tuple[QPainterPath, QColor]] = []
 
     def show_path(
         self,
-        path: QPainterPath,
+        line: _Line,
+        strokes: Callable[[QPainterPath], list[tuple[QPainterPath, QColor]]],
         pen: QPen,
         shaded: QRect | None = None,
         under: QPen | None = None,
     ) -> None:
-        """The line along a path on the screen, drawn with the pen, over a
-        shadow where it is in shaded (on the screen too), or over a line
-        drawn with under."""
+        """The line on the screen, drawn with the pen, over a shadow where
+        it is in shaded (on the screen too), or over a line drawn with
+        under. What is drawn of its path, as shapes on the screen, is asked
+        of strokes (see _strokes): the pieces of a frame share it."""
 
-        rect = path.boundingRect().toAlignedRect()
-        rect = rect.adjusted(-MARGIN, -MARGIN, MARGIN + 1, MARGIN + 1)
-
-        local = path.translated(-QPointF(rect.topLeft()))
+        rect = line.window
+        offset = QPointF(rect.topLeft())
+        local = line.path.translated(-offset)
         shaded = QRect() if shaded is None else shaded.translated(-rect.topLeft())
         if (local, pen, shaded, under) != (
             self._path,
@@ -102,6 +130,10 @@ class _Piece(FloatingMark):
             self._pen = pen
             self._shaded = shaded
             self._under = under
+            self._strokes = [
+                (stroke.translated(-offset), color)
+                for stroke, color in strokes(line.path)
+            ]
             self.update()
 
         self.show_at(rect)
@@ -124,9 +156,22 @@ class _Piece(FloatingMark):
                 painter.strokePath(self._path, shadow)
             painter.restore()
 
-        if self._under is not None:
-            painter.strokePath(self._path, self._under)
-        painter.strokePath(self._path, self._pen)
+        for stroke, color in self._strokes:
+            painter.fillPath(stroke, color)
+
+
+def _strokes(
+    path: QPainterPath, pen: QPen, under: QPen | None = None
+) -> list[tuple[QPainterPath, QColor]]:
+    """A line along a path drawn with the pen, over one drawn with under,
+    as shapes to fill: a hairline stroked is drawn side by side, each
+    corner only partly."""
+
+    return [
+        (QPainterPathStroker(each).createStroke(path), each.color())
+        for each in (under, pen)
+        if each is not None
+    ]
 
 
 def _line(x1, y1, x2, y2) -> QPainterPath:
@@ -135,19 +180,47 @@ def _line(x1, y1, x2, y2) -> QPainterPath:
     return path
 
 
-def _edges(rect: QRect) -> list[QPainterPath]:
-    """The four sides of a rectangle on the screen, as hairlines along its
-    outermost pixels, inside it."""
+def _edges(rect: QRect, width: float = OUTLINE) -> list[QPainterPath]:
+    """The four sides of a rectangle on the screen, as lines this thick
+    along its outermost pixels, inside it."""
 
-    left, top = rect.x() + 0.5, rect.y() + 0.5
-    right = rect.x() + rect.width() - 0.5
-    bottom = rect.y() + rect.height() - 0.5
+    inset = width / 2
+    left, top = rect.x() + inset, rect.y() + inset
+    right = rect.x() + rect.width() - inset
+    bottom = rect.y() + rect.height() - inset
     return [
         _line(left, top, right, top),
         _line(left, bottom, right, bottom),
         _line(left, top, left, bottom),
         _line(right, top, right, bottom),
     ]
+
+
+def _sides(rect: QRect, width: float = OUTLINE, round_by: float = 0) -> list[_Line]:
+    """A rectangle's outline on the screen, as a line this thick along its
+    outermost pixels, inside it, its corners this round: a piece for each
+    side, each window showing its part of the whole line, the top and the
+    bottom ones the corners. Put together, it is drawn once, each pixel
+    by one window: a corner as it would be in one go, not one side's end
+    and its shadow drawn over another's."""
+
+    inset = width / 2
+    whole = QPainterPath()
+    inner = QRectF(rect).adjusted(inset, inset, -inset, -inset)
+    if round_by:
+        whole.addRoundedRect(inner, round_by, round_by)
+    else:
+        whole.addRect(inner)
+
+    top, bottom, left, right = (_window_around(side) for side in _edges(rect, width))
+    lines = [_Line(whole, top), _Line(whole, bottom)]
+    for side in (left, right):
+        # between the top's and the bottom's
+        side.setTop(top.bottom() + 1)
+        side.setBottom(bottom.top() - 1)
+        if not side.isEmpty():
+            lines.append(_Line(whole, side))
+    return lines
 
 
 def _lit(rect: QRect, handle: Handle) -> list[QPainterPath]:
@@ -184,7 +257,8 @@ def _lit(rect: QRect, handle: Handle) -> list[QPainterPath]:
 def _pen(color: QColor, width: float, dashes=None) -> QPen:
     pen = QPen(color, width)
     pen.setCapStyle(Qt.FlatCap if width == OUTLINE else Qt.RoundCap)
-    pen.setJoinStyle(Qt.RoundJoin)
+    # a square corner filled to its last pixel; a round one is rounded anyway
+    pen.setJoinStyle(Qt.MiterJoin)
     if dashes is not None:
         pen.setDashPattern(list(dashes))
     return pen
@@ -193,9 +267,13 @@ def _pen(color: QColor, width: float, dashes=None) -> QPen:
 class TileFrame:
     """What the pointer is about to move or size in Free Tiles, or is: the
     tile's outline, the edges it is sized by lit, and while it is moved or
-    sized, dashed where it started, which Esc puts it back to. On the
-    screen, inside the tile's edges, where its overlay would draw; over
-    the tiles in front of it too, to show all of its shape."""
+    sized, dashed where it started, which Esc puts it back to; in Mosaic,
+    a thicker line where it would land, let go of now, if not where it
+    is, its corners round. On the screen, inside the tile's edges, where
+    its overlay would draw; over the tiles in front of it too, to show all
+    of its shape. Each is a window of its own for each side (see _sides),
+    not one over the whole tile: with nothing to draw see-through
+    windows, it would cover the picture."""
 
     def __init__(self, parent: QWidget):
         self._parent = parent
@@ -204,6 +282,7 @@ class TileFrame:
         self._outline: list[_Piece] = []
         self._lit: list[_Piece] = []
         self._dashed: list[_Piece] = []
+        self._landing: list[_Piece] = []
 
         self._pens = (
             _pen(DASHED_COLOR, OUTLINE, DASHES),
@@ -211,35 +290,56 @@ class TileFrame:
             _pen(LINE_COLOR, OUTLINE),
             _pen(LIT_COLOR, LIT),
         )
+        self._landing_pen = _pen(LIT_COLOR, LANDING)
         # what is shown now, not to be made again for the same
         self._shown = None
 
-    def show(self, rect: QRect, handle: Handle, start: QRect | None = None) -> None:
+    def show(
+        self,
+        rect: QRect,
+        handle: Handle,
+        start: QRect | None = None,
+        landing: QRect | None = None,
+    ) -> None:
         """The tile at rect on the screen, sized by handle (or moved), from
-        start, if it is being."""
+        start, if it is being, to land at landing, if not where it is."""
 
-        if (rect, handle, start) == self._shown:
+        if (rect, handle, start, landing) == self._shown:
             return
-        self._shown = (rect, handle, start)
+        self._shown = (rect, handle, start, landing)
 
         dashed_pen, gap_pen, line_pen, lit_pen = self._pens
-        dashed = [] if start is None or start == rect else _edges(start)
+        dashed = [] if start is None or start == rect else _sides(start)
         self._show_lines(self._dashed, dashed, dashed_pen, under=gap_pen)
-        self._show_lines(self._outline, _edges(rect), line_pen, shaded=rect)
-        self._show_lines(self._lit, _lit(rect, handle), lit_pen, shaded=rect)
+        lands = []
+        if landing is not None and landing != rect:
+            lands = _sides(landing, LANDING, LANDING_ROUND)
+        self._show_lines(self._landing, lands, self._landing_pen, shaded=landing)
+        self._show_lines(self._outline, _sides(rect), line_pen, shaded=rect)
+        lit = [_alone(path) for path in _lit(rect, handle)]
+        self._show_lines(self._lit, lit, lit_pen, shaded=rect)
 
     def hide(self) -> None:
         self._shown = None
-        for piece in (*self._outline, *self._lit, *self._dashed):
+        for piece in (*self._outline, *self._lit, *self._dashed, *self._landing):
             if piece.isVisible():
                 piece.hide()
 
     def _show_lines(self, pool, paths, pen, shaded=None, under=None) -> None:
+        # a frame's sides share one path: drawn once for them all, by the
+        # first piece it changed for
+        drawn: dict[int, list[tuple[QPainterPath, QColor]]] = {}
+
+        def strokes(path: QPainterPath) -> list[tuple[QPainterPath, QColor]]:
+            if id(path) not in drawn:
+                drawn[id(path)] = _strokes(path, pen, under)
+            return drawn[id(path)]
+
         show_pooled(
             pool,
             lambda: _Piece(self._parent),
             paths,
-            lambda piece, path: piece.show_path(path, pen, shaded, under),
+            lambda piece, line: piece.show_path(line, strokes, pen, shaded, under),
         )
 
 

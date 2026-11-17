@@ -30,6 +30,14 @@ DEFAULT_SHAPE = 16 / 9
 # edge would flip it to and fro where the two show them about as well
 SWITCH_GAIN = 1.08
 
+
+def is_much_better(score: float, kept: float, count: int) -> bool:
+    """Whether a way of laying count videos out that scores this shows
+    them SWITCH_GAIN times bigger, on average, than the one kept."""
+
+    return score > kept + count * math.log(SWITCH_GAIN)
+
+
 # in Fit Shapes, how many times more a video's picture counts for each step
 # it is made bigger (fewer, smaller), and how many steps there are each way
 SIZE_WORTH = 1.5
@@ -176,7 +184,7 @@ class FlowLayout:
         if kept is None:
             kept = score(line_size)
 
-        if scores[best] > kept + count * math.log(SWITCH_GAIN):
+        if is_much_better(scores[best], kept, count):
             line_size = best
 
         self._fitted = (count, self.mode, line_size)
@@ -241,7 +249,7 @@ class FlowLayout:
             weights = _line_weights(kept_shapes, kept.lines.is_columns)
             kept_split = measure_split(weights, kept.lines.lengths, kept_worth)
             kept_score = scorer(weights, kept_worth, kept.lines.is_columns)(kept_split)
-            if best_score <= kept_score + len(self.ids) * math.log(SWITCH_GAIN):
+            if not is_much_better(best_score, kept_score, len(self.ids)):
                 best = kept._replace(shapes=kept_shapes)
 
         self._fitted_lines = best
@@ -343,7 +351,7 @@ class FlowLayout:
     def _crop_share(self) -> float:
         return min(max(self.crop, 0), 50) / 100
 
-    def _lines(self) -> Lines:
+    def lines(self) -> Lines:
         """How the videos are laid out in lines now."""
 
         count = len(self.ids)
@@ -366,10 +374,10 @@ class FlowLayout:
     def is_columns(self) -> bool:
         """Whether the videos are laid out a column at a time."""
 
-        return self._lines().is_columns
+        return self.lines().is_columns
 
     def displayed_size(self) -> tuple[int, int]:
-        lengths, is_columns = self._lines()
+        lengths, is_columns = self.lines()
         line_size = max(max(lengths), 1)
         lines = len(lengths)
 
@@ -393,7 +401,7 @@ class FlowLayout:
             else:
                 ids, shapes = fitted.ids, fitted.shapes
             boxes = justified_boxes(
-                shapes, *self._lines(), *self._area, self._crop_share()
+                shapes, *self.lines(), *self._area, self._crop_share()
             )
             return list(zip(ids, boxes))
 
@@ -480,7 +488,7 @@ class FlowLayout:
         return boxes
 
     def id_at(self, row: int, col: int) -> str | None:
-        lengths, is_columns = self._lines()
+        lengths, is_columns = self.lines()
         line, place = (col, row) if is_columns else (row, col)
         if not (0 <= line < len(lengths) and 0 <= place < lengths[line]):
             return None
@@ -491,7 +499,7 @@ class FlowLayout:
         if video_id not in shown:
             return None
         place = shown.index(video_id)
-        lengths, is_columns = self._lines()
+        lengths, is_columns = self.lines()
         line = 0
         while place >= lengths[line]:
             place -= lengths[line]

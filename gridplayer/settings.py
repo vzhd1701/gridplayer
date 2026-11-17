@@ -52,6 +52,7 @@ from gridplayer.params.static import (
     StripSide,
     SubtitleTrackMode,
     TileOverlap,
+    TilePull,
     TileResize,
     TileSnap,
     UnsavedChangesMode,
@@ -161,6 +162,12 @@ _default_settings = {
     # in Mosaic, and Free Tiles' Arrange, how much of each picture may be
     # cut to fill the room, in percent
     "playlist/tile_crop": 20,
+    # in Mosaic, a tile moved lands against the window's edge it is let go
+    # of near, leaving no strip too thin for the others
+    "playlist/tile_pull": TilePull.NEAR,
+    # in Mosaic, the others slide to their places around a tile moved or
+    # sized, not jump there
+    "playlist/tile_animate": True,
     "playlist/save_paths_relative": False,
     # every setting written into the playlist, not only those it changes
     "playlist/save_all_settings": False,

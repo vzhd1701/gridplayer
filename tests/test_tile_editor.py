@@ -5,7 +5,13 @@ from PyQt5.QtTest import QTest
 from PyQt5.QtWidgets import QApplication
 
 from gridplayer.params.actions import ACTIONS
-from gridplayer.params.static import GridMode, TileOverlap, TileResize, TileSnap
+from gridplayer.params.static import (
+    GridMode,
+    TileOverlap,
+    TilePull,
+    TileResize,
+    TileSnap,
+)
 from gridplayer.player.managers.layout_edit import EDITOR_ACTIONS, SETTING_ACTIONS
 from gridplayer.utils.layout.boxes import Box
 from gridplayer.utils.layout.free_tiles import MOVE, FreeTiles, TileDrag
@@ -23,8 +29,10 @@ class _Tiles:
         self.tiles = FreeTiles(boxes, WIDTH / HEIGHT, locked)
         self.overlap = overlap
         self.changes = []
-        # the tile held in each change sent
+        # the tile held in each change sent, and whether to be pulled to
+        # the window's edge
         self.held = []
+        self.pulled = []
 
         self.editor = TileEditor(
             drag_of=self._drag_of,
@@ -42,6 +50,10 @@ class _Tiles:
                 set_snapping=lambda _: None,
                 snaps=frozenset,
                 set_snaps=lambda _: None,
+                pull=lambda: TilePull.NEAR,
+                set_pull=lambda _: None,
+                is_animated=lambda: True,
+                set_animated=lambda _: None,
             ),
             swap_key=lambda: Qt.ShiftModifier,
             can_undo=lambda: False,
@@ -73,8 +85,9 @@ class _Tiles:
             is_over=self.overlap == TileOverlap.ON,
         )
 
-    def _changed(self, rects, width, height, held):
+    def _changed(self, rects, width, height, held, is_pulled):
         self.held.append(held)
+        self.pulled.append(is_pulled)
         for video_id, rect in rects.items():
             self.tiles.set_rect(video_id, rect, width, height)
         self.show()
@@ -157,6 +170,9 @@ class TestKeys:
 
         # by the keys: no pointer
         assert two.held == ["a", "a"]
+        # nor pulled to the window's edge: a key at a time, it could not
+        # leave it
+        assert two.pulled == [False, False]
 
     def test_a_tile_in_the_way_stops_it(self, two):
         two.editor.pick("a")
@@ -265,6 +281,42 @@ class TestSwap:
 
         assert two.changes == [("change_started",), ("change_finished",)]
         assert two.rect("a")[1] > 20
+        # in Mosaic, to be pulled to the window's edge it is near
+        assert two.pulled
+        assert all(two.pulled)
+
+    @pytest.mark.parametrize("modifiers", [Qt.AltModifier, None])
+    def test_sized_or_with_alt_it_is_not_pulled(self, two, modifiers):
+        if modifiers is None:
+            # by its right edge
+            _drag(two.editor, QPoint(218, 70), QPoint(260, 70))
+        else:
+            _drag(two.editor, QPoint(120, 70), QPoint(120, 300), modifiers)
+
+        assert two.pulled
+        assert not any(two.pulled)
+
+    def test_alt_pressed_or_let_go_of_held_still_counts_at_once(self, two):
+        start = QPoint(120, 70)
+        QTest.mousePress(two.editor, Qt.LeftButton, Qt.NoModifier, start)
+        QApplication.sendEvent(
+            two.editor,
+            QMouseEvent(
+                QEvent.MouseMove,
+                QPointF(start + QPoint(0, 40)),
+                Qt.NoButton,
+                Qt.LeftButton,
+                Qt.NoModifier,
+            ),
+        )
+        assert two.pulled[-1]
+
+        QTest.keyPress(two.editor, Qt.Key_Alt)
+        assert not two.pulled[-1]
+        QTest.keyRelease(two.editor, Qt.Key_Alt, Qt.AltModifier)
+        assert two.pulled[-1]
+
+        QTest.mouseRelease(two.editor, Qt.LeftButton, Qt.NoModifier, start)
 
 
 class TestName:
@@ -329,6 +381,8 @@ class TestPopups:
             "mosaic": False,
             "snapping": True,
             "snaps": frozenset(),
+            "pull": TilePull.NEAR,
+            "animated": True,
         }
 
     @pytest.fixture
@@ -349,6 +403,10 @@ class TestPopups:
                 set_snapping=lambda v: settings.update(snapping=v),
                 snaps=lambda: settings["snaps"],
                 set_snaps=lambda v: settings.update(snaps=v),
+                pull=lambda: settings["pull"],
+                set_pull=lambda v: settings.update(pull=v),
+                is_animated=lambda: settings["animated"],
+                set_animated=lambda v: settings.update(animated=v),
             ),
             swap_key=lambda: None,
             can_undo=lambda: False,
@@ -375,6 +433,34 @@ class TestPopups:
         assert not chips.isEnabled()
         assert chips.picked() == frozenset({TileSnap.TILE_EDGES})
         assert settings["snapping"] is False
+
+    def test_in_mosaic_arrange_has_pull_to_edge_and_animate_tiles(
+        self, editor, settings
+    ):
+        settings["mosaic"] = True
+        editor._arrange_settings.click()
+        crop, pull = editor._popup.findChildren(SegmentedChoice)
+        _reorder, animated = editor._popup.findChildren(Switch)
+        assert pull.currentData() == TilePull.NEAR
+        assert animated.isChecked()
+
+        pull.setCurrentIndex(pull.findData(TilePull.FAR))
+        animated.setChecked(False)
+        assert settings["pull"] == TilePull.FAR
+        assert settings["animated"] is False
+
+        # changed from the menu, say
+        settings.update(pull=TilePull.OFF, animated=True)
+        editor.update_settings()
+        assert pull.currentData() == TilePull.OFF
+        assert animated.isChecked()
+        assert crop.currentData() == 20
+
+    def test_in_free_tiles_arrange_has_neither(self, editor):
+        editor._arrange_settings.click()
+
+        assert len(editor._popup.findChildren(SegmentedChoice)) == 1
+        assert len(editor._popup.findChildren(Switch)) == 1
 
     def test_tile_overlap_follows_its_setting_while_up(self, editor, settings):
         editor._overlap.click()

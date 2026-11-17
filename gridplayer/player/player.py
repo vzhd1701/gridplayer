@@ -88,6 +88,7 @@ class Player(QWidget, ManagersManager):
         # and gone with it
         editor_connections = [
             ("grid.layout_changed", "refresh"),
+            ("grid.tiles_settled", "refresh"),
             ("grid.undo_changed", "update_undo"),
             ("grid_lines.snapping_changed", "update_settings"),
             ("closed_videos.changed", "update_undo"),
@@ -113,6 +114,9 @@ class Player(QWidget, ManagersManager):
             ],
             "grid_edit": editor_connections,
             "tile_edit": editor_connections,
+            "free_tiles": [
+                ("grid.tiles_settled", "show_landing"),
+            ],
             "screensaver": [
                 ("video_blocks.playings_videos_count_changed", "screensaver_check")
             ],

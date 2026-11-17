@@ -84,6 +84,8 @@ class FreeTilesManager(LayoutDragManager):
         super().__init__(**kwargs)
 
         self._drag: TileDrag | None = None
+        # where the hand has the tile dragged, on its page
+        self._held_at: Rect | None = None
         # where the page was when the tile was pressed on, on the screen
         self._page = QRect()
         # a press on a tile, to move it once the pointer goes far enough:
@@ -364,15 +366,14 @@ class FreeTilesManager(LayoutDragManager):
         keeps_shape = not modifiers & Qt.ShiftModifier
 
         rect = drag.moved((local.x(), local.y()), is_snapping, keeps_shape)
-        self._set_tiles(drag, rect)
+        self._set_tiles(
+            drag, rect, is_pulled=drag.is_move and not modifiers & Qt.AltModifier
+        )
         if drag.is_over:
             # over the others it goes, not under them
             self._ctx.commands.bring_free_tile_to_front(drag.video_id)
-        self._frame.show(
-            _on_screen(rect, self._page),
-            drag.handle,
-            _on_screen(drag.start, self._page),
-        )
+        self._held_at = rect
+        self.show_landing()
 
         guides = drag.guides() if is_snapping else []
         gaps = drag.gaps() if is_snapping else []
@@ -380,19 +381,41 @@ class FreeTilesManager(LayoutDragManager):
         self._show_gaps(gaps)
         self._show_tag(tile_snap_words(guides, drag.fits, bool(gaps)), global_pos)
 
-    def _set_tiles(self, drag: TileDrag, rect: Rect):
-        """The tile dragged at rect, and those it pushed aside."""
+    def show_landing(self):
+        """The frame of the tile dragged, where the hand has it; in Mosaic,
+        where it would land too, let go of now, if not there: against the
+        window's edge it is near (see Pull to Edge), or over room none of
+        the others took. Shown again as the others are arranged around it
+        held still."""
+
+        drag = self._drag
+        if drag is None or self._held_at is None:
+            return
+
+        landing = self._ctx.commands.free_tile_landing()
+        self._frame.show(
+            _on_screen(self._held_at, self._page),
+            drag.handle,
+            _on_screen(drag.start, self._page),
+            None if landing is None else _on_screen(landing, self._page),
+        )
+
+    def _set_tiles(self, drag: TileDrag, rect: Rect, is_pulled: bool = False):
+        """The tile dragged at rect, and those it pushed aside; in Mosaic,
+        to be pulled to the window's edge, if is_pulled (see Pull to Edge)."""
 
         self._ctx.commands.set_free_tiles(
             {**drag.pushed, drag.video_id: rect},
             self._page.width(),
             self._page.height(),
             drag.video_id,
+            is_pulled,
         )
 
     def _finish(self):
         self._end_drag()
         self._drag = None
+        self._held_at = None
         self._pressed = None
 
         self._show_guides([])

@@ -6,7 +6,7 @@ import pytest
 from PyQt5.QtWidgets import QApplication, QWidget
 
 from gridplayer.models.grid_state import GridCell, GridState
-from gridplayer.params.static import GridMode, TileOverlap, TileResize
+from gridplayer.params.static import GridMode, TileOverlap, TilePull, TileResize
 from gridplayer.player.managers import grid as grid_module
 from gridplayer.player.managers.grid import GridManager
 from gridplayer.settings import Settings, _default_settings
@@ -32,7 +32,11 @@ class _Blocks:
 
     def __init__(self, shapes):
         self.blocks = {
-            video_id: SimpleNamespace(video_id=video_id, picture_shape=shape)
+            video_id: SimpleNamespace(
+                video_id=video_id,
+                picture_shape=shape,
+                has_native_surface=lambda: False,
+            )
             for video_id, shape in shapes.items()
         }
 
@@ -1038,10 +1042,19 @@ def _by_hand(manager, video_id, rect):
     manager.end_grid_change()
 
 
-def _held_at(manager, video_id, rect):
+def _held_at(manager, video_id, rect, is_pulled=False):
     """A tile moved, or sized, there by hand: not let go."""
 
-    manager.set_free_tiles({video_id: Rect(*rect)}, 1000, 500, video_id)
+    manager.set_free_tiles({video_id: Rect(*rect)}, 1000, 500, video_id, is_pulled)
+
+
+def _moved_by(manager, video_id, dx, dy, is_pulled=False):
+    """A tile moved that far from where it is, as big as it is: not let
+    go. Where it was put."""
+
+    put = _rects(manager)[video_id].moved(dx, dy)
+    _held_at(manager, video_id, put, is_pulled)
+    return put
 
 
 ROW = {"A": 16 / 9, "B": 16 / 9, "C": 16 / 9}
@@ -1252,14 +1265,163 @@ def test_in_mosaic_the_others_make_room_as_a_tile_is_moved():
     for left in (300, 400, 500):
         _held_at(manager, "A", (left, 250, left + 400, 475))
         shown = _rects(manager)
-        # each time: A where it is moved to, the others round it
-        assert shown["A"].left == pytest.approx(left)
-        assert not _overlapping(shown)
+        # each time: A where the hand has it
+        assert shown["A"] == Rect(left, 250, left + 400, 475)
+
+    # far from where it started: the others round where it would land
+    landing = manager.free_tile_landing()
+    others = {i: rect for i, rect in shown.items() if i != "A"}
+    assert others != {i: start[i] for i in others}
+    assert not _overlapping({**others, "A": landing})
 
     manager.end_grid_change()
-    assert _rects(manager) == shown
+    # let go, it lands there, the others as shown
+    assert _rects(manager) == {**others, "A": landing}
     manager.cmd_undo_grid()
     assert _rects(manager) == start
+
+
+def test_in_mosaic_the_others_stay_till_the_tile_held_is_a_step_away(mocker):
+    manager = _mosaic(ROW, **SMALL)
+    mocker.patch.object(manager, "tile_pull", return_value=TilePull.OFF)
+    start = _rects(manager)
+    settled = Mock()
+    manager.tiles_settled.connect(settled)
+
+    manager.begin_grid_change()
+    put = _moved_by(manager, "A", 20, 10)
+
+    # a little: A where it is put, the others as they were
+    assert _rects(manager) == {**start, "A": put}
+    assert manager._rest_timer.isActive()
+    settled.assert_not_called()
+
+    # held still a moment: arranged round it
+    manager._rest_timer.stop()
+    manager._settle_rested()
+    rested = _rects(manager)
+    assert rested["A"] == put
+    assert {i: rested[i] for i in "BC"} != {i: start[i] for i in "BC"}
+    settled.assert_called_once()
+
+    # a little again: as they are
+    put = _moved_by(manager, "A", 10, 0)
+    assert _rects(manager) == {**rested, "A": put}
+    # a step away: at once
+    put = _moved_by(manager, "A", 300, 100)
+    assert not manager._rest_timer.isActive()
+    assert {i: _rects(manager)[i] for i in "BC"} != {i: rested[i] for i in "BC"}
+    manager.end_grid_change()
+    assert not manager._rest_timer.isActive()
+
+
+def test_in_mosaic_a_tile_moved_a_little_and_let_go_has_the_others_round_it(mocker):
+    manager = _mosaic(ROW, **SMALL)
+    mocker.patch.object(manager, "tile_pull", return_value=TilePull.OFF)
+
+    manager.begin_grid_change()
+    _moved_by(manager, "A", 20, 10)
+    landing = manager.free_tile_landing()
+    manager.end_grid_change()
+
+    rects = _rects(manager)
+    assert rects["A"] == landing
+    assert not _overlapping(rects)
+    assert not manager._rest_timer.isActive()
+
+
+@pytest.mark.parametrize(
+    ("pull", "is_pulled", "lands_at_edge"),
+    [
+        (TilePull.NEAR, True, True),
+        (TilePull.FAR, True, True),
+        (TilePull.OFF, True, False),
+        # by keys, or with Alt held
+        (TilePull.NEAR, False, False),
+    ],
+)
+def test_in_mosaic_a_tile_moved_lands_against_the_edge_it_is_near(
+    mocker, pull, is_pulled, lands_at_edge
+):
+    shapes = dict.fromkeys("ABCDEF", 16 / 9)
+    manager = _mosaic(shapes, **dict.fromkeys(shapes, (0, 0, 150, 90)))
+    mocker.patch.object(manager, "tile_pull", return_value=pull)
+    a = _rects(manager)["A"]
+    # 120 off the left edge, in the middle down
+    put = Rect(120, 250 - a.height / 2, 120 + a.width, 250 + a.height / 2)
+
+    manager.begin_grid_change()
+    _held_at(manager, "A", put, is_pulled)
+    # where the hand has it, to land elsewhere
+    assert _rects(manager)["A"] == put
+    landing = manager.free_tile_landing()
+    manager.end_grid_change()
+
+    assert _rects(manager)["A"] == landing
+    assert (landing.left == 0) == lands_at_edge
+    assert landing.width == pytest.approx(a.width)
+    if not lands_at_edge:
+        assert landing.left == pytest.approx(120)
+
+
+def test_in_mosaic_a_tile_is_not_pulled_onto_a_locked_one():
+    shapes = dict.fromkeys("ABCDEF", 16 / 9)
+    manager = _mosaic(shapes, **dict.fromkeys(shapes, (0, 0, 150, 90)))
+    a = _rects(manager)["A"]
+    # along the left edge, where A would land
+    manager._free.set_rect("B", Rect(0, 0, 100, 500), 1000, 500)
+    manager.lock_free_tile("B", True)
+    put = Rect(120, 250 - a.height / 2, 120 + a.width, 250 + a.height / 2)
+
+    manager.begin_grid_change()
+    _held_at(manager, "A", put, is_pulled=True)
+
+    assert manager.free_tile_landing().left == pytest.approx(120)
+    manager.cancel_grid_change()
+
+
+@pytest.mark.parametrize("is_animated", [True, False])
+def test_in_mosaic_the_others_slide_to_their_places_if_animated(mocker, is_animated):
+    manager = _mosaic(ROW, **SMALL)
+    mocker.patch.object(manager, "is_tile_animate", return_value=is_animated)
+    glide = mocker.patch.object(manager._grid, "glide")
+    held = manager._ctx.video_blocks.by_video_id("A")
+
+    manager.begin_grid_change()
+    _held_at(manager, "A", (500, 250, 900, 475))
+    # all but the one held, which is where the hand has it
+    assert glide.call_args_list == ([mocker.call([held])] if is_animated else [])
+
+    manager.end_grid_change()
+    # let go, it slides to where it lands too
+    assert glide.call_count == (2 if is_animated else 0)
+    if is_animated:
+        assert glide.call_args == mocker.call([])
+
+
+def test_in_mosaic_a_video_in_a_window_of_its_own_jumps_to_its_place(mocker):
+    manager = _mosaic(ROW, **SMALL)
+    mocker.patch.object(manager, "is_tile_animate", return_value=True)
+    glide = mocker.patch.object(manager._grid, "glide")
+    held = manager._ctx.video_blocks.by_video_id("A")
+    native = manager._ctx.video_blocks.by_video_id("B")
+    native.has_native_surface = lambda: True
+
+    manager.begin_grid_change()
+    _held_at(manager, "A", (500, 250, 900, 475))
+    # resized on the way, it would be shown stretched
+    assert glide.call_args == mocker.call([held, native])
+
+    manager.end_grid_change()
+    assert glide.call_args == mocker.call([native])
+
+
+def test_with_no_tile_held_none_would_land():
+    manager = _mosaic(ROW, **SMALL)
+
+    assert manager.free_tile_landing() is None
+    _by_hand(manager, "A", (500, 250, 900, 475))
+    assert manager.free_tile_landing() is None
 
 
 def test_a_tile_moved_and_put_back_with_esc_leaves_them_all_as_they_were():
@@ -1494,3 +1656,14 @@ def test_in_mosaic_a_tile_sized_keeps_the_others_order_and_reorder_goes_off(mock
     manager.end_grid_change()
     # and so after: as moved
     assert not manager._flow.is_reordered
+
+
+def test_in_mosaic_with_no_room_for_the_others_no_landing_is_shown():
+    manager = _mosaic(ROW, **SMALL)
+
+    manager.begin_grid_change()
+    _held_at(manager, "A", (0, 0, 1000, 495))
+
+    # let go, all are arranged anew: where it lands is not known
+    assert not manager._holding.has_room
+    assert manager.free_tile_landing() is None

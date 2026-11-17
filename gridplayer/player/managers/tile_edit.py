@@ -54,6 +54,10 @@ class TileEditManager(LayoutEditManager):
                 set_snapping=self._set_snapping,
                 snaps=commands.tile_snaps,
                 set_snaps=commands.set_tile_snaps,
+                pull=commands.tile_pull,
+                set_pull=commands.set_tile_pull,
+                is_animated=commands.is_tile_animate,
+                set_animated=self._set_animated,
             ),
             swap_key=drop_switch_modifier,
             can_undo=commands.is_grid_undoable,
@@ -97,7 +101,13 @@ class TileEditManager(LayoutEditManager):
                 names[video_id] = name
 
         self._editor.setGeometry(page.rect)
-        self._editor.set_tiles(page.tiles, names)
+        # in Mosaic, where the tile held would land, on the same page
+        landing = self._ctx.commands.free_tile_landing()
+        self._editor.set_tiles(page.tiles, names, landing)
+
+    def _set_animated(self, is_animated: bool):
+        if self._ctx.commands.is_tile_animate() != is_animated:
+            self._ctx.commands.toggle_tile_animate()
 
     def _set_snapping(self, is_snapping: bool):
         if self._ctx.commands.is_grid_line_snap() != is_snapping:

@@ -36,6 +36,8 @@ PLAYLIST_ATTRS: MappingProxyType[str, str] = MappingProxyType(
         "playlist/grid_line_snap": "grid_line_snap",
         "playlist/tile_snaps": "tile_snaps",
         "playlist/tile_overlap": "tile_overlap",
+        "playlist/tile_pull": "tile_pull",
+        "playlist/tile_animate": "tile_animate",
         "playlist/overlay_hide_on_timeout": "overlay_hide_on_timeout",
         "playlist/overlay_timeout": "overlay_timeout",
         "playlist/shuffle_on_load": "shuffle_on_load",

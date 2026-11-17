@@ -1,5 +1,6 @@
 import contextlib
 import dataclasses
+import math
 import random
 from collections.abc import Mapping, Sequence
 from typing import NamedTuple
@@ -20,6 +21,7 @@ from gridplayer.params.static import (
     GridMode,
     GridTemplate,
     TileOverlap,
+    TilePull,
     TileResize,
 )
 from gridplayer.player.managers.base import ManagerBase
@@ -107,25 +109,47 @@ def _flow_mode(mode: GridMode) -> FlowMode:
 ARRANGE_DELAY = 200
 
 
+# in Mosaic, the others are arranged around where a held tile would land
+# once that is this share of a tile's side from where they were last
+# arranged around, or has stayed put for this long, in ms: not as it goes,
+# pixel by pixel
+LIVE_STEP = 0.35
+LIVE_REST = 110
+
+# how near an edge of the window a tile moved must be let go of to land
+# against it, as a share of a tile's side (see TilePull)
+TILE_PULL_REACH = {TilePull.OFF: 0.0, TilePull.NEAR: 0.5, TilePull.FAR: 0.75}
+
+# a rect in an area of a size: its width and height
+_Placed = tuple[Rect, float, float]
+
+
 @dataclasses.dataclass
 class _Holding:
-    """A tile held in Mosaic, in the change going on: the others arranged
-    around it as it goes (see GridManager._arrange_live)."""
+    """A tile held in Mosaic, in the change going on: it goes where the
+    hand has it, the others arranged around where it would land, a step at
+    a time (see GridManager._arrange_live)."""
 
     video_id: str
     # the others where they were at its start, read there (see _read_at)
     start: dict[str, Box]
+    # the landing the others were last arranged around, and where that
+    # leaves the tile: over room none of them took (see _stretched_to_edges)
+    arranged: tuple[_Placed, Rect]
     cache: ArrangeCache = dataclasses.field(default_factory=ArrangeCache)
-    # whether the others were arranged around it, the last time
-    is_live: bool = False
-    # where it was put the last time, in an area of what size, and where
-    # it went then (see _arrange_live)
-    last: tuple[tuple[Rect, float, float], Rect] | None = None
+    # whether the others had room around it, the last time they were
+    # arranged
+    has_room: bool = True
+    # where it would land, let go of now (see GridManager._landing)
+    landing: _Placed | None = None
 
 
 class GridManager(ManagerBase):
     warning = pyqtSignal(str)
     layout_changed = pyqtSignal()
+    # in Mosaic, the others arranged around a tile held still (see
+    # _settle_rested)
+    tiles_settled = pyqtSignal()
     # what there is to undo or redo
     undo_changed = pyqtSignal()
 
@@ -174,6 +198,10 @@ class GridManager(ManagerBase):
         self._arrange_timer.setSingleShot(True)
         self._arrange_timer.setInterval(ARRANGE_DELAY)
         self._arrange_timer.timeout.connect(self._arrange_due)
+        self._rest_timer = QTimer(self)
+        self._rest_timer.setSingleShot(True)
+        self._rest_timer.setInterval(LIVE_REST)
+        self._rest_timer.timeout.connect(self._settle_rested)
 
         # the last lines fit_weights found, and for what: asked for each
         # time the menu is made, to say whether fitting would change them
@@ -304,6 +332,12 @@ class GridManager(ManagerBase):
             "tile_overlap": self.tile_overlap,
             "is_tile_overlap": lambda overlap: self.tile_overlap() == overlap,
             "set_tile_overlap": self.set_tile_overlap,
+            "tile_pull": self.tile_pull,
+            "is_tile_pull": lambda pull: self.tile_pull() == pull,
+            "set_tile_pull": self.set_tile_pull,
+            "is_tile_animate": self.is_tile_animate,
+            "toggle_tile_animate": self.toggle_tile_animate,
+            "free_tile_landing": self.free_tile_landing,
             "is_tiles_stacked": self.is_tiles_stacked,
             "is_tile_stackable": self.is_tile_stackable,
             "stack_tile": self.cmd_stack_tile,
@@ -476,14 +510,14 @@ class GridManager(ManagerBase):
                 self._arrange_after_hand(self._holding)
             self._remember(self._change_start)
             self._change_start = None
-        self._holding = None
+        self._let_go()
 
     def cancel_grid_change(self) -> None:
         """The change made over time put back: the grid as it was at its
         start, with nothing to undo."""
 
         start, self._change_start = self._change_start, None
-        self._holding = None
+        self._let_go()
         if start is None:
             return
 
@@ -1609,30 +1643,100 @@ class GridManager(ManagerBase):
             )
         return at
 
-    def _arrange_live(self) -> None:
-        """Mosaic: the tile held where it is moved or sized to, the
-        others arranged around it as around a locked one, as it goes; it
-        stretched to the window's edge over room too thin for another, or
-        that none of them took (see _stretched_to_edges). With no room
-        left for them, the others are left as they were last shown."""
+    def _arrange_live(self, is_pulled: bool) -> None:
+        """Mosaic: the tile held goes where it is moved or sized to. The
+        others are arranged around where it would land (see _landing), as
+        around a locked one: not as it goes, but once that is a step from
+        where they were last arranged around, or has stayed put a moment
+        (see _settle). In between they stay as they are."""
 
         holding = self._holding
-        held = holding.video_id
         width, height = self._area_size()
         self._free.fill(width, height)
         rects = self._free.rects(width, height)
-        # put where it was the last time, snapped there again, say: the
-        # others are as they were
-        put = (rects[held], width, height)
-        if holding.last is not None and holding.last[0] == put:
-            if holding.is_live:
-                self._free.set_rect(held, holding.last[1], width, height)
-            return
 
-        rect = self._stretched_to_edges(held, rects[held], width, height)
+        put = rects[holding.video_id]
+        landing = (self._landing(put, rects, width, height, is_pulled), width, height)
+        holding.landing = landing
+        if landing == holding.arranged[0]:
+            self._rest_timer.stop()
+        elif self._is_step(landing, holding.arranged[0]):
+            if self._settle(holding):
+                self._glide(holding.video_id)
+        else:
+            self._rest_timer.start()
+
+    def _landing(
+        self,
+        put: Rect,
+        rects: Mapping[str, Rect],
+        width: float,
+        height: float,
+        is_pulled: bool,
+    ) -> Rect:
+        """Where a tile held at put would land, let go of. One to be pulled
+        (moved by the mouse, not sized) lands against each edge of the
+        window it is nearer than Pull to Edge has it (see TILE_PULL_REACH):
+        a strip that thin would have the others small in it, or stay empty.
+        Not onto a locked tile."""
+
+        reach = TILE_PULL_REACH[self.tile_pull()] if is_pulled else 0
+        if not reach:
+            return put
+
+        locked = list(self._locked_rects(rects).values())
+        within = max(MIN_CELL, reach * self._others_side(put, width, height))
+
+        def pulled(rect: Rect, dx: float, dy: float) -> Rect:
+            to = rect.moved(dx, dy)
+            if any(to.overlaps(lock) and not rect.overlaps(lock) for lock in locked):
+                return rect
+            return to
+
+        left, right = put.left, width - put.right
+        if 0 < min(left, right) < within:
+            put = pulled(put, -left if left <= right else right, 0)
+        top, bottom = put.top, height - put.bottom
+        if 0 < min(top, bottom) < within:
+            put = pulled(put, 0, -top if top <= bottom else bottom)
+        return put
+
+    def _others_side(self, held: Rect, width: float, height: float) -> float:
+        """About the side of a tile, the room a held one leaves shared out
+        evenly among the others."""
+
+        others = len(self._free.tiles) - len(self._free.locked) - 1
+        room = max(width * height - held.width * held.height, 0)
+        return math.sqrt(room / max(others, 1))
+
+    def _is_step(self, landing: _Placed, arranged: _Placed) -> bool:
+        # far enough from where the others were last arranged around
+        if landing[1:] != arranged[1:]:
+            return True
+        far = max(abs(a - b) for a, b in zip(landing[0], arranged[0], strict=True))
+        return far >= LIVE_STEP * self._others_side(*landing)
+
+    def _settle(self, holding: _Holding) -> bool:
+        """The others arranged around where the held tile would land, if
+        they are not yet; it stretched to the window's edge over room too
+        thin for another, or that none of them took (see
+        _stretched_to_edges). With no room left for them, they are left as
+        they were. Whether they were arranged."""
+
+        self._rest_timer.stop()
+        if holding.landing is None or holding.landing == holding.arranged[0]:
+            return False
+        landing, width, height = holding.landing
+        if (width, height) != self._area_size():
+            return False
+
+        held = holding.video_id
+        self._free.fill(width, height)
+        rects = self._free.rects(width, height)
+        wall = self._stretched_to_edges(held, landing, width, height)
         locked = self._locked_rects(rects)
         boxes = self._arranged_around(
-            {**locked, held: rect},
+            {**locked, held: wall},
             rects,
             width,
             height,
@@ -1640,19 +1744,58 @@ class GridManager(ManagerBase):
             False,
             holding.cache,
         )
-        holding.is_live = boxes is not None
-        holding.last = (put, rect)
-        if boxes is None:
-            return
+        holding.has_room = boxes is not None
+        if boxes is not None:
+            # over room none of the others took
+            area = Rect(0, 0, width, height)
+            others = [Rect.of_box(box, area) for box in boxes.values()]
+            others += locked.values()
+            wall = self._stretched_to_edges(held, wall, width, height, others)
+            self._free.arrange(boxes.items())
+        holding.arranged = (holding.landing, wall)
+        return boxes is not None
 
-        # over room none of the others took
-        area = Rect(0, 0, width, height)
-        others = [Rect.of_box(box, area) for box in boxes.values()]
-        others += locked.values()
-        rect = self._stretched_to_edges(held, rect, width, height, others)
-        holding.last = (put, rect)
-        self._free.set_rect(held, rect, width, height)
-        self._free.arrange(boxes.items())
+    def _settle_rested(self) -> None:
+        # the held tile has stayed put a moment
+        holding = self._holding
+        if holding is None:
+            return
+        if self._settle(holding):
+            self._glide(holding.video_id)
+            self._grid.invalidate()
+        self.tiles_settled.emit()
+
+    def free_tile_landing(self) -> Rect | None:
+        """Mosaic: where the tile held would land, let go of now, in the
+        area's pixels; None with no tile held, or none known: with no room
+        for the others around it there, all are arranged anew."""
+
+        holding = self._holding
+        if holding is None or holding.landing is None:
+            return None
+        if holding.landing == holding.arranged[0]:
+            return holding.arranged[1] if holding.has_room else None
+        landing, width, height = holding.landing
+        return self._stretched_to_edges(holding.video_id, landing, width, height)
+
+    def _glide(self, still_id: str | None = None) -> None:
+        """Animate Tiles: laid out next, the tiles slide to their places,
+        all but this one's, which is where the hand has it, and those whose
+        video draws into a window of its own: resized on the way, it would
+        be shown stretched (see CellLayout), so they jump there."""
+
+        if not self.is_tile_animate():
+            return
+        still = [
+            block
+            for block in self._ctx.video_blocks
+            if block.video_id == still_id or block.has_native_surface()
+        ]
+        self._grid.glide(still)
+
+    def _let_go(self) -> None:
+        self._holding = None
+        self._rest_timer.stop()
 
     def _stretched_to_edges(
         self,
@@ -1712,23 +1855,35 @@ class GridManager(ManagerBase):
             return
         if video_id in self._free.tiles:
             start = {i: b for i, b in self._free.tiles.items() if i != video_id}
-            self._holding = _Holding(video_id, start)
+            # as they are, around it where it starts
+            width, height = self._area_size()
+            at = Rect.of_box(self._free.tiles[video_id], Rect(0, 0, width, height))
+            self._holding = _Holding(video_id, start, ((at, width, height), at))
 
     def _arrange_after_hand(self, holding: _Holding) -> None:
-        """Mosaic: a tile let go of. It stays where it was moved, or
-        sized, to, the others where they were shown around it (see
-        _arrange_live); with no room left for them, all arranged anew.
-        Reorder to Fit is turned off, the others to stay in their order
-        around it, as shown. Arranged again later, it is as any other: to
-        stay as it is, it is locked."""
+        """Mosaic: a tile let go of. It lands where it was shown it would
+        (see free_tile_landing), the others arranged around it there; with
+        no room left for them, all arranged anew. Reorder to Fit is turned
+        off, the others to stay in their order around it, as shown.
+        Arranged again later, it is as any other: to stay as it is, it is
+        locked."""
 
         self._stop_reordering()
         # arranged for what came in meanwhile as it went
         self._arrange_timer.stop()
-        if holding.is_live:
+        width, height = self._area_size()
+        is_placed = holding.landing is not None and holding.landing[1:] == (
+            width,
+            height,
+        )
+        if is_placed:
+            self._settle(holding)
+            self._free.set_rect(holding.video_id, holding.arranged[1], width, height)
+        if is_placed and holding.has_room:
             self._arranged_now()
         else:
             self._arrange()
+        self._glide()
         self._grid.invalidate()
         self.layout_changed.emit()
 
@@ -1811,10 +1966,13 @@ class GridManager(ManagerBase):
         page_width: float,
         page_height: float,
         held: str | None = None,
+        is_pulled: bool = False,
     ) -> None:
         """Tiles moved or sized by hand: one (held), and those it pushed
         aside, on a page of this size (see TileDrag): the area it was,
-        which the page now takes the shape of."""
+        which the page now takes the shape of. In Mosaic, the held one, if
+        is_pulled (moved by the mouse, without Alt), is to land against the
+        window's edge it is near (see _landing)."""
 
         self._free.fill(page_width, page_height)
         # in Mosaic, the others make room as it goes
@@ -1824,11 +1982,23 @@ class GridManager(ManagerBase):
             self._free.set_rect(video_id, rect, page_width, page_height)
         self._is_arranged = False
         if self._holding is not None:
-            self._arrange_live()
+            self._arrange_live(is_pulled)
         self._grid.invalidate()
 
     def tile_overlap(self) -> TileOverlap:
         return PlaylistSettings().get("playlist/tile_overlap")
+
+    def tile_pull(self) -> TilePull:
+        return PlaylistSettings().get("playlist/tile_pull")
+
+    def set_tile_pull(self, pull: TilePull) -> None:
+        PlaylistSettings().set("playlist/tile_pull", pull)
+
+    def is_tile_animate(self) -> bool:
+        return PlaylistSettings().get("playlist/tile_animate")
+
+    def toggle_tile_animate(self) -> None:
+        PlaylistSettings().set("playlist/tile_animate", not self.is_tile_animate())
 
     def is_tile_overlap_on(self) -> bool:
         return self.tile_overlap() == TileOverlap.ON

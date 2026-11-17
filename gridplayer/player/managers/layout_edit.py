@@ -4,6 +4,7 @@ from gridplayer.params.static import (
     TILE_CROPS,
     GridMode,
     TileOverlap,
+    TilePull,
     TileResize,
     TileSnap,
 )
@@ -26,6 +27,8 @@ SETTING_ACTIONS = (
     *(f"Tile Overlap {overlap.name.title()}" for overlap in TileOverlap),
     *(f"On Window Resize {resize.name.title()}" for resize in TileResize),
     *(f"Tile Crop {crop}%" for crop in TILE_CROPS),
+    *(f"Pull to Edge {pull.name.title()}" for pull in TilePull),
+    "Animate Tiles",
     "Reorder to Fit",
 )
 

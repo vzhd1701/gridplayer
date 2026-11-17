@@ -12,10 +12,11 @@ from PyQt5.QtCore import (
     pyqtSignal,
 )
 from PyQt5.QtGui import QColor, QCursor, QPainter, QPen, QRegion
-from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLabel
+from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLabel, QWidget
 
 from gridplayer.params.settings_fields import choices
-from gridplayer.params.static import GridMode, TileOverlap, TileResize
+from gridplayer.params.static import GridMode, TileOverlap, TilePull, TileResize
+from gridplayer.utils.keymap import KEY_MODIFIERS, modifiers_after
 from gridplayer.utils.layout.boxes import Box, box_rect
 from gridplayer.utils.layout.free_tiles import (
     MOVE,
@@ -97,7 +98,7 @@ class TileSettings(NamedTuple):
     On Window Resize, Arrange's Crop Limit and Reorder to Fit, Snap Tiles
     and Snap To, read and set; and whether it is Mosaic, whose bar has
     neither Arrange Tiles, Fit Tiles to Window, Tile Overlap nor On Window
-    Resize."""
+    Resize, and has Pull to Edge and Animate Tiles."""
 
     overlap: Callable[[], TileOverlap]
     set_overlap: Callable[[TileOverlap], None]
@@ -112,6 +113,10 @@ class TileSettings(NamedTuple):
     set_snapping: Callable[[bool], None]
     snaps: Callable[[], frozenset]
     set_snaps: Callable[[frozenset], None]
+    pull: Callable[[], TilePull]
+    set_pull: Callable[[TilePull], None]
+    is_animated: Callable[[], bool]
+    set_animated: Callable[[bool], None]
 
 
 class _Label(NamedTuple):
@@ -166,9 +171,10 @@ class TileEditor(LayoutEditor):
 
     is_tiles = True
 
-    # tiles moved or sized: their rects on a page of the editor's size, and
-    # the one held
-    tiles_changed = pyqtSignal(object, float, float, str)
+    # tiles moved or sized: their rects on a page of the editor's size, the
+    # one held, and whether by the pointer with no Alt held: in Mosaic, to
+    # land against the window's edge it is near (see Pull to Edge)
+    tiles_changed = pyqtSignal(object, float, float, str, bool)
     # a tile going over the others, put in front of them
     front_requested = pyqtSignal(str)
     # one change to undo: begun, done, or put back
@@ -215,6 +221,8 @@ class TileEditor(LayoutEditor):
 
         self._pending: _Pending | None = None
         self._drag: TileDrag | None = None
+        # in Mosaic, where the tile dragged would land (see set_tiles)
+        self._landing: Rect | None = None
         # the tile dragged to swap, and the one it is over, if any
         self._swapping: str | None = None
         self._swap_with: str | None = None
@@ -274,13 +282,17 @@ class TileEditor(LayoutEditor):
 
     # --- the tiles ---
 
-    def set_tiles(self, tiles: FreeTiles, names: dict[str, str]) -> None:
+    def set_tiles(
+        self, tiles: FreeTiles, names: dict[str, str], landing: Rect | None = None
+    ) -> None:
         """The tiles as they are now, on a page the editor's size, and the
-        names of their videos."""
+        names of their videos; in Mosaic, where the one dragged would land,
+        let go of now."""
 
         self._tiles = tiles
         self._names = dict(names)
         self._rects = tiles.rects(self.width(), self.height())
+        self._landing = landing
 
         if self._picked not in self._rects:
             self._picked = None
@@ -390,14 +402,18 @@ class TileEditor(LayoutEditor):
         is_snapping = not modifiers & Qt.AltModifier and self._settings.is_snapping()
         keeps_shape = not modifiers & Qt.ShiftModifier
 
-        self._apply(drag, drag.moved((point.x(), point.y()), is_snapping, keeps_shape))
+        self._apply(
+            drag,
+            drag.moved((point.x(), point.y()), is_snapping, keeps_shape),
+            is_pulled=drag.is_move and not modifiers & Qt.AltModifier,
+        )
 
         guides = drag.guides() if is_snapping else []
         gaps = drag.gaps() if is_snapping else []
         words = tile_snap_words(guides, drag.fits, bool(gaps))
         self._show_snapped(guides_clear_of(guides, gaps), gaps, words, point)
 
-    def _apply(self, drag: TileDrag, rect: Rect) -> None:
+    def _apply(self, drag: TileDrag, rect: Rect, is_pulled: bool = False) -> None:
         """The tile dragged at rect, and those it pushed aside."""
 
         self.tiles_changed.emit(
@@ -405,6 +421,7 @@ class TileEditor(LayoutEditor):
             self.width(),
             self.height(),
             drag.video_id,
+            is_pulled,
         )
         # over the others it goes, not under them; the tiles as they now are
         # (see set_tiles)
@@ -482,8 +499,17 @@ class TileEditor(LayoutEditor):
             self._pick_next(-1 if is_back else 1)
         elif key == Qt.Key_Delete and self._picked is not None:
             self.close_requested.emit(self._picked)
+        elif key in KEY_MODIFIERS and self._drag is not None:
+            self._move_to(self.mapFromGlobal(QCursor.pos()), modifiers_after(event))
         else:
             super().keyPressEvent(event)
+
+    def keyReleaseEvent(self, event) -> None:
+        # held where it is, it snaps or stops snapping there
+        if event.key() in KEY_MODIFIERS and self._drag is not None:
+            self._move_to(self.mapFromGlobal(QCursor.pos()), modifiers_after(event))
+        else:
+            super().keyReleaseEvent(event)
 
     def _pick_next(self, step: int) -> None:
         order = self._tiles.order()
@@ -740,22 +766,59 @@ class TileEditor(LayoutEditor):
         switch = Switch()
         switch_row = _switch_row(switch, translate("Reorder to Fit", "Reorder to Fit"))
 
-        def refresh():
+        def refresh_arrange():
             with QSignalBlocker(choice), QSignalBlocker(switch):
                 choice.setCurrentIndex(choice.findData(self._settings.crop()))
                 switch.setChecked(self._settings.is_reordered())
 
-        refresh()
         choice.currentIndexChanged.connect(
             lambda _: self._settings.set_crop(choice.currentData())
         )
         switch.toggled.connect(self._settings.set_reordered)
+
+        rows = [crop_label, choice, switch_row]
+        refreshes = [refresh_arrange]
+        if self._settings.is_mosaic():
+            # how a tile moved lands, and the others make room
+            mosaic_rows, refresh_mosaic = self._mosaic_rows()
+            rows += mosaic_rows
+            refreshes.append(refresh_mosaic)
+
+        def refresh():
+            for one in refreshes:
+                one()
+
+        refresh()
         self._show_popup(
             self._arrange_settings,
             translate("Actions", "Arrange"),
-            [crop_label, choice, switch_row],
+            rows,
             refresh=refresh,
         )
+
+    def _mosaic_rows(self) -> tuple[list[QWidget], Callable[[], None]]:
+        """Arrange's rows in Mosaic alone: Pull to Edge and Animate Tiles;
+        and how to show them as the settings are."""
+
+        pull_label = QLabel(translate("Pull to Edge", "Pull to edge"))
+        pull = SegmentedChoice()
+        for value, text in choices.tile_pull().items():
+            pull.addItem(text, value)
+        animated = Switch()
+        animated_row = _switch_row(
+            animated, translate("Animate Tiles", "Animate tiles")
+        )
+
+        def refresh():
+            with QSignalBlocker(pull), QSignalBlocker(animated):
+                pull.setCurrentIndex(pull.findData(self._settings.pull()))
+                animated.setChecked(self._settings.is_animated())
+
+        pull.currentIndexChanged.connect(
+            lambda _: self._settings.set_pull(pull.currentData())
+        )
+        animated.toggled.connect(self._settings.set_animated)
+        return [pull_label, pull, animated_row], refresh
 
     def _show_resize(self) -> None:
         choice = SegmentedChoice()
@@ -924,6 +987,12 @@ class TileEditor(LayoutEditor):
                 QPen(LINE_COLOR, 1, Qt.DashLine),
                 OUTLINE_INSET,
             )
+            landing = self._landing
+            if landing is not None and landing != self._rects.get(dragged):
+                # where it would land
+                self._outline(
+                    painter, _rect_f(landing), QPen(LINE_COLOR, 2), OUTLINE_INSET
+                )
 
         for video_id in self._rects:
             self._draw_label(

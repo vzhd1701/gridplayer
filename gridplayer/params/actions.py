@@ -2721,6 +2721,24 @@ ACTIONS = MappingProxyType(
             }
             for crop, title in choices.tile_crops().items()
         },
+        **{
+            f"Pull to Edge {pull.name.title()}": {
+                "title": title,
+                "icon": "empty",
+                "func": ("set_tile_pull", pull),
+                "check_if": ("is_tile_pull", pull),
+                "is_choice": True,
+                "show_if": ("is_grid_mode_set_to", GridMode.MOSAIC),
+            }
+            for pull, title in choices.tile_pull().items()
+        },
+        "Animate Tiles": {
+            "title": translate("Animate Tiles", "Animate Tiles"),
+            "icon": "grid-animate-tiles",
+            "func": "toggle_tile_animate",
+            "check_if": "is_tile_animate",
+            "show_if": ("is_grid_mode_set_to", GridMode.MOSAIC),
+        },
         "Fit Tiles to Window": {
             "title": translate("Actions", "Fit Tiles to Window"),
             "icon": "grid-fit-tiles",

@@ -3,12 +3,15 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable
 
 from PyQt5 import sip
-from PyQt5.QtCore import QRect, QSize, pyqtSignal
+from PyQt5.QtCore import QEasingCurve, QRect, QSize, QVariantAnimation, pyqtSignal
 from PyQt5.QtWidgets import QLayout, QWidget, QWidgetItem
 
 from gridplayer.utils.layout.boxes import Box, box_rect
 
 Place = Callable[[int, int], Iterable[tuple[QWidget, Box]]]
+
+# how long a cell takes to slide to its place, in ms (see CellLayout.glide)
+GLIDE_MS = 170
 
 
 def _place_nothing(_width: int, _height: int) -> Iterable[tuple[QWidget, Box]]:
@@ -30,6 +33,11 @@ class CellLayout(QLayout):
     through the grids in between. A hardware video sends the first size to
     VLC at once and holds the rest back (see NATIVE_VIEW_RESIZE_INTERVAL_MS),
     so it would be drawn stretched or zoomed into its cell for a moment.
+
+    Told to (see glide), the cells slide to their places the next time the
+    area is laid out, not jump there. One on its way stays on it while the
+    area is laid out again with the same place for it; given another, it
+    jumps there, unless told to slide again.
     """
 
     # each time the cells have been put in their places
@@ -46,6 +54,19 @@ class CellLayout(QLayout):
 
         # where the cells went the last time the area was laid out
         self._placed: list[tuple[QWidget, Box]] = []
+
+        # laid out next, the cells slide to their places, all but these;
+        # None, they jump there
+        self._still: list[QWidget] | None = None
+        # the cells on their way: where each started from, and where to
+        self._gliding: dict[QWidget, tuple[QRect, QRect]] = {}
+        self._glide = QVariantAnimation(self)
+        self._glide.setDuration(GLIDE_MS)
+        self._glide.setStartValue(0.0)
+        self._glide.setEndValue(1.0)
+        self._glide.setEasingCurve(QEasingCurve.OutCubic)
+        self._glide.valueChanged.connect(self._glide_to)
+        self._glide.finished.connect(self._glide_done)
 
     def set_widgets(self, widgets: Iterable[QWidget]) -> None:
         while self.takeAt(0) is not None:
@@ -64,6 +85,16 @@ class CellLayout(QLayout):
         return [
             (widget, box) for widget, box in self._placed if not sip.isdeleted(widget)
         ]
+
+    def glide(self, still: Iterable[QWidget] = ()) -> None:
+        """The next time the area is laid out, the cells on show slide to
+        their places, all but these."""
+
+        self._still = list(still)
+        self.invalidate()
+
+    def is_gliding(self) -> bool:
+        return bool(self._gliding)
 
     def set_cells(self, cells: list[tuple[QWidget, Box]]) -> list[QWidget]:
         """Lay out these widgets in these boxes, whatever the area's size.
@@ -104,6 +135,9 @@ class CellLayout(QLayout):
         # a widget deleted since is out of the items, still in the place
         laid_out = {id(item.widget()) for item in self._items}
 
+        still, self._still = self._still, None
+        started = False
+
         self._placed = []
         for widget, box in self._place(rect.width(), rect.height()):
             if id(widget) not in laid_out or sip.isdeleted(widget):
@@ -112,6 +146,60 @@ class CellLayout(QLayout):
             self._placed.append((widget, box))
 
             x, y, width, height = box_rect(box, rect.width(), rect.height())
-            widget.setGeometry(QRect(rect.x() + x, rect.y() + y, width, height))
+            to = QRect(rect.x() + x, rect.y() + y, width, height)
 
+            on_its_way = self._gliding.get(widget)
+            is_sliding = (
+                still is not None
+                and widget.isVisible()
+                and not any(widget is other for other in still)
+            )
+            if is_sliding and widget.geometry() != to:
+                self._gliding[widget] = (widget.geometry(), to)
+                started = True
+            elif on_its_way is None or on_its_way[1] != to:
+                self._gliding.pop(widget, None)
+                widget.setGeometry(to)
+
+        # those placed no more are stopped where they are
+        placed = {id(widget) for widget, _box in self._placed}
+        self._gliding = {
+            widget: way for widget, way in self._gliding.items() if id(widget) in placed
+        }
+
+        if started:
+            # those on their way already go on from where they are
+            self._gliding = {
+                widget: (widget.geometry(), to)
+                for widget, (_start, to) in self._gliding.items()
+            }
+            self._glide.stop()
+            self._glide.start()
+        elif not self._gliding:
+            self._glide.stop()
+
+        self.laid_out.emit()
+
+    def _glide_to(self, share: float) -> None:
+        def at(a: int, b: int) -> int:
+            return round(a + (b - a) * share)
+
+        for widget, (start, to) in list(self._gliding.items()):
+            if sip.isdeleted(widget):
+                del self._gliding[widget]
+                continue
+
+            widget.setGeometry(
+                QRect(
+                    at(start.x(), to.x()),
+                    at(start.y(), to.y()),
+                    at(start.width(), to.width()),
+                    at(start.height(), to.height()),
+                )
+            )
+
+    def _glide_done(self) -> None:
+        self._glide_to(1.0)
+        self._gliding = {}
+        # the cells in their places only now: laid_out came as they set off
         self.laid_out.emit()
