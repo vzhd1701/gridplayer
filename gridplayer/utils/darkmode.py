@@ -6,11 +6,17 @@ from gridplayer.params.static import ColorScheme
 from gridplayer.settings import Settings
 
 
-def is_dark_mode() -> bool:
+def app_color_scheme() -> ColorScheme | None:
+    """The colour scheme setting, None while the settings can't be read."""
+
     try:
-        scheme = Settings().get("player/color_scheme")
+        return Settings().get("player/color_scheme")
     except RuntimeError:
-        return is_system_dark_mode()
+        return None
+
+
+def is_dark_mode() -> bool:
+    scheme = app_color_scheme()
 
     if scheme == ColorScheme.LIGHT:
         return False

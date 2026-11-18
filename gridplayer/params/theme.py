@@ -1,5 +1,6 @@
 from types import MappingProxyType
 
+from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor, QIcon, QPalette, QTextCursor
 from PyQt6.QtWidgets import (
     QApplication,
@@ -14,8 +15,11 @@ from PyQt6.QtWidgets import (
 from gridplayer.main.init_icons import switch_icon_theme
 from gridplayer.params import env
 from gridplayer.params.static import ColorScheme
-from gridplayer.settings import Settings
-from gridplayer.utils.darkmode import is_dark_mode, is_system_dark_mode
+from gridplayer.utils.darkmode import (
+    app_color_scheme,
+    is_dark_mode,
+    is_system_dark_mode,
+)
 
 THEME_LIGHT = MappingProxyType(
     {
@@ -102,9 +106,26 @@ def create_fusion_style() -> QProxyStyle:
     return QStyleFactory.create("Fusion")
 
 
+# The shades Fusion and our borders (palette(mid)) draw with, as Windows' light
+# palette has them, in either scheme: left unset, they come from the system's
+# palette, which Qt 6 makes dark with the system whatever the app's scheme is
+# (black borders, no checkbox outline). Active then Disabled.
+_SHADES = {
+    QPalette.ColorRole.Light: ("#ffffff", "#ffffff"),
+    QPalette.ColorRole.Midlight: ("#e3e3e3", "#f7f7f7"),
+    QPalette.ColorRole.Mid: ("#a0a0a0", "#a0a0a0"),
+    QPalette.ColorRole.Dark: ("#a0a0a0", "#a0a0a0"),
+    QPalette.ColorRole.Shadow: ("#696969", "#000000"),
+}
+
+
 def fusion_palette() -> QPalette:
     colors = current_colors()
     palette = QPalette()
+
+    for role, (active, disabled) in _SHADES.items():
+        palette.setColor(role, QColor(active))
+        palette.setColor(QPalette.ColorGroup.Disabled, role, QColor(disabled))
 
     def color(key: str) -> QColor:
         return QColor(colors[key])
@@ -120,7 +141,10 @@ def fusion_palette() -> QPalette:
     palette.setColor(QPalette.ColorRole.ButtonText, color("button_text"))
     palette.setColor(QPalette.ColorRole.BrightText, QColor("#ff4444"))
     palette.setColor(QPalette.ColorRole.Link, color("link"))
+    palette.setColor(QPalette.ColorRole.LinkVisited, color("link"))
     palette.setColor(QPalette.ColorRole.Highlight, color("highlight"))
+    # not the system's accent colour: the app stays grey
+    palette.setColor(QPalette.ColorRole.Accent, color("highlight"))
     palette.setColor(QPalette.ColorRole.HighlightedText, color("highlighted_text"))
     palette.setColor(QPalette.ColorRole.PlaceholderText, color("text_disabled"))
 
@@ -270,12 +294,7 @@ def tooltip_stylesheet() -> str:
 
 def on_system_theme_changed(app=None) -> None:
     """Re-apply theme only when the user is following the OS."""
-    try:
-        scheme = Settings().get("player/color_scheme")
-    except RuntimeError:
-        return
-
-    if scheme != ColorScheme.SYSTEM:
+    if app_color_scheme() != ColorScheme.SYSTEM:
         return
 
     apply_theme(app)
@@ -373,6 +392,7 @@ def apply_theme(app=None) -> None:
 
     _applying_theme = True
     try:
+        _tell_qt_the_scheme(app)
         switch_icon_theme()
         _install_dialog_button_style(app)
         app.setPalette(fusion_palette())
@@ -383,6 +403,28 @@ def apply_theme(app=None) -> None:
         _apply_native_window_chrome(app)
     finally:
         _applying_theme = False
+
+
+# what Qt was last told, so as not to set it off again for nothing
+_told_scheme: list = []
+
+
+def _tell_qt_the_scheme(app) -> None:
+    """Qt 6 draws some of Fusion by its colour scheme rather than by the
+    palette (a check box's outline): the one the palette is of. Following the
+    system on macOS, it's left to Qt, as Qt's colorSchemeChanged is how a
+    switch is heard there."""
+
+    if env.IS_MACOS and app_color_scheme() in {ColorScheme.SYSTEM, None}:
+        scheme = Qt.ColorScheme.Unknown
+    else:
+        scheme = Qt.ColorScheme.Dark if is_dark_mode() else Qt.ColorScheme.Light
+
+    if _told_scheme == [scheme]:
+        return
+
+    _told_scheme[:] = [scheme]
+    app.styleHints().setColorScheme(scheme)
 
 
 _dialog_button_style_installed = False

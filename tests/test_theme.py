@@ -1,7 +1,11 @@
+from types import SimpleNamespace
+
 import pytest
+from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPalette
 from PyQt6.QtWidgets import QApplication
 
+from gridplayer.params.static import ColorScheme
 from gridplayer.params.theme import (
     THEME_DARK,
     THEME_LIGHT,
@@ -173,3 +177,67 @@ def test_html_set_after_the_theme_still_gets_theme_links():
 
     label.hide()
     label.deleteLater()
+
+
+@pytest.mark.parametrize(
+    "role",
+    [
+        QPalette.ColorRole.Light,
+        QPalette.ColorRole.Midlight,
+        QPalette.ColorRole.Mid,
+        QPalette.ColorRole.Dark,
+        QPalette.ColorRole.Shadow,
+        QPalette.ColorRole.LinkVisited,
+        QPalette.ColorRole.Accent,
+    ],
+)
+def test_no_shade_is_left_to_the_system(role):
+    """Left to the system's palette, Qt 6 makes them dark with the system,
+    whatever the app's scheme: black borders (palette(mid)), and the system's
+    accent colour in a grey app."""
+
+    palette = fusion_palette()
+
+    for group in (
+        QPalette.ColorGroup.Active,
+        QPalette.ColorGroup.Inactive,
+        QPalette.ColorGroup.Disabled,
+    ):
+        assert palette.isBrushSet(group, role)
+
+
+@pytest.mark.parametrize(
+    ("is_macos", "setting", "is_dark", "told"),
+    [
+        (False, ColorScheme.LIGHT, False, Qt.ColorScheme.Light),
+        (False, ColorScheme.DARK, True, Qt.ColorScheme.Dark),
+        # the system's as the app sees it, not as Qt guesses it
+        (False, ColorScheme.SYSTEM, True, Qt.ColorScheme.Dark),
+        (False, ColorScheme.SYSTEM, False, Qt.ColorScheme.Light),
+        # macOS hears of a switch through Qt alone
+        (True, ColorScheme.SYSTEM, True, Qt.ColorScheme.Unknown),
+        (True, ColorScheme.DARK, True, Qt.ColorScheme.Dark),
+    ],
+)
+def test_qt_is_told_the_scheme_of_the_palette(
+    monkeypatch, is_macos, setting, is_dark, told
+):
+    """Fusion draws some things (a check box's outline) by Qt's scheme rather
+    than the palette."""
+
+    import gridplayer.params.theme as theme
+
+    monkeypatch.setattr(theme.env, "IS_MACOS", is_macos)
+    monkeypatch.setattr(theme, "app_color_scheme", lambda: setting)
+    monkeypatch.setattr(theme, "is_dark_mode", lambda: is_dark)
+    monkeypatch.setattr(theme, "_told_scheme", [])
+    asked = []
+    app = SimpleNamespace(
+        styleHints=lambda: SimpleNamespace(setColorScheme=asked.append)
+    )
+
+    theme._tell_qt_the_scheme(app)
+    # again, as each apply_theme does: Qt isn't set off for nothing
+    theme._tell_qt_the_scheme(app)
+
+    assert asked == [told]

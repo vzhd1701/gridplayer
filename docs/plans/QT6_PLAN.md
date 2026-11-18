@@ -10,7 +10,7 @@ and how each step is checked. Tick an item only once it has been seen working.
 | 0 | Baseline on PyQt5: tests, scenarios, benches, screenshots | **done 2026-11-18** but the Macs (before stage 5) and benches (stage 3) |
 | 1 | Rewrites that work on both: full enum names, `exec()`, flag values | **done 2026-11-18** |
 | 2 | The switch: PyQt6 6.12, imports, removed APIs, events; tests pass | **done 2026-11-18**, uncommitted |
-| 3 | Windows: DPI, native windows, GL, look, input | not started |
+| 3 | Windows: DPI, native windows, GL, look, input | **done 2026-11-18**, uncommitted; hand checks left (DPI, keys, drag and drop, tray, SMTC) |
 | 4 | Linux: X11, Wayland, D-Bus | not started |
 | 5 | macOS | not started |
 | 6 | Translations: pylupdate6 | not started |
@@ -296,19 +296,62 @@ The main platform and the one Qt 6 changes most under us. Each item against the 
 - 3.1 **DPI.** Qt 6 makes the process Per-Monitor v2. At 100%, 125%, 150%, 200%, and a window moved between two screens
   of different scale: VLC's window (`win32_vlc_vout.py`), the overlay as a layered child window, MPV Direct's window, zoom
   and pan, zoom to cursor, the tray's position mapping (`win32_tray.py:305`).
+  **Done as far as one 100% screen goes, 2026-11-18.** This machine has one 1920x1080 screen at 100%, so Qt's
+  `QT_SCALE_FACTOR=1.5` stood in for Windows': VLC hardware, MPV Shared and MPV Direct in real windows on the away
+  desktop, on both bindings, each picture where the other binding puts it. No code depends on an integer device
+  pixel ratio (the three `devicePixelRatio()` calls were floats on Qt 5 too). **By hand:** Windows' own 125%, 150%,
+  200%, and a window moved between screens of different scale (Qt 6 is Per-Monitor v2, Qt 5 was v1): VLC's and
+  mpv's own windows, the overlay, zoom to cursor, the tray menu's place.
 - 3.2 **GL.** Qt 6 puts a window with a `QOpenGLWidget` together differently. MPV Shared: the one surface, the holes,
   `repaint_now`, `gl_window_size`'s held paints, 120 fps (13.10), resize without the jump, the GL line fix, `grabbing()`.
   Benches against stage 0.
+  **Done 2026-11-18.** Benches A/B, `CLIPS=mix`, 4, 9 and 16 cells, real windows on the away desktop, the same
+  RTX 3060 (`build/qt6-stage3/bench*`): every frame rate the same. CPU, memory and GPU the same for VLC hardware and
+  MPV Direct; MPV Shared a little less CPU and GPU on PyQt6 (16 cells: 86% CPU, 15% GPU against 100% and 28%);
+  MPV Copy at 16 cells within the runs' own spread (PyQt6 103, 106, 103%; PyQt5 89, 116, 99%). GUI lateness p95
+  1-2 ms on both. Shared's surface, holes and Direct's windows look the same in the captures. **Bench trap:** this
+  machine's monitor is on the AMD iGPU and only one Python path is set to the RTX in Windows' graphics settings; the
+  PyQt5 copy first ran on the iGPU (its venv named the other path, and `uv run --with` made another), which looked
+  like PyQt5 being slower. It now runs `.venv/Scripts/python.exe` with psutil installed in it.
 - 3.3 **Look.** Fusion is set already, so Qt 6's Windows 11 style doesn't come in, but Fusion itself changed in Qt 6, and
   Qt 6.8 draws text with DirectWrite. Screenshots against stage 0: menus, the checked-state badges, tooltips (the
   62-character card), the status font sizes, settings cards, dialogs. Dark mode: Qt 6.5+ follows the system's colour
   scheme, which mustn't fight `theme.py`.
+  **Done 2026-11-18.** `look.py` now runs with the real Windows platform and its fonts without a window on the
+  screen (`LOOK_HIDDEN=1`: every window `WA_DontShowOnScreen`, a watchdog ends the run should one show), on both
+  bindings, at 100% and 150%, light and dark. Side by side, the same but for Qt 6's Fusion: menus 4 px wider, the
+  submenu arrow a chevron, DirectWrite's text (ClearType fringes the other way round). **Found and fixed:** with the
+  system dark and the app set to Light, Qt 6 (a) fills the roles our palette left unset (`Mid`, `Dark`, `Light`,
+  `Midlight`, `Shadow`) from the system's dark palette, so every `palette(mid)` border went black, and the system's
+  accent colour came in through `Accent`; (b) has Fusion draw check box outlines by Qt's colour scheme, white on
+  white. `fusion_palette()` now sets those roles to what they are on Qt 5 / light Windows, `Accent` to our highlight;
+  `apply_theme()` tells Qt the app's scheme (`styleHints().setColorScheme`, Qt 6.8+; the system's for System). One
+  visible change kept: in Dark, a check box's outline is Qt 6's lighter grey (#757575) where Qt 5's (#353535) hardly
+  showed on #444444. A dark Windows itself wasn't tried (the machine's is light): Qt's scheme was set dark instead.
 - 3.4 **Input.** Shortcuts (keypad, AltGr, the media keys), drag and drop (in and out, the hold-to-switch key), wheel
   notches, drag gestures, synthetic moves (`mouse_windows.py`), double-click.
+  **Partly done 2026-11-18**, by Windows messages posted to the real window on the away desktop
+  (scratchpad `input_checks.py`): the pointer makes the cell under it active, Wheel-Down seeks 1%, Shift+Wheel-Down
+  5%, a click plays and pauses, all through Qt 6's Windows input. **By hand:** keys (Qt drops key messages to a
+  window never activated, on PyQt5 too, and activating one would switch the desktop): keypad, AltGr, media keys;
+  drag and drop in and out (Windows' OLE loop takes the real mouse), the hold-to-switch key, double-click.
 - 3.5 **Native bits.** Tray and its menu, hidden from taskbar, SMTC, taskbar icon (the app ID), single instance,
   dark title bars, window geometry restored from a playlist saved on Qt 5.
+  **Partly done 2026-11-18:** the app ID (`shell32` now) is what it was; dark title bar on and off with the scheme;
+  a window geometry saved by Qt 5 restored by Qt 6 to the pixel; single instance doesn't use Qt. Windows doesn't say
+  a caption colour back, on either binding. **By hand:** the tray and its menu, hidden from taskbar, SMTC (each would
+  show on the user's own taskbar from here).
 - 3.6 All real-app scenarios; VLC single-process freeze check (VLC SP).
+  **Done:** all scenarios pass offscreen on PyQt6 (stage 2); VLC hardware single-process played 4, 9 and 16 cells in
+  real windows through every bench run without a stall.
 - 3.7 `/code-review` of the stage's changes.
+  **Done 2026-11-18.** Fixed: Qt is told the scheme the palette is of, the app's own reading of the system's
+  included, rather than left to guess it (Linux reads `GTK_THEME`, which Qt doesn't), but on macOS following the
+  system, where Qt's `colorSchemeChanged` is how a switch is heard; told only when it changes; one reader of the
+  setting (`darkmode.app_color_scheme`); `look.py`'s hiding from the player's first show on, its watchdog on Windows
+  only and with its argument types. Kept: the pinned shades on every platform (stages 4 and 5 compare them with
+  their baselines). `look.py` hidden hung once in eight runs at a submenu, not again: harness, as a hidden window
+  never gets Windows' expose; watch for it.
 
 ## Stage 4: Linux
 

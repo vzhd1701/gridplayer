@@ -36,7 +36,7 @@ def test_is_dark_mode_system_follows_os(monkeypatch):
 
 def test_on_system_theme_changed_skipped_when_manual(monkeypatch):
     called = []
-    monkeypatch.setattr(theme, "Settings", lambda: _FakeSettings(ColorScheme.DARK))
+    monkeypatch.setattr(darkmode, "Settings", lambda: _FakeSettings(ColorScheme.DARK))
     monkeypatch.setattr(theme, "apply_theme", lambda app=None: called.append(app))
 
     theme.on_system_theme_changed()
@@ -45,7 +45,7 @@ def test_on_system_theme_changed_skipped_when_manual(monkeypatch):
 
 def test_on_system_theme_changed_applies_when_system(monkeypatch):
     called = []
-    monkeypatch.setattr(theme, "Settings", lambda: _FakeSettings(ColorScheme.SYSTEM))
+    monkeypatch.setattr(darkmode, "Settings", lambda: _FakeSettings(ColorScheme.SYSTEM))
     monkeypatch.setattr(theme, "apply_theme", lambda app=None: called.append(True))
 
     theme.on_system_theme_changed()
