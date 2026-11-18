@@ -5,7 +5,7 @@ The findings and traps are in `C:\Projects\test_temp\test_mpv\HANDOFF.md`, and
 what we build and how far it has got. Tick items only once they have been seen
 working.
 
-**Status: Stage 3 built (<https://claude.ai/artifact/8ngdeLCkVxmdQzSEnpxx1c>, real screenshots on its Built board). Open: macOS. Bundling libmpv (12.1) is for later. Stages 1-9 are committed on this branch.**
+**Status: open are 10.4 (other GPUs) and 11.4 (Macs with a real GPU). Packaged everywhere but the Snap, which waits for Qt 6.**
 
 **Load tests against VLC: `MPV_PERFORMANCE.md`.** No multi-process mode for MPV. New items 10.13-10.16. 10.16, the long run, ran
 overnight 2026-11-09: new items 10.21-10.23.
@@ -1269,7 +1269,7 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
 
 ## Stage 12: Packaging and release
 
-- [ ] 12.1 **Decided (2026-11-09): libmpv is bundled everywhere, with libVLC**, in every package; no split packages over some
+- [x] 12.1 **Decided (2026-11-09): libmpv is bundled everywhere, with libVLC**, in every package; no split packages over some
   60 MB. Done after testing and fixing. Windows has no system libmpv and no standard installer for it. The DLL here is 117 MB, a
   smaller LGPL build may do. With libmpv always there, the `Get MPV` link and "How to fix" are only for running from source
   - **Your call (2026-11-14): the full build, not an LGPL one.**
@@ -1410,9 +1410,10 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     starts on Hardware MPV, EGL on xcb, the picture on screen.
   - Checked: both Windows builds on 3.14 (x64 341 MB, x86 297 MB); the AppImage on 3.14 (217 MB) on the Ubuntu VM's desktop, VLC
     Hardware with its process started by `forkserver` (3.14's default on Linux) and Hardware MPV each playing two clips.
-- [ ] 12.2 PyInstaller, AppImage, Flatpak, Snap, Chocolatey as decided. Fail loudly, keep the
+- [x] 12.2 PyInstaller, AppImage, Flatpak, Snap, Chocolatey as decided. Fail loudly, keep the
   existing tools. Flatpak and Snap can't see a system libmpv, so the README's "How to fix" won't
   work there unless they ship it: check, and say so in the README
+  - Done but the Snap, which gets libmpv once it moves to Qt 6 (see 12.1).
   - 2026-11-16: each package built is started once in `build.yml`, `GridPlayer --self-check tests/data/self_check.mp4`
     (`main/self_check.py`): Qt's platform, libVLC and libmpv found and loaded, a 1 s H.264 + AAC clip decoded by each,
     exit 1 otherwise. The Windows portable zip, the app in each DMG (with `codesign --verify --deep --strict` first) and
@@ -1471,7 +1472,7 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
 - [x] 12.5 README, CHANGELOG. Short trap list in `AGENTS.md`, rules only
   - 2026-11-16: CHANGELOG from `just changelog-since-last`, Brick2892's fork credited for Picture quality and
     `mpv.conf`; AGENTS.md: what a libmpv build lacks is asked of it (`abilities.py`), not assumed from the platform.
-- [ ] 12.6 Remove this file, or keep it as you like
+- [ ] 12.6 Once the plan is done: move this file to `docs/archive/`, with the other plans that are finished
 
 ## Stage 13: GL output, a choice beside readback
 

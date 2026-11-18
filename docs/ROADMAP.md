@@ -85,3 +85,42 @@ Every dialog needs the same frame. Then Auto could take Wayland on GNOME too.
 
 Another way is the QAdwaitaDecorations plugin, GNOME's look for Qt's frame, but a packaged app has its own Qt and the
 plugin must be built for exactly that one: a compiled part to keep up for every Qt release and CPU.
+
+## Maybe some day
+
+Ideas talked about and put aside. None is wanted soon; they're here so they aren't lost.
+
+### A read-ahead cache for streams on VLC
+
+From the VLC read-ahead notes (2026-10). mpv's demuxer cache reads ahead, keeps what was played and knows which parts
+are loaded; VLC 3 has none of that, and libVLC doesn't say how far ahead it has read. Every stream already goes through
+the app's own proxy (all but `direct`), a plain relay with no cache, so that is where one would go:
+
+- The proxy keeps the segments it fetched, and reads ahead of the one playing, so a seek back is instant.
+- The seek bar shows what the proxy has, as mpv's cache ranges are shown.
+
+Not measured: whether VLC's own `:adaptive-maxbuffer` would read further ahead through the playlists the proxy makes.
+
+### Gamepad hotkeys
+
+Planned 2026-10-07, not started. The plan is in `GAMEPAD.md`:
+
+- SDL2 through `pysdl2` (Qt's gamepad module isn't in PyQt5 and is gone from Qt 6), behind an interface so SDL3 can
+  replace it.
+- A pad button is a fourth kind of key in the keymap (`Pad LB+A`), beside keyboard, mouse and the mouse drag keys, so
+  saving, conflicts and the shortcuts editor work as they do.
+- Phases: a spike in every package first, then the bindings, then moving through menus and dialogs, then the sticks.
+- Six questions in the plan to answer before building: the library, on by default, default bindings, chords, menus
+  in the first phase, the binding format.
+
+### Split mode
+
+Talked about 2026-11-03. A grid mode like tmux or i3: each new video
+splits a tile in two, and dragging a line between tiles resizes both sides. Put aside until someone asks for it: most
+of its layouts can be made already (Fixed Grid with spans and templates, Free Tiles with snapping, Mosaic), and it
+costs a whole mode that works against the videos' shapes.
+
+### An endless canvas for Free Tiles
+
+From the On Window Resize work (2026-10-31). Free Tiles on a page bigger than the window: zoom in and pan around the
+tiles, zoom out no further than all of them fitting, Shift and the middle button to pan.
