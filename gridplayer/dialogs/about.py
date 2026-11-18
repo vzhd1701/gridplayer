@@ -2,9 +2,9 @@ import sys
 from typing import NamedTuple
 
 from pydantic.version import VERSION as PYDANTIC_VERSION
-from PyQt5.QtCore import PYQT_VERSION_STR, QSize, Qt, qVersion
-from PyQt5.QtGui import QFont, QIcon
-from PyQt5.QtWidgets import (
+from PyQt6.QtCore import PYQT_VERSION_STR, QSize, Qt, qVersion
+from PyQt6.QtGui import QFont, QIcon
+from PyQt6.QtWidgets import (
     QDialog,
     QHBoxLayout,
     QLabel,

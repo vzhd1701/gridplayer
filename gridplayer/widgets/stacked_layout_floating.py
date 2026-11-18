@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QStackedLayout
+from PyQt6.QtWidgets import QStackedLayout
 
 
 class QStackedLayoutFloating(QStackedLayout):

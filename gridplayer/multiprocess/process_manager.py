@@ -3,7 +3,7 @@ import os
 from multiprocessing import Queue, active_children, connection, get_start_method
 from threading import Condition, Lock
 
-from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt6.QtCore import QObject, pyqtSignal
 
 from gridplayer.multiprocess.command_loop import CommandLoopThreaded
 from gridplayer.multiprocess.job_object import create_kill_on_close_job

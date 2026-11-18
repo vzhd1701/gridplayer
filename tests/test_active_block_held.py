@@ -1,9 +1,9 @@
 from types import SimpleNamespace
 
 import pytest
-from PyQt5.QtCore import QEvent, QPointF, Qt
-from PyQt5.QtGui import QMouseEvent
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import QEvent, QPointF, Qt
+from PyQt6.QtGui import QMouseEvent
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.player.managers import active_block
 from gridplayer.player.managers.active_block import ActiveBlockManager

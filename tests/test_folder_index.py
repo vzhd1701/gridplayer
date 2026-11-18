@@ -3,7 +3,7 @@
 from pathlib import Path
 
 import pytest
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.utils import folder_index as folder_index_module
 from gridplayer.utils.folder_index import FolderIndex, ScanKey

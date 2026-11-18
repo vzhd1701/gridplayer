@@ -5,9 +5,9 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from PyQt5.QtCore import QObject, QRect, QSettings, pyqtSignal
-from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt6.QtCore import QObject, QRect, QSettings, pyqtSignal
+from PyQt6.QtGui import QColor
+from PyQt6.QtWidgets import QApplication, QWidget
 
 from gridplayer.models.media_list import ListItem, MediaList
 from gridplayer.player.managers.lists import ListsManager

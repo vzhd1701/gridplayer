@@ -6,8 +6,8 @@ is, the others laid out beside it; Fit Tiles to Window makes it bigger
 with them.
 """
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QDrag
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QDrag
 
 from gridplayer.params.static import TileOverlap
 from tests.real_app.scenarios.free_tiles import (

@@ -12,8 +12,8 @@ frame.
 from unittest.mock import MagicMock
 
 import pytest
-from PyQt5.QtCore import QObject, pyqtSignal
-from PyQt5.QtWidgets import QWidget
+from PyQt6.QtCore import QObject, pyqtSignal
+from PyQt6.QtWidgets import QWidget
 
 from gridplayer.player.managers.video_blocks import VideoBlocksManager
 from gridplayer.utils.qt import MILLISECONDS

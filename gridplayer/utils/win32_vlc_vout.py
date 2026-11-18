@@ -27,9 +27,9 @@ import math
 from ctypes import wintypes
 from typing import NamedTuple
 
-from PyQt5.QtCore import QRect
-from PyQt5.QtGui import QGuiApplication
-from PyQt5.QtWidgets import QWidget
+from PyQt6.QtCore import QRect
+from PyQt6.QtGui import QGuiApplication
+from PyQt6.QtWidgets import QWidget
 
 Rect = tuple[int, int, int, int]
 # a rect in fractions of a pixel, as a Qt one comes out in the window's own

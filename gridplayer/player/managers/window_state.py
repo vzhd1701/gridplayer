@@ -1,8 +1,8 @@
 import base64
 
-from PyQt5 import sip
-from PyQt5.QtCore import QEvent, QObject, QSize, Qt, QTimer, pyqtSignal, pyqtSlot
-from PyQt5.QtWidgets import QApplication
+from PyQt6 import sip
+from PyQt6.QtCore import QEvent, QObject, QSize, Qt, QTimer, pyqtSignal, pyqtSlot
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.params import env
 from gridplayer.params.static import PLAYER_INITIAL_SIZE, PLAYER_MIN_SIZE, WindowState

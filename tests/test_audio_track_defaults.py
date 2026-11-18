@@ -1,6 +1,6 @@
 import pytest
-from PyQt5.QtCore import QSettings
-from PyQt5.QtWidgets import QApplication, QComboBox, QLineEdit
+from PyQt6.QtCore import QSettings
+from PyQt6.QtWidgets import QApplication, QComboBox, QLineEdit
 
 from gridplayer.models.audio_selection import (
     AudioDefault,

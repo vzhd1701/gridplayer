@@ -3,8 +3,8 @@ import sys
 from types import SimpleNamespace
 
 import pytest
-from PyQt5.QtCore import QEvent, QPoint, QRect, QSize, Qt
-from PyQt5.QtGui import (
+from PyQt6.QtCore import QEvent, QPoint, QRect, QSize, Qt
+from PyQt6.QtGui import (
     QColor,
     QFont,
     QFontMetrics,
@@ -13,7 +13,7 @@ from PyQt5.QtGui import (
     QKeyEvent,
     QTextDocument,
 )
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QApplication,
     QLabel,
     QListWidget,

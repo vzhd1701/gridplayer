@@ -1,7 +1,7 @@
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 
-from PyQt5.QtCore import (
+from PyQt6.QtCore import (
     QAbstractAnimation,
     QEasingCurve,
     QEvent,
@@ -12,8 +12,8 @@ from PyQt5.QtCore import (
     QVariantAnimation,
     pyqtSignal,
 )
-from PyQt5.QtGui import QIcon, QPainter
-from PyQt5.QtWidgets import (
+from PyQt6.QtGui import QIcon, QPainter
+from PyQt6.QtWidgets import (
     QAbstractButton,
     QApplication,
     QHBoxLayout,

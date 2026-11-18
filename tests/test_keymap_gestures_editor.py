@@ -2,7 +2,7 @@
 own at the bottom of the tree."""
 
 import pytest
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication
 
 import gridplayer.widgets.keymap_tree_view as tree_module
 from gridplayer.params.gestures import (

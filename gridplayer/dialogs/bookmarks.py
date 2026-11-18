@@ -11,7 +11,7 @@ import math
 from enum import IntEnum
 from time import monotonic
 
-from PyQt5.QtCore import (
+from PyQt6.QtCore import (
     QAbstractTableModel,
     QEvent,
     QModelIndex,
@@ -23,7 +23,7 @@ from PyQt5.QtCore import (
     QTimer,
     pyqtSignal,
 )
-from PyQt5.QtGui import (
+from PyQt6.QtGui import (
     QColor,
     QContextMenuEvent,
     QCursor,
@@ -35,7 +35,7 @@ from PyQt5.QtGui import (
     QPixmap,
     QPolygonF,
 )
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QAbstractItemView,
     QApplication,
     QDialog,

@@ -1,4 +1,4 @@
-from PyQt5.QtCore import (
+from PyQt6.QtCore import (
     QPoint,
     QRect,
     QRectF,
@@ -6,8 +6,8 @@ from PyQt5.QtCore import (
     Qt,
     pyqtSignal,
 )
-from PyQt5.QtGui import QColor, QGuiApplication, QPainter, QPen
-from PyQt5.QtWidgets import QWidget
+from PyQt6.QtGui import QColor, QGuiApplication, QPainter, QPen
+from PyQt6.QtWidgets import QWidget
 
 from gridplayer.utils.compositor_linux import is_compositor_running
 from gridplayer.utils.qt import translate

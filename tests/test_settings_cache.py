@@ -6,9 +6,9 @@ import time
 from types import SimpleNamespace
 
 import pytest
-from PyQt5.QtCore import QEvent, QSettings, Qt
-from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QApplication, QLabel, QWidget
+from PyQt6.QtCore import QEvent, QSettings, Qt
+from PyQt6.QtTest import QTest
+from PyQt6.QtWidgets import QApplication, QLabel, QWidget
 
 from gridplayer.dialogs import settings as settings_dialog
 from gridplayer.dialogs.settings import SettingsDialog

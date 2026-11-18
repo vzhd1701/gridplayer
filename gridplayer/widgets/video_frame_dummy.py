@@ -1,8 +1,8 @@
 import random
 
-from PyQt5.QtCore import QTimer
-from PyQt5.QtGui import QColor, QPainter
-from PyQt5.QtWidgets import QWidget
+from PyQt6.QtCore import QTimer
+from PyQt6.QtGui import QColor, QPainter
+from PyQt6.QtWidgets import QWidget
 
 from gridplayer.params.static import SeekAim
 from gridplayer.vlc_player.static import Media, MediaInput, VideoTrack

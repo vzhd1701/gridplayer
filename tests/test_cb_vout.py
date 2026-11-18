@@ -620,7 +620,7 @@ def test_playback_not_looked_for_with_audio_only():
 def test_vlc_counts_the_pictures_it_shows(tmp_path):
     """The counts are the only sign a stream VLC froze on its first picture
     has started playing, and "--no-stats" stops VLC keeping them."""
-    from PyQt5.QtCore import QSettings
+    from PyQt6.QtCore import QSettings
 
     from gridplayer.settings import Settings
     from gridplayer.vlc_player.instance import InstanceVLC

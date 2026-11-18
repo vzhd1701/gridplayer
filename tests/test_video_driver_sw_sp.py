@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.params.static import VideoDriver
 from gridplayer.player.managers.video_driver import VideoDriverManager

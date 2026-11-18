@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from PyQt5.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal
 
 from gridplayer.models.grid_state import GridCell
 from gridplayer.models.media_list import MediaList

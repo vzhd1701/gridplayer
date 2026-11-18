@@ -22,8 +22,8 @@ import functools
 import logging
 from enum import Enum, auto
 
-from PyQt5.QtGui import QGuiApplication, QWindow
-from PyQt5.QtWidgets import QWidget
+from PyQt6.QtGui import QGuiApplication, QWindow
+from PyQt6.QtWidgets import QWidget
 
 from gridplayer.params import env
 

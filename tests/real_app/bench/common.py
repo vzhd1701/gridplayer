@@ -8,7 +8,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from PyQt5.QtCore import QEventLoop, QTimer
+from PyQt6.QtCore import QEventLoop, QTimer
 
 MEDIA = Path(os.environ.get("BENCH_MEDIA", "build/bench-media")).resolve()
 

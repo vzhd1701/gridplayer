@@ -1,6 +1,6 @@
 import pytest
-from PyQt5.QtCore import QEvent
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import QEvent
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.dialogs.about import AboutDialog
 from gridplayer.version import (

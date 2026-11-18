@@ -1,7 +1,7 @@
 import pytest
-from PyQt5.QtCore import QPoint, QPointF, Qt
-from PyQt5.QtGui import QWheelEvent
-from PyQt5.QtWidgets import QApplication, QComboBox, QSpinBox, QVBoxLayout, QWidget
+from PyQt6.QtCore import QPoint, QPointF, Qt
+from PyQt6.QtGui import QWheelEvent
+from PyQt6.QtWidgets import QApplication, QComboBox, QSpinBox, QVBoxLayout, QWidget
 
 from gridplayer.widgets.settings_page_scroll_area import PageScrollArea
 

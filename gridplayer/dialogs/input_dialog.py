@@ -1,5 +1,5 @@
-from PyQt5.QtCore import Qt, QTime
-from PyQt5.QtWidgets import (
+from PyQt6.QtCore import Qt, QTime
+from PyQt6.QtWidgets import (
     QCheckBox,
     QDialog,
     QDialogButtonBox,

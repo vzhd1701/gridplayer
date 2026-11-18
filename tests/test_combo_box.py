@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QComboBox
+from PyQt6.QtWidgets import QComboBox
 
 from gridplayer.widgets.combo_box import combo_index
 

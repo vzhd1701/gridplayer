@@ -1,8 +1,8 @@
 import ctypes
 from ctypes import wintypes
 
-from PyQt5.QtCore import QAbstractNativeEventFilter, Qt
-from PyQt5.QtGui import QGuiApplication
+from PyQt6.QtCore import QAbstractNativeEventFilter, Qt
+from PyQt6.QtGui import QGuiApplication
 
 _WM_MOUSEMOVE = 0x0200
 

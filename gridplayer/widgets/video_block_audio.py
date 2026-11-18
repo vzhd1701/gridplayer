@@ -9,7 +9,7 @@ plays within what was loaded is here.
 
 from pathlib import Path
 
-from PyQt5.QtWidgets import QFileDialog
+from PyQt6.QtWidgets import QFileDialog
 
 from gridplayer.dialogs.audio_delay import SetAudioDelayDialog, audio_delay_txt
 from gridplayer.dialogs.input_dialog import QCustomTextInput

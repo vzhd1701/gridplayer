@@ -3,9 +3,9 @@ no GL, no decoding. What just being on screen asks of the compositor and the GPU
 
 import sys
 
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QColor, QImage, QPainter
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtGui import QColor, QImage, QPainter
+from PyQt6.QtWidgets import QApplication, QWidget
 
 seconds = float(sys.argv[1])
 app = QApplication(["bare", "-platform", "xcb"])

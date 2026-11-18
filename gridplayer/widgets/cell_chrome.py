@@ -1,5 +1,5 @@
-from PyQt5.QtCore import QRectF, Qt
-from PyQt5.QtGui import QColor, QPainter, QPen
+from PyQt6.QtCore import QRectF, Qt
+from PyQt6.QtGui import QColor, QPainter, QPen
 
 CHROME_ALPHA = 90
 TEXT_ALPHA = 170

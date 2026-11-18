@@ -80,7 +80,7 @@ def _write_report(text: str) -> None:
 def _check_qt() -> CheckResult:
     global _app
 
-    from PyQt5.QtCore import QT_VERSION_STR
+    from PyQt6.QtCore import QT_VERSION_STR
 
     from gridplayer.main.init_app import init_app
 

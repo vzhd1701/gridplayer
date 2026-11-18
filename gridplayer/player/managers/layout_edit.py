@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QEvent, QTimer
+from PyQt6.QtCore import QEvent, QTimer
 
 from gridplayer.params.static import (
     TILE_CROPS,

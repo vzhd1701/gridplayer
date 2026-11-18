@@ -1,6 +1,6 @@
-from PyQt5.QtCore import QSize, Qt
-from PyQt5.QtGui import QPainter
-from PyQt5.QtWidgets import QSizePolicy, QWidget
+from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtGui import QPainter
+from PyQt6.QtWidgets import QSizePolicy, QWidget
 
 from gridplayer.utils.qt import translate
 from gridplayer.widgets.cell_chrome import (

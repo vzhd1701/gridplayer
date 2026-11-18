@@ -9,9 +9,9 @@ import weakref
 from unittest.mock import MagicMock
 
 import pytest
-from PyQt5 import sip
-from PyQt5.QtCore import QObject, QPoint, QRect, pyqtSignal
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt6 import sip
+from PyQt6.QtCore import QObject, QPoint, QRect, pyqtSignal
+from PyQt6.QtWidgets import QApplication, QWidget
 
 from gridplayer.mpv_player import gl_context
 from gridplayer.mpv_player.renderer import RenderedVideo

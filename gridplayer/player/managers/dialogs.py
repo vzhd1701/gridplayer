@@ -1,4 +1,4 @@
-from PyQt5.QtCore import pyqtSlot
+from PyQt6.QtCore import pyqtSlot
 
 from gridplayer.dialogs.about import AboutDialog
 from gridplayer.dialogs.add_choice import show_failed

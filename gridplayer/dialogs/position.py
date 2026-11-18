@@ -1,6 +1,6 @@
-from PyQt5.QtCore import QEvent, QRectF, QSize, Qt
-from PyQt5.QtGui import QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap
-from PyQt5.QtWidgets import (
+from PyQt6.QtCore import QEvent, QRectF, QSize, Qt
+from PyQt6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPen, QPixmap
+from PyQt6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
     QDialog,

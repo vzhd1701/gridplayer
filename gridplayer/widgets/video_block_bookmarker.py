@@ -12,7 +12,7 @@ The bookmarks themselves are the block's (VideoBlock.bookmarks); this is
 what is done with them.
 """
 
-from PyQt5.QtGui import QIcon
+from PyQt6.QtGui import QIcon
 
 from gridplayer.dialogs.bookmark_rename_dialog import QBookmarkRenameDialog
 from gridplayer.dialogs.bookmarks import BookmarksDialog, held_end_action_txt

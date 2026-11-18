@@ -13,8 +13,8 @@ from pathlib import Path
 from uuid import UUID
 
 from pydantic import ValidationError
-from PyQt5.QtCore import QObject, Qt, QTimer, pyqtSignal
-from PyQt5.QtWidgets import QApplication, QMessageBox
+from PyQt6.QtCore import QObject, Qt, QTimer, pyqtSignal
+from PyQt6.QtWidgets import QApplication, QMessageBox
 
 from gridplayer.dialogs.make_list import MakeFrom, MakeListDialog
 from gridplayer.dialogs.media_list import ListReading, MediaListDialog

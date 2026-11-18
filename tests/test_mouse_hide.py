@@ -4,8 +4,8 @@ is over them."""
 from types import SimpleNamespace
 
 import pytest
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication, QDialog, QWidget
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QApplication, QDialog, QWidget
 
 from gridplayer.player.managers.mouse_hide import MouseHideManager
 

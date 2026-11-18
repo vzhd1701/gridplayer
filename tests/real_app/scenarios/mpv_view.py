@@ -6,8 +6,8 @@ by the picture too, and a paused live stream stays up."""
 
 import subprocess
 
-from PyQt5.QtCore import QPoint, QRect
-from PyQt5.QtGui import QColor, QImage
+from PyQt6.QtCore import QPoint, QRect
+from PyQt6.QtGui import QColor, QImage
 
 from gridplayer.params.static import VideoAnchor, VideoCellViewMode, VideoTransform
 from gridplayer.utils.screenshots import transformed_image

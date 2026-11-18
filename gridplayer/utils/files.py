@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 
 from pydantic import ValidationError
-from PyQt5.QtCore import QByteArray, QMimeData
+from PyQt6.QtCore import QByteArray, QMimeData
 
 from gridplayer.models.media_list import MediaList
 from gridplayer.models.video import VideoBlockMime

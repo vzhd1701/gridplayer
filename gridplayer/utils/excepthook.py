@@ -2,8 +2,8 @@ import contextlib
 import logging
 import traceback
 
-from PyQt5.QtGui import QDrag
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtGui import QDrag
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.dialogs.exception import ExceptionDialog
 from gridplayer.utils.misc import force_terminate

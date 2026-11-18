@@ -13,8 +13,8 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock
 
 import pytest
-from PyQt5.QtCore import QPoint, QRect, QSettings
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import QPoint, QRect, QSettings
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.models.playlist import Playlist, PlaylistVideoDefaults
 from gridplayer.models.video import Video

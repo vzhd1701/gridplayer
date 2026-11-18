@@ -1,8 +1,8 @@
 import contextlib
 
-from PyQt5 import QtWidgets
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QDropEvent
+from PyQt6 import QtWidgets
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QDropEvent
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.models.resolver_patterns import (

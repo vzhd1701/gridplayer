@@ -2,8 +2,8 @@
 go on both sides of it, cut no more than the Crop Limit; Crop Limit Off
 keeps their shapes; set from its menu item, it arranges them again."""
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QDrag
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QDrag
 
 from tests.real_app.scenarios.free_tiles import (
     HEIGHT,

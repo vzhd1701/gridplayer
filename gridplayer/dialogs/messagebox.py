@@ -5,9 +5,9 @@ do. Asked as QMessageBox is, so it takes its place wherever one was."""
 import math
 import re
 
-from PyQt5.QtCore import QSize, Qt
-from PyQt5.QtGui import QIcon, QTextDocument
-from PyQt5.QtWidgets import (
+from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtGui import QIcon, QTextDocument
+from PyQt6.QtWidgets import (
     QAbstractButton,
     QApplication,
     QCheckBox,

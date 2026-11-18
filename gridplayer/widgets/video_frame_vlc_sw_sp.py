@@ -1,6 +1,6 @@
 from threading import Event
 
-from PyQt5.QtCore import Qt, QThread, QTimer, pyqtSignal, pyqtSlot
+from PyQt6.QtCore import Qt, QThread, QTimer, pyqtSignal, pyqtSlot
 
 from gridplayer.params.static import (
     AudioChannelMode,

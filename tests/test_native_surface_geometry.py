@@ -2,8 +2,8 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from PyQt5.QtCore import QMargins, QSize, Qt
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt6.QtCore import QMargins, QSize, Qt
+from PyQt6.QtWidgets import QApplication, QWidget
 
 import gridplayer.widgets.video_frame_vlc_base as vlc_base
 from gridplayer.params.static import (

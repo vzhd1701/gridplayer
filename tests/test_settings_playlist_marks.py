@@ -2,8 +2,8 @@
 for: a mark on each one's row, and a word at the top of its page."""
 
 import pytest
-from PyQt5.QtCore import QEvent, QObject, QSettings
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt6.QtCore import QEvent, QObject, QSettings
+from PyQt6.QtWidgets import QApplication, QWidget
 
 from gridplayer.dialogs import settings as settings_dialog
 from gridplayer.dialogs.settings import SettingsDialog

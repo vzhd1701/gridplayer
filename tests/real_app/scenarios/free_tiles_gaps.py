@@ -5,9 +5,9 @@ Alt. One dragged over a big tile into a corner snaps to the margin another
 has in the corner across.
 """
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QDrag
-from PyQt5.QtTest import QTest
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QDrag
+from PyQt6.QtTest import QTest
 
 from gridplayer.params.static import TileSnap
 from tests.real_app.scenarios.free_tiles import (

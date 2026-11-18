@@ -6,10 +6,10 @@ A step there is no room for is greyed. In a narrow cell the buttons go
 under the name and the close button.
 """
 
-from PyQt5.QtCore import QEvent, QPoint, QPointF, Qt
-from PyQt5.QtGui import QCursor, QMouseEvent
-from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import QEvent, QPoint, QPointF, Qt
+from PyQt6.QtGui import QCursor, QMouseEvent
+from PyQt6.QtTest import QTest
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.params.menu import SECTIONS
 from gridplayer.params.static import GridMode

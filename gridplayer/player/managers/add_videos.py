@@ -9,8 +9,8 @@ from pathlib import Path
 from typing import NamedTuple
 
 from pydantic import ValidationError
-from PyQt5.QtCore import QObject, Qt, QTimer, pyqtSignal
-from PyQt5.QtWidgets import QApplication, QDialog, QFileDialog
+from PyQt6.QtCore import QObject, Qt, QTimer, pyqtSignal
+from PyQt6.QtWidgets import QApplication, QDialog, QFileDialog
 
 from gridplayer.dialogs.add_choice import (
     AddChoiceDialog,

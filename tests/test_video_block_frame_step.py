@@ -1,8 +1,8 @@
 from itertools import pairwise
 
 import pytest
-from PyQt5.QtCore import QSettings
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import QSettings
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.models.video import Video
 from gridplayer.params.static import VideoInitialState

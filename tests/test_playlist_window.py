@@ -6,8 +6,8 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from PyQt5.QtCore import QEvent, QPoint, QSettings, pyqtSignal
-from PyQt5.QtWidgets import QApplication, QMessageBox, QWidget
+from PyQt6.QtCore import QEvent, QPoint, QSettings, pyqtSignal
+from PyQt6.QtWidgets import QApplication, QMessageBox, QWidget
 
 from gridplayer.dialogs import playlist_settings
 from gridplayer.dialogs.messagebox import QCustomMessageBox

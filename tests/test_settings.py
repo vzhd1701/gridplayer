@@ -1,5 +1,5 @@
 import pytest
-from PyQt5.QtCore import QSettings
+from PyQt6.QtCore import QSettings
 
 from gridplayer.params.static import (
     UnsavedChangesMode,

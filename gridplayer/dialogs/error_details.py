@@ -2,9 +2,9 @@
 read: what it is, where it broke and its code, and the error itself as it
 was raised, to copy into a bug report."""
 
-from PyQt5.QtCore import QSize, Qt, pyqtSignal
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import (
+from PyQt6.QtCore import QSize, Qt, pyqtSignal
+from PyQt6.QtGui import QIcon
+from PyQt6.QtWidgets import (
     QApplication,
     QDialog,
     QFormLayout,

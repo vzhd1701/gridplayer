@@ -4,7 +4,7 @@ from threading import Lock
 from uuid import uuid4
 
 import pytest
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.multiprocess.safe_shared_memory import SafeSharedMemory
 from gridplayer.vlc_player import rgb_buffer

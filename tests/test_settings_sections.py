@@ -1,7 +1,7 @@
 import pytest
-from PyQt5.QtCore import QEvent, QObject, QPoint, QSize, Qt
-from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QApplication, QLayout
+from PyQt6.QtCore import QEvent, QObject, QPoint, QSize, Qt
+from PyQt6.QtGui import QColor
+from PyQt6.QtWidgets import QApplication, QLayout
 
 from gridplayer.dialogs.paged_dialog import SECTION_PAGE_ROLE
 from gridplayer.dialogs.settings import SettingsDialog

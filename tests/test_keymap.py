@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import pytest
-from PyQt5.QtCore import QEvent, QPoint, Qt
-from PyQt5.QtGui import QKeyEvent, QKeySequence, QMouseEvent, QWheelEvent
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import QEvent, QPoint, Qt
+from PyQt6.QtGui import QKeyEvent, QKeySequence, QMouseEvent, QWheelEvent
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.params.actions import ACTIONS
 from gridplayer.utils.keymap import (

@@ -7,7 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock
 
 import pytest
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.dialogs.crop import SetCropDialog
 from gridplayer.models.media_list import ItemShape, ListItem, MediaList

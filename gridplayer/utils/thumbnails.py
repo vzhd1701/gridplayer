@@ -10,7 +10,7 @@ from collections import OrderedDict
 from collections.abc import Callable, Collection
 from concurrent.futures import Future, ThreadPoolExecutor
 
-from PyQt5.QtCore import (
+from PyQt6.QtCore import (
     QBuffer,
     QIODevice,
     QObject,
@@ -19,7 +19,7 @@ from PyQt5.QtCore import (
     Qt,
     pyqtSignal,
 )
-from PyQt5.QtGui import QImage, QImageReader
+from PyQt6.QtGui import QImage, QImageReader
 
 from gridplayer.utils import cache
 from gridplayer.utils.network_errors import failure_txt

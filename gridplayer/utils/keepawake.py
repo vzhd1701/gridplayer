@@ -62,8 +62,8 @@ if env.IS_WINDOWS:
 
 
 elif env.IS_LINUX:
-    from PyQt5.QtCore import QMetaType
-    from PyQt5.QtDBus import (
+    from PyQt6.QtCore import QMetaType
+    from PyQt6.QtDBus import (
         QDBusArgument,
         QDBusConnection,
         QDBusInterface,

@@ -9,7 +9,7 @@ shows greyed out.
 
 from unittest.mock import patch
 
-from PyQt5.QtGui import qGray
+from PyQt6.QtGui import qGray
 
 from gridplayer.mpv_player import abilities, deinterlace, player
 from gridplayer.params.actions import ACTIONS

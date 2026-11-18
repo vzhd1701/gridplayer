@@ -1,6 +1,6 @@
 from multiprocessing import Array, Lock, Value
 
-from PyQt5.QtCore import QTimer, pyqtSignal
+from PyQt6.QtCore import QTimer, pyqtSignal
 
 from gridplayer.multiprocess.safe_shared_memory import SafeSharedMemory
 from gridplayer.params.static import PLAYER_ID_LENGTH

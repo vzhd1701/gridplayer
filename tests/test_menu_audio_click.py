@@ -10,8 +10,8 @@ from functools import partial
 from types import SimpleNamespace
 
 import pytest
-from PyQt5.QtCore import QObject
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt6.QtCore import QObject
+from PyQt6.QtWidgets import QApplication, QWidget
 
 from gridplayer.models.audio_selection import (
     AudioDefault,

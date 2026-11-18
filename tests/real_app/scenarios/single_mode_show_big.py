@@ -4,9 +4,9 @@ one, it leaves Single Mode. Given Next Video's key, N, Show Big takes it on
 a strip video, and Next Video keeps it on the big one.
 """
 
-from PyQt5.QtCore import QPoint, Qt
-from PyQt5.QtGui import QCursor
-from PyQt5.QtTest import QTest
+from PyQt6.QtCore import QPoint, Qt
+from PyQt6.QtGui import QCursor
+from PyQt6.QtTest import QTest
 
 
 def _big(d):

@@ -1,8 +1,8 @@
 from types import SimpleNamespace
 
 import pytest
-from PyQt5 import sip
-from PyQt5.QtWidgets import QApplication, QDialog, QWidget
+from PyQt6 import sip
+from PyQt6.QtWidgets import QApplication, QDialog, QWidget
 
 from gridplayer.models.grid_state import GridState
 from gridplayer.params.static import GridMode

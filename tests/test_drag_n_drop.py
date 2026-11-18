@@ -2,9 +2,9 @@ import time
 from types import SimpleNamespace
 
 import pytest
-from PyQt5.QtCore import QEvent, QMimeData, QPoint, QPointF, Qt, QUrl
-from PyQt5.QtGui import QDropEvent, QKeyEvent, QMouseEvent
-from PyQt5.QtWidgets import QApplication, QDialog, QLineEdit, QWidget
+from PyQt6.QtCore import QEvent, QMimeData, QPoint, QPointF, Qt, QUrl
+from PyQt6.QtGui import QDropEvent, QKeyEvent, QMouseEvent
+from PyQt6.QtWidgets import QApplication, QDialog, QLineEdit, QWidget
 
 from gridplayer.models.media_list import ListSource, MediaList
 from gridplayer.params.static import DropAction, ListSourceKind

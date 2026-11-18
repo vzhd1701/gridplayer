@@ -12,9 +12,9 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from PyQt5.QtCore import QEvent, QRect, QSettings, QSize
-from PyQt5.QtGui import QColor, QImage
-from PyQt5.QtWidgets import QApplication, QPushButton
+from PyQt6.QtCore import QEvent, QRect, QSettings, QSize
+from PyQt6.QtGui import QColor, QImage
+from PyQt6.QtWidgets import QApplication, QPushButton
 
 from gridplayer.dialogs import settings as settings_dialog
 from gridplayer.dialogs.settings import SettingsDialog

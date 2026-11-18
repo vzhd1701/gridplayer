@@ -1,8 +1,8 @@
 import logging
 import os
 
-from PyQt5.QtCore import QObject, QTimer, pyqtSlot
-from PyQt5.QtDBus import QDBus, QDBusConnection, QDBusMessage, QDBusVariant
+from PyQt6.QtCore import QObject, QTimer, pyqtSlot
+from PyQt6.QtDBus import QDBus, QDBusConnection, QDBusMessage, QDBusVariant
 
 logger = logging.getLogger(__name__)
 

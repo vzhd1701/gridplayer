@@ -9,7 +9,7 @@ import logging
 from pathlib import Path
 
 import pytest
-from PyQt5.QtCore import QSettings
+from PyQt6.QtCore import QSettings
 
 from gridplayer.settings import Settings
 from gridplayer.vlc_player.instance import InstanceVLC

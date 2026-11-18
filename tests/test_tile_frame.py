@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QPointF, QRect, QRectF
+from PyQt6.QtCore import QPointF, QRect, QRectF
 
 from gridplayer.utils.layout.free_tiles import MOVE
 from gridplayer.widgets.tile_frame import (

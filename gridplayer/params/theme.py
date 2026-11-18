@@ -1,7 +1,7 @@
 from types import MappingProxyType
 
-from PyQt5.QtGui import QColor, QIcon, QPalette, QTextCursor
-from PyQt5.QtWidgets import (
+from PyQt6.QtGui import QColor, QIcon, QPalette, QTextCursor
+from PyQt6.QtWidgets import (
     QApplication,
     QLabel,
     QProxyStyle,

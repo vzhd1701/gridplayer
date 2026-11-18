@@ -1,8 +1,8 @@
 import math
 from typing import NamedTuple
 
-from PyQt5.QtCore import QEvent, QPoint, QPointF, QRect, QRectF, Qt, pyqtSignal
-from PyQt5.QtGui import (
+from PyQt6.QtCore import QEvent, QPoint, QPointF, QRect, QRectF, Qt, pyqtSignal
+from PyQt6.QtGui import (
     QBitmap,
     QBrush,
     QColor,
@@ -19,7 +19,7 @@ from PyQt5.QtGui import (
     QPolygonF,
     QRegion,
 )
-from PyQt5.QtWidgets import QApplication, QSizePolicy, QWidget
+from PyQt6.QtWidgets import QApplication, QSizePolicy, QWidget
 
 from gridplayer.models.seek_mark import SeekMarkKind, chapter_at, segments_at
 from gridplayer.params.static import OVERLAY_ACTIVITY_EVENT

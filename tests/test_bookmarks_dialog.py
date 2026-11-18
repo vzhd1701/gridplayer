@@ -9,10 +9,10 @@ import re
 from unittest.mock import MagicMock
 
 import pytest
-from PyQt5.QtCore import QPoint, QSettings, Qt, QTimer
-from PyQt5.QtGui import QColor, QContextMenuEvent, QIcon, QKeySequence, QPalette
-from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import (
+from PyQt6.QtCore import QPoint, QSettings, Qt, QTimer
+from PyQt6.QtGui import QColor, QContextMenuEvent, QIcon, QKeySequence, QPalette
+from PyQt6.QtTest import QTest
+from PyQt6.QtWidgets import (
     QAbstractItemView,
     QApplication,
     QDialog,

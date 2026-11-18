@@ -1,7 +1,7 @@
 import pytest
-from PyQt5.QtCore import QRectF
-from PyQt5.QtGui import QImage, QPainter
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import QRectF
+from PyQt6.QtGui import QImage, QPainter
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.utils.video_errors import ShownError
 from gridplayer.widgets import video_status as status_module

@@ -4,7 +4,7 @@ comes next, and when the list has been played through."""
 from pathlib import Path
 
 import pytest
-from PyQt5.QtCore import QSettings
+from PyQt6.QtCore import QSettings
 
 from gridplayer.models.media_list import ListItem, MediaList
 from gridplayer.models.video import Video

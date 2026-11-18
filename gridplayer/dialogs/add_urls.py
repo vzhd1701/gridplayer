@@ -1,8 +1,8 @@
 from collections.abc import Iterable
 from itertools import starmap
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import (
     QApplication,
     QDialog,
     QDialogButtonBox,

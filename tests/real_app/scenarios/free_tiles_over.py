@@ -8,8 +8,8 @@ it likes until it is clear of it, and then stops at its edge. Closed and
 opened again, a tile is where it was, as deep among the others.
 """
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QDrag
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QDrag
 
 from gridplayer.params.static import TileOverlap
 from tests.real_app.scenarios.free_tiles import (

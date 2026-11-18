@@ -1,6 +1,6 @@
 import subprocess
 
-from PyQt5.QtCore import QEvent, pyqtSignal
+from PyQt6.QtCore import QEvent, pyqtSignal
 
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings

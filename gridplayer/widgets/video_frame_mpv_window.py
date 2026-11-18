@@ -17,9 +17,9 @@ import math
 from contextlib import suppress
 from typing import NamedTuple
 
-from PyQt5.QtCore import QMargins, QRect, Qt, pyqtSignal
-from PyQt5.QtGui import QImage, QPixmap
-from PyQt5.QtWidgets import QWidget
+from PyQt6.QtCore import QMargins, QRect, Qt, pyqtSignal
+from PyQt6.QtGui import QImage, QPixmap
+from PyQt6.QtWidgets import QWidget
 
 from gridplayer.mpv_player.player import MpvPlayer, WindowPicture
 from gridplayer.mpv_player.renderer import MpvRenderService

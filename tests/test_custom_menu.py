@@ -1,7 +1,7 @@
 import pytest
-from PyQt5.QtCore import QEvent, QSize
-from PyQt5.QtGui import QColor, QIcon, QPixmap
-from PyQt5.QtWidgets import QAction, QApplication, QWidget
+from PyQt6.QtCore import QEvent, QSize
+from PyQt6.QtGui import QAction, QColor, QIcon, QPixmap
+from PyQt6.QtWidgets import QApplication, QWidget
 
 from gridplayer.main.init_resources import init_resources
 from gridplayer.params.theme import current_colors

@@ -1,8 +1,8 @@
 from multiprocessing import Semaphore
 from threading import Event
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QWidget
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QWidget
 
 from gridplayer.params import env
 from gridplayer.vlc_player.instance import InstanceProcessVLC

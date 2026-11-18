@@ -14,10 +14,10 @@ it. Esc is done: the videos' overlays
 back, and only the cells with videos shown.
 """
 
-from PyQt5.QtCore import QEvent, QPoint, QPointF, Qt
-from PyQt5.QtGui import QCursor, QMouseEvent
-from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import QEvent, QPoint, QPointF, Qt
+from PyQt6.QtGui import QCursor, QMouseEvent
+from PyQt6.QtTest import QTest
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.params.static import GridMode
 

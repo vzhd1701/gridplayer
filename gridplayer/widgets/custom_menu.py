@@ -1,5 +1,5 @@
-from PyQt5.QtCore import QPoint, QPointF, QRect, QRectF, Qt
-from PyQt5.QtGui import (
+from PyQt6.QtCore import QPoint, QPointF, QRect, QRectF, Qt
+from PyQt6.QtGui import (
     QColor,
     QIcon,
     QIconEngine,
@@ -8,7 +8,7 @@ from PyQt5.QtGui import (
     QPen,
     QPixmap,
 )
-from PyQt5.QtWidgets import QMenu, QProxyStyle, QStyle
+from PyQt6.QtWidgets import QMenu, QProxyStyle, QStyle
 
 from gridplayer.params.theme import current_colors
 

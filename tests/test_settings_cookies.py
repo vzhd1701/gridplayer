@@ -2,8 +2,8 @@ import re
 from pathlib import Path
 
 import pytest
-from PyQt5.QtCore import QEvent, Qt
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import QEvent, Qt
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.dialogs import settings as settings_dialog
 from gridplayer.dialogs.settings import SettingsDialog

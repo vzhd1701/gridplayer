@@ -1,5 +1,5 @@
-from PyQt5.QtCore import QEvent, QObject, Qt, QTimer
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import QEvent, QObject, Qt, QTimer
+from PyQt6.QtWidgets import QApplication
 
 # how soon after a popup closes, not by a pick, a click is taken for the one
 # that closed it

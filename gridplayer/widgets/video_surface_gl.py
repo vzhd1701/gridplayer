@@ -23,8 +23,8 @@ import contextlib
 import functools
 import logging
 
-from PyQt5 import sip
-from PyQt5.QtCore import (
+from PyQt6 import sip
+from PyQt6.QtCore import (
     QCoreApplication,
     QEvent,
     QPoint,
@@ -35,13 +35,10 @@ from PyQt5.QtCore import (
     QTimer,
     pyqtSignal,
 )
-from PyQt5.QtGui import (
-    QImage,
-    QOpenGLFramebufferObject,
-    QOpenGLTextureBlitter,
-    QPainter,
-)
-from PyQt5.QtWidgets import QOpenGLWidget, QWidget
+from PyQt6.QtGui import QImage, QPainter
+from PyQt6.QtOpenGL import QOpenGLFramebufferObject, QOpenGLTextureBlitter
+from PyQt6.QtOpenGLWidgets import QOpenGLWidget
+from PyQt6.QtWidgets import QWidget
 
 from gridplayer.mpv_player.gl_context import qt_gl_functions
 from gridplayer.utils.aspect_calc import ViewPlacement

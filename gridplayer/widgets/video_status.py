@@ -12,8 +12,8 @@ import math
 import time
 from enum import Enum, auto
 
-from PyQt5.QtCore import QPointF, QRect, QRectF, Qt, QTimer
-from PyQt5.QtGui import (
+from PyQt6.QtCore import QPointF, QRect, QRectF, Qt, QTimer
+from PyQt6.QtGui import (
     QColor,
     QFont,
     QFontMetrics,
@@ -22,7 +22,7 @@ from PyQt5.QtGui import (
     QPainterPath,
     QPen,
 )
-from PyQt5.QtWidgets import QGraphicsOpacityEffect, QSizePolicy, QWidget
+from PyQt6.QtWidgets import QGraphicsOpacityEffect, QSizePolicy, QWidget
 
 from gridplayer.utils.qt import translate
 from gridplayer.utils.video_errors import ShownError

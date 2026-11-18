@@ -300,7 +300,7 @@ def test_a_window_with_no_room_gets_the_picture_stretched_over_it():
 def test_a_picture_less_than_a_pixel_high_is_placed_one_high():
     from unittest.mock import MagicMock
 
-    from PyQt5.QtCore import QSize
+    from PyQt6.QtCore import QSize
 
     from gridplayer.widgets.video_frame_mpv_window import VideoFrameMpvWindow
 

@@ -6,9 +6,9 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from PyQt5.QtCore import QPoint
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QMenu, QSystemTrayIcon
+from PyQt6.QtCore import QPoint
+from PyQt6.QtGui import QIcon
+from PyQt6.QtWidgets import QMenu, QSystemTrayIcon
 
 from gridplayer.utils import win32_tray
 from gridplayer.utils.win32_tray import (

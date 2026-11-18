@@ -1,8 +1,8 @@
 """Generated submenus, made afresh each time a menu opens: gone with it."""
 
 import pytest
-from PyQt5.QtCore import QEvent, QObject
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt6.QtCore import QEvent, QObject
+from PyQt6.QtWidgets import QApplication, QWidget
 
 from gridplayer.player.managers.actions import QDynamicAction
 from gridplayer.player.managers.menu import _add_action

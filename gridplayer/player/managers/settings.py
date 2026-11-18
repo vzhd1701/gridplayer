@@ -1,5 +1,5 @@
-from PyQt5 import sip
-from PyQt5.QtCore import pyqtSignal
+from PyQt6 import sip
+from PyQt6.QtCore import pyqtSignal
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.settings import SettingsDialog

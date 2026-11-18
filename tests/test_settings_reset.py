@@ -9,8 +9,8 @@ default if a later version changes it.
 from types import SimpleNamespace
 
 import pytest
-from PyQt5.QtCore import QEvent, QSettings
-from PyQt5.QtWidgets import QApplication, QDialogButtonBox, QWidget
+from PyQt6.QtCore import QEvent, QSettings
+from PyQt6.QtWidgets import QApplication, QDialogButtonBox, QWidget
 
 from gridplayer.dialogs import settings as settings_dialog
 from gridplayer.dialogs.settings import SettingsDialog

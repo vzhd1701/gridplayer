@@ -1,7 +1,7 @@
 import pytest
-from PyQt5.QtCore import QEvent, Qt
-from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import QEvent, Qt
+from PyQt6.QtTest import QTest
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.widgets.keymap_tree_view import KeymapEditor
 from gridplayer.widgets.settings_controls import Switch, ToggleLabel

@@ -6,8 +6,8 @@ back. Let go of near the window's edge, it lands against it, unless Pull
 to Edge is off. Sized by its edge, it is locked at that size, and the window
 resized, the others are arranged around it, none over another."""
 
-from PyQt5.QtCore import QPoint, Qt
-from PyQt5.QtGui import QDrag
+from PyQt6.QtCore import QPoint, Qt
+from PyQt6.QtGui import QDrag
 
 from gridplayer.params.menu import SUBMENUS
 from gridplayer.params.static import TilePull

@@ -1,9 +1,9 @@
 """What a combo does about a value it doesn't have, and about a list too long
 to draw in one column."""
 
-from PyQt5.QtCore import QModelIndex, Qt
-from PyQt5.QtGui import QPainter, QPalette, QStandardItemModel
-from PyQt5.QtWidgets import (
+from PyQt6.QtCore import QModelIndex, Qt
+from PyQt6.QtGui import QPainter, QPalette, QStandardItemModel
+from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,
     QStyle,

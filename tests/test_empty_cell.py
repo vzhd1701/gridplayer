@@ -1,6 +1,6 @@
 import pytest
-from PyQt5.QtCore import QSize
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt6.QtCore import QSize
+from PyQt6.QtWidgets import QApplication, QWidget
 
 from gridplayer.utils.drop_zone import DropIndicator
 from gridplayer.widgets.cell_chrome import (

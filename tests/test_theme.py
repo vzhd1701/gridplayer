@@ -1,6 +1,6 @@
 import pytest
-from PyQt5.QtGui import QPalette
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtGui import QPalette
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.params.theme import (
     THEME_DARK,
@@ -73,7 +73,7 @@ def test_apply_theme_sets_app_palette():
 
 
 def test_apply_theme_recolors_html_links():
-    from PyQt5.QtWidgets import QLabel, QTextBrowser
+    from PyQt6.QtWidgets import QLabel, QTextBrowser
 
     from gridplayer.params.theme import apply_theme
 
@@ -115,7 +115,7 @@ def test_apply_theme_recolors_html_links():
 def test_dialog_button_icons_stripped_by_proxy_style(mocker):
     mocker.patch("gridplayer.params.theme.env.IS_LINUX", True)
 
-    from PyQt5.QtWidgets import QStyle
+    from PyQt6.QtWidgets import QStyle
 
     from gridplayer.params import theme as theme_mod
     from gridplayer.params.theme import apply_theme, create_fusion_style
@@ -147,7 +147,7 @@ def test_html_set_after_the_theme_still_gets_theme_links():
     on a dark base is barely there.
     """
 
-    from PyQt5.QtWidgets import QLabel
+    from PyQt6.QtWidgets import QLabel
 
     from gridplayer.params.theme import apply_theme, set_html_with_links
 

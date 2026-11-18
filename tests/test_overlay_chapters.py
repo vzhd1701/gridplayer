@@ -4,8 +4,8 @@ import math
 import re
 
 import pytest
-from PyQt5.QtCore import QPoint, Qt
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt6.QtCore import QPoint, Qt
+from PyQt6.QtWidgets import QApplication, QWidget
 
 from gridplayer.models.seek_mark import SeekMark, chapter_at
 from gridplayer.utils.time_txt import ms_time_txt

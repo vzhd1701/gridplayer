@@ -5,10 +5,10 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from PyQt5.QtCore import QEvent, QObject, QSettings, pyqtSignal
-from PyQt5.QtGui import QIcon
-from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QApplication, QSystemTrayIcon, QWidget
+from PyQt6.QtCore import QEvent, QObject, QSettings, pyqtSignal
+from PyQt6.QtGui import QIcon
+from PyQt6.QtTest import QTest
+from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QWidget
 
 from gridplayer.dialogs import settings as settings_dialog
 from gridplayer.dialogs.settings import SettingsDialog

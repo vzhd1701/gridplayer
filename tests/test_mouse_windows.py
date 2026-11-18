@@ -17,7 +17,7 @@ def _move(w_param):
 
 @pytest.fixture
 def qt_buttons(mocker):
-    from PyQt5.QtCore import Qt
+    from PyQt6.QtCore import Qt
 
     from gridplayer.utils import mouse_windows
 
@@ -59,7 +59,7 @@ def test_a_move_saying_a_button_is_held_is_left_as_it_is(user32):
 
 
 def test_no_button_held_before_the_move_is_not_asked_about(user32, qt_buttons):
-    from PyQt5.QtCore import Qt
+    from PyQt6.QtCore import Qt
 
     qt_buttons.return_value = Qt.MouseButton.NoButton
 

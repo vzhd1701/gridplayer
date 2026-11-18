@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QObject
+from PyQt6.QtCore import QObject
 
 from gridplayer.utils.command_helpers import AND, NOT, OR
 

@@ -1,7 +1,7 @@
 """What the URL resolver worker reports back for each kind of outcome."""
 
 import pytest
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.models.stream import Stream, Streams
 from gridplayer.utils.url_resolve.static import (

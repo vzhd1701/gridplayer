@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 import pytest
-from PyQt5.QtCore import QSettings
+from PyQt6.QtCore import QSettings
 
 from gridplayer.models.playlist import Playlist
 from gridplayer.models.subtitle_selection import (

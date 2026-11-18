@@ -9,7 +9,7 @@ import os
 import time
 
 from common import clips_for, nested, usage
-from PyQt5.QtCore import QElapsedTimer, QTimer
+from PyQt6.QtCore import QElapsedTimer, QTimer
 
 DRIVER = os.environ["DRIVER"]
 CELLS = int(os.environ.get("CELLS", "9"))

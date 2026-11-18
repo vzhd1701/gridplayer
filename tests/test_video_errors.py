@@ -12,8 +12,8 @@ from unittest.mock import MagicMock
 
 import pytest
 import requests
-from PyQt5.QtCore import QSettings
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt6.QtCore import QSettings
+from PyQt6.QtWidgets import QApplication, QWidget
 from yt_dlp.utils import DownloadError
 
 from gridplayer.dialogs.error_details import ErrorDetailsDialog, details_txt

@@ -3,7 +3,7 @@
 from types import SimpleNamespace
 
 import pytest
-from PyQt5.QtDBus import QDBusMessage, QDBusVariant
+from PyQt6.QtDBus import QDBusMessage, QDBusVariant
 
 from gridplayer.utils import darkmode_linux
 

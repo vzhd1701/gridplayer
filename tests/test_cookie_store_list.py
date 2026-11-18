@@ -3,7 +3,7 @@ import time
 from datetime import datetime, timezone
 
 import pytest
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QApplication,
     QFileDialog,
     QTableWidgetSelectionRange,

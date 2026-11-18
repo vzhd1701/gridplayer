@@ -2,10 +2,10 @@ from operator import attrgetter
 from types import SimpleNamespace
 
 import pytest
-from PyQt5 import sip
-from PyQt5.QtCore import QEvent, QObject, QPoint, QPointF, QRect, Qt
-from PyQt5.QtGui import QContextMenuEvent, QKeyEvent, QMouseEvent, QWindow
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt6 import sip
+from PyQt6.QtCore import QEvent, QObject, QPoint, QPointF, QRect, Qt
+from PyQt6.QtGui import QContextMenuEvent, QKeyEvent, QMouseEvent, QWindow
+from PyQt6.QtWidgets import QApplication, QWidget
 
 import gridplayer.player.managers.zoom_select as zoom_select_module
 import gridplayer.utils.keymap as keymap_module

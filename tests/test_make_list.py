@@ -7,9 +7,9 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from PyQt5.QtCore import QSettings
-from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QWidget
+from PyQt6.QtCore import QSettings
+from PyQt6.QtTest import QTest
+from PyQt6.QtWidgets import QWidget
 
 from gridplayer.dialogs.make_list import MakeFrom, MakeListChoice, MakeListDialog
 from gridplayer.models.media_list import ListItem, MediaList

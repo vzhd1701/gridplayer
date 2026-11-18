@@ -6,9 +6,9 @@ from operator import attrgetter
 from pathlib import Path
 
 from pydantic_extra_types.color import Color
-from PyQt5.QtCore import QSize, Qt, QTimer, pyqtSignal
-from PyQt5.QtGui import QCursor
-from PyQt5.QtWidgets import QStackedLayout, QWidget
+from PyQt6.QtCore import QSize, Qt, QTimer, pyqtSignal
+from PyQt6.QtGui import QCursor
+from PyQt6.QtWidgets import QStackedLayout, QWidget
 
 from gridplayer.dialogs.input_dialog import (
     QCustomSpinboxTimeInput,

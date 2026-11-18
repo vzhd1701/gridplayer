@@ -8,8 +8,8 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from PyQt5.QtCore import QEvent, QPoint, Qt
-from PyQt5.QtGui import QMouseEvent, QWheelEvent
+from PyQt6.QtCore import QEvent, QPoint, Qt
+from PyQt6.QtGui import QMouseEvent, QWheelEvent
 
 from gridplayer.player.managers.actions import ActionsManager
 from gridplayer.utils.keymap import WHEEL_NOTCH, WHEEL_PAUSE_MS, WheelNotches

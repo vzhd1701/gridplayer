@@ -14,7 +14,7 @@ import base64
 import functools
 import math
 
-from PyQt5.QtCore import (
+from PyQt6.QtCore import (
     QBuffer,
     QByteArray,
     QIODevice,
@@ -24,7 +24,7 @@ from PyQt5.QtCore import (
     QRectF,
     Qt,
 )
-from PyQt5.QtGui import (
+from PyQt6.QtGui import (
     QBrush,
     QColor,
     QIcon,
@@ -36,7 +36,7 @@ from PyQt5.QtGui import (
     QPainterPathStroker,
     QPixmap,
 )
-from PyQt5.QtWidgets import QColorDialog, QHBoxLayout, QWidget
+from PyQt6.QtWidgets import QColorDialog, QHBoxLayout, QWidget
 
 from gridplayer.params.theme import current_colors
 from gridplayer.utils.qt import translate

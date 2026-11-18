@@ -5,7 +5,7 @@ from unittest.mock import call
 from uuid import uuid4
 
 import pytest
-from PyQt5.QtWidgets import QApplication, QMessageBox, QWidget
+from PyQt6.QtWidgets import QApplication, QMessageBox, QWidget
 
 from gridplayer.models.audio_selection import AudioExternal
 from gridplayer.models.bookmark import Bookmark

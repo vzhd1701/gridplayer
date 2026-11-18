@@ -4,8 +4,8 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from PyQt5.QtCore import QSettings
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import QSettings
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.dialogs.audio_delay import SetAudioDelayDialog, audio_delay_txt
 from gridplayer.models.video import Video

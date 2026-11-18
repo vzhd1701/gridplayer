@@ -1,6 +1,6 @@
-from PyQt5 import QtWidgets
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor
+from PyQt6 import QtWidgets
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColor
 
 from gridplayer.utils.qt import translate
 from gridplayer.widgets.color_palette import QColorPalette

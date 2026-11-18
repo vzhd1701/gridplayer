@@ -8,7 +8,7 @@ import threading
 import time
 
 import pytest
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.models.stream import Stream, Streams
 from gridplayer.utils.url_resolve import url_resolve

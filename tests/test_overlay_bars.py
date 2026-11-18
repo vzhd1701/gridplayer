@@ -1,8 +1,8 @@
 """The seek and the volume bars over a video: how their parts are painted."""
 
 import pytest
-from PyQt5.QtCore import QPoint, Qt
-from PyQt5.QtGui import QColor, QImage, QPainter
+from PyQt6.QtCore import QPoint, Qt
+from PyQt6.QtGui import QColor, QImage, QPainter
 
 from gridplayer.widgets.video_overlay_elements import (
     BOX_RADIUS,

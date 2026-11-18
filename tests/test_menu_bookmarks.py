@@ -3,8 +3,8 @@
 from pathlib import Path
 from types import SimpleNamespace
 
-from PyQt5.QtGui import QStandardItemModel
-from PyQt5.QtWidgets import QWidget
+from PyQt6.QtGui import QStandardItemModel
+from PyQt6.QtWidgets import QWidget
 
 from gridplayer.params.actions import ACTIONS
 from gridplayer.params.menu import SECTIONS, SUBMENUS

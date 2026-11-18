@@ -2,8 +2,8 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from PyQt5.QtCore import QObject
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import QObject
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.widgets.video_block import VideoBlock
 from gridplayer.widgets.video_block_cell_size import CellSizeControl

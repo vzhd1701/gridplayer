@@ -1,9 +1,9 @@
 from bisect import bisect_right
 from typing import NamedTuple
 
-from PyQt5.QtCore import QPoint, QPointF, QRect, QRectF, Qt, pyqtSignal
-from PyQt5.QtGui import QColor, QCursor, QPainter, QPen
-from PyQt5.QtWidgets import QLabel
+from PyQt6.QtCore import QPoint, QPointF, QRect, QRectF, Qt, pyqtSignal
+from PyQt6.QtGui import QColor, QCursor, QPainter, QPen
+from PyQt6.QtWidgets import QLabel
 
 from gridplayer.utils.layout.boxes import line_edges
 from gridplayer.utils.layout.lines import LINE_REACH, GridLines, Line, LineDrag

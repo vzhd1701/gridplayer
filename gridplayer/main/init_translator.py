@@ -1,6 +1,6 @@
 import logging
 
-from PyQt5.QtCore import QLibraryInfo, QLocale, QTranslator
+from PyQt6.QtCore import QLibraryInfo, QLocale, QTranslator
 
 from gridplayer.params import env
 from gridplayer.settings import Settings

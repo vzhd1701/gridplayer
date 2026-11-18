@@ -1,8 +1,8 @@
 import pytest
-from PyQt5 import sip
-from PyQt5.QtCore import QRect
-from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt6 import sip
+from PyQt6.QtCore import QRect
+from PyQt6.QtTest import QTest
+from PyQt6.QtWidgets import QApplication, QWidget
 
 from gridplayer.utils.layout import FULL_BOX, CellLayout, grid_box
 from gridplayer.utils.layout.cell_layout import GLIDE_MS

@@ -6,10 +6,10 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
-from PyQt5.QtCore import QSettings, Qt
-from PyQt5.QtGui import QFontMetrics
-from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QWidget
+from PyQt6.QtCore import QSettings, Qt
+from PyQt6.QtGui import QFontMetrics
+from PyQt6.QtTest import QTest
+from PyQt6.QtWidgets import QWidget
 
 from gridplayer.models.media_list import (
     HttpHeaders,

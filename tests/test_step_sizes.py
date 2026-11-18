@@ -9,7 +9,7 @@ import math
 from unittest.mock import Mock
 
 import pytest
-from PyQt5.QtWidgets import QLabel
+from PyQt6.QtWidgets import QLabel
 
 from gridplayer.models.playlist import Playlist
 from gridplayer.params.actions import ACTIONS

@@ -9,8 +9,8 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock
 
 import pytest
-from PyQt5.QtCore import QSettings
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt6.QtCore import QSettings
+from PyQt6.QtWidgets import QApplication, QWidget
 
 from gridplayer.models.grid_state import GridState
 from gridplayer.models.video import Video

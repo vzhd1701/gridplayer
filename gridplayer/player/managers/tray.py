@@ -1,8 +1,8 @@
 import logging
 
-from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtGui import QFont, QIcon
-from PyQt5.QtWidgets import QApplication, QSystemTrayIcon
+from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtGui import QFont, QIcon
+from PyQt6.QtWidgets import QApplication, QSystemTrayIcon
 
 from gridplayer.params import env
 from gridplayer.player.managers.base import ManagerBase

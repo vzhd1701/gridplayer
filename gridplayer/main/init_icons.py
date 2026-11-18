@@ -1,4 +1,4 @@
-from PyQt5.QtGui import QIcon
+from PyQt6.QtGui import QIcon
 
 from gridplayer.params import env
 from gridplayer.utils.darkmode import is_dark_mode

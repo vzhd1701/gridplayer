@@ -6,9 +6,9 @@ as it was the last time it was painted there.
 """
 
 import pytest
-from PyQt5.QtCore import QPoint, QRect, Qt
-from PyQt5.QtGui import QRegion
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt6.QtCore import QPoint, QRect, Qt
+from PyQt6.QtGui import QRegion
+from PyQt6.QtWidgets import QApplication, QWidget
 
 from gridplayer.widgets.video_overlay import OverlayBlockFloating
 

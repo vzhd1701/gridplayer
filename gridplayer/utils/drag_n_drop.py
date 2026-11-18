@@ -6,8 +6,8 @@ drops on GNOME/XWayland never include keys — Files encodes Shift as Move.
 
 from __future__ import annotations
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.params.static import DropAction
 from gridplayer.utils.qt import flag_value

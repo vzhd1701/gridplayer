@@ -1,8 +1,8 @@
 """What of its picture a video block shows: zoomed, cropped, moved, and
 the same as another video shows of its own, where views are synced."""
 
-from PyQt5.QtCore import QRect, QRectF
-from PyQt5.QtGui import QCursor
+from PyQt6.QtCore import QRect, QRectF
+from PyQt6.QtGui import QCursor
 
 from gridplayer.params.static import (
     NO_CROP_RATIO,

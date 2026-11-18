@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QTimer
+from PyQt6.QtCore import QTimer
 
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings

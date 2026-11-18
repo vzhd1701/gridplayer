@@ -9,7 +9,7 @@ them.
 
 from pathlib import Path
 
-from PyQt5.QtCore import QTimer
+from PyQt6.QtCore import QTimer
 
 from gridplayer.models.media_list import (
     ItemDetails,

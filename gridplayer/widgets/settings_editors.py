@@ -2,9 +2,9 @@
 
 from pathlib import Path
 
-from PyQt5.QtCore import QObject, pyqtSignal
-from PyQt5.QtGui import QColor, QPainter, QPixmap
-from PyQt5.QtWidgets import (
+from PyQt6.QtCore import QObject, pyqtSignal
+from PyQt6.QtGui import QColor, QPainter, QPixmap
+from PyQt6.QtWidgets import (
     QComboBox,
     QDoubleSpinBox,
     QFileDialog,

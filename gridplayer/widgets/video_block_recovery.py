@@ -9,7 +9,7 @@ VideoBlock.error); this only decides what comes after, and when.
 
 import time
 
-from PyQt5.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer
 
 from gridplayer.dialogs.input_dialog import QCustomSpinboxInput
 from gridplayer.params.static import (

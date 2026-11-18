@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock
 
 import pytest
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication
 
 import gridplayer.widgets.video_frame_vlc_base as vlc_base
 from gridplayer.params.static import (

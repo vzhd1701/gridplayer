@@ -1,8 +1,8 @@
 import pytest
-from PyQt5.QtCore import QDeadlineTimer, QEvent, QPoint, QPointF, Qt
-from PyQt5.QtGui import QColor, QIcon, QMouseEvent, QPalette, QPixmap
-from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QAbstractButton, QApplication, QScrollArea
+from PyQt6.QtCore import QDeadlineTimer, QEvent, QPoint, QPointF, Qt
+from PyQt6.QtGui import QColor, QIcon, QMouseEvent, QPalette, QPixmap
+from PyQt6.QtTest import QTest
+from PyQt6.QtWidgets import QAbstractButton, QApplication, QScrollArea
 
 from gridplayer.models.tile_snaps import TileSnaps
 from gridplayer.params.settings_fields.kinds import Indented, Section

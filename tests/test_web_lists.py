@@ -6,7 +6,7 @@ import subprocess
 import sys
 
 import pytest
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.models.media_list import ListItem
 from gridplayer.params.static import ListSourceKind

@@ -17,9 +17,9 @@ from ctypes import wintypes
 from pathlib import Path
 
 import psutil
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QImage, QWindow
-from PyQt5.QtWidgets import QWidget
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QImage, QWindow
+from PyQt6.QtWidgets import QWidget
 
 EXIT_DESKTOP_CHANGED = 77
 WINDOW_GEOMETRY = (0, 0, 1920, 1080)

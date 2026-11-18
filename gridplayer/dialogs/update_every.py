@@ -1,7 +1,7 @@
 """How often a linked list is read again, set by the viewer: every so many
 minutes, hours or days."""
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,

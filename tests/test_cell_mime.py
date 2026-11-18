@@ -5,8 +5,8 @@ links alike."""
 from pathlib import Path
 
 import pytest
-from PyQt5.QtCore import QMimeData, QUrl
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import QMimeData, QUrl
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.models.media_list import ListItem, ListSource, MediaList
 from gridplayer.models.video import Video, VideoBlockMime

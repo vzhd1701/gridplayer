@@ -7,7 +7,7 @@ they always have, and Cancel puts them back.
 
 from collections.abc import Callable
 
-from PyQt5.QtWidgets import QMessageBox, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QMessageBox, QVBoxLayout, QWidget
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.paged_dialog import PagedDialog

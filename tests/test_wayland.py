@@ -8,7 +8,7 @@ cursor theme comes from XCURSOR_THEME, which GNOME doesn't export.
 import os
 
 import pytest
-from PyQt5.QtCore import QMargins, Qt
+from PyQt6.QtCore import QMargins, Qt
 
 from gridplayer.utils import darkmode_linux, wayland
 

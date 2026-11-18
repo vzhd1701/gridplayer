@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from PyQt5.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal
 
 from gridplayer.models.recent_list import RecentListPlaylists, RecentListVideos
 from gridplayer.models.video import Video

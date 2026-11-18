@@ -1,6 +1,6 @@
 from functools import partial
 
-from PyQt5.QtCore import QRect
+from PyQt6.QtCore import QRect
 
 from gridplayer.params.static import GridMode
 from gridplayer.player.managers.layout_edit import LayoutEditManager

@@ -1,8 +1,8 @@
 from unittest.mock import MagicMock
 
 import pytest
-from PyQt5.QtCore import QRect
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import QRect
+from PyQt6.QtWidgets import QApplication
 
 import gridplayer.utils.win32_vlc_vout as vlc_vout
 from gridplayer.params import env

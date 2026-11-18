@@ -10,7 +10,7 @@ a dub served as a ladder of its own is here, as it takes a reload.
 import dataclasses
 import time
 
-from PyQt5.QtCore import QTimer
+from PyQt6.QtCore import QTimer
 
 from gridplayer.dialogs.input_dialog import QCustomSpinboxInput
 from gridplayer.models.audio_selection import (

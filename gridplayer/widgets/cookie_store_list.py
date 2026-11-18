@@ -1,10 +1,10 @@
 from datetime import datetime, timezone
 from pathlib import Path
 
-from PyQt5 import QtWidgets
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QApplication, QFileDialog
+from PyQt6 import QtWidgets
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QIcon
+from PyQt6.QtWidgets import QApplication, QFileDialog
 
 from gridplayer.utils.cookies import (
     CookieImportError,

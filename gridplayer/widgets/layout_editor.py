@@ -5,8 +5,8 @@ each outlined with its name, and a bar of buttons along the bottom."""
 import functools
 from collections.abc import Callable
 
-from PyQt5.QtCore import QEvent, QPoint, QPointF, QRect, QRectF, QSize, Qt, pyqtSignal
-from PyQt5.QtGui import (
+from PyQt6.QtCore import QEvent, QPoint, QPointF, QRect, QRectF, QSize, Qt, pyqtSignal
+from PyQt6.QtGui import (
     QColor,
     QIcon,
     QKeySequence,
@@ -18,7 +18,7 @@ from PyQt5.QtGui import (
     QPolygonF,
     QTransform,
 )
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QApplication,
     QFrame,
     QGridLayout,

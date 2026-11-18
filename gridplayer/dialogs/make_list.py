@@ -6,7 +6,7 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import NamedTuple
 
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
     QDialog,

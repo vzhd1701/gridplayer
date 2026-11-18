@@ -20,8 +20,8 @@ from functools import cache, partial
 from pathlib import Path
 from typing import NamedTuple
 
-from PyQt5.QtCore import QObject, QTimer, QUrl, pyqtSignal
-from PyQt5.QtGui import QImage
+from PyQt6.QtCore import QObject, QTimer, QUrl, pyqtSignal
+from PyQt6.QtGui import QImage
 
 from gridplayer.models.audio_device import AudioDevice, resolve_device_id
 from gridplayer.models.chapter import Chapter

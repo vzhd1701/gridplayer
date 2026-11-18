@@ -1,4 +1,4 @@
-from PyQt5.QtGui import QGuiApplication
+from PyQt6.QtGui import QGuiApplication
 
 from gridplayer.params import env
 from gridplayer.params.static import DisplayServer, MpvOutput, VideoDriver

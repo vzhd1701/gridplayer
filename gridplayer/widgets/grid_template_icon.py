@@ -6,9 +6,9 @@ big ones an outline 25 wide; corners rounded by 12.5. The gaps and the
 corners shrink for a grid of more than four cells a side, to keep cells to
 see."""
 
-from PyQt5.QtCore import QRectF, Qt
-from PyQt5.QtGui import QColor, QIcon, QIconEngine, QPainter, QPainterPath, QPixmap
-from PyQt5.QtWidgets import QApplication, QStyleOption
+from PyQt6.QtCore import QRectF, Qt
+from PyQt6.QtGui import QColor, QIcon, QIconEngine, QPainter, QPainterPath, QPixmap
+from PyQt6.QtWidgets import QApplication, QStyleOption
 
 from gridplayer.params.static import GridTemplate
 

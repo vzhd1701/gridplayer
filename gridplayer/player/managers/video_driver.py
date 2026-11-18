@@ -1,6 +1,6 @@
 from functools import partial
 
-from PyQt5.QtCore import QTimer
+from PyQt6.QtCore import QTimer
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.exceptions import PlayerException

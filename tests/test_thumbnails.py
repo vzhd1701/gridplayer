@@ -5,9 +5,9 @@ import threading
 import time
 
 import pytest
-from PyQt5.QtCore import QBuffer, QByteArray, QIODevice, QSize, Qt
-from PyQt5.QtGui import QColor, QImage
-from PyQt5.QtTest import QTest
+from PyQt6.QtCore import QBuffer, QByteArray, QIODevice, QSize, Qt
+from PyQt6.QtGui import QColor, QImage
+from PyQt6.QtTest import QTest
 
 from gridplayer.params.static import CacheMode
 from gridplayer.utils import cache, thumbnails

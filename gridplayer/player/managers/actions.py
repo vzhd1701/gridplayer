@@ -1,6 +1,5 @@
-from PyQt5.QtCore import QEvent, Qt
-from PyQt5.QtGui import QIcon, QKeySequence
-from PyQt5.QtWidgets import QAction
+from PyQt6.QtCore import QEvent, Qt
+from PyQt6.QtGui import QAction, QIcon, QKeySequence
 
 from gridplayer.params.actions import ACTIONS
 from gridplayer.player.managers.base import ManagerBase

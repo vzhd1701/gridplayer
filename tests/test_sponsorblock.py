@@ -5,8 +5,8 @@ import threading
 import time
 
 import pytest
-from PyQt5.QtCore import QSettings
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import QSettings
+from PyQt6.QtWidgets import QApplication
 from yt_dlp.postprocessor.sponsorblock import SponsorBlockPP
 
 from gridplayer.models.sponsor_segment import SponsorSegment

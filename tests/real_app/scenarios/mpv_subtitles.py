@@ -8,8 +8,8 @@ compares with VLC is in docs/plans/MPV_PLAN.md.
 
 import shutil
 
-from PyQt5.QtCore import QRect
-from PyQt5.QtGui import QColor
+from PyQt6.QtCore import QRect
+from PyQt6.QtGui import QColor
 
 from gridplayer.models.subtitle_selection import SubtitleExternal, SubtitleTrackId
 from gridplayer.mpv_player import abilities

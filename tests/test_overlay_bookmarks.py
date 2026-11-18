@@ -3,9 +3,9 @@
 from itertools import pairwise
 
 import pytest
-from PyQt5.QtCore import QEvent, QPoint, QPointF, QRect, Qt
-from PyQt5.QtGui import QColor, QContextMenuEvent, QMouseEvent, QRegion
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt6.QtCore import QEvent, QPoint, QPointF, QRect, Qt
+from PyQt6.QtGui import QColor, QContextMenuEvent, QMouseEvent, QRegion
+from PyQt6.QtWidgets import QApplication, QWidget
 
 from gridplayer.models.seek_mark import SeekMark, SeekMarkKind
 from gridplayer.widgets import video_overlay_elements

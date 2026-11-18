@@ -2,7 +2,7 @@
 and keeps its frame whatever its size."""
 
 import pytest
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.widgets.video_overlay import (
     CONTROL_MARGIN,

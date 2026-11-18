@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 
 import pytest
-from PyQt5.QtCore import QStandardPaths
+from PyQt6.QtCore import QStandardPaths
 
 from gridplayer.params.static import CacheMode
 from gridplayer.utils import app_dir, cache

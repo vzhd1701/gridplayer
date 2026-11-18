@@ -2,8 +2,8 @@
 the cell through a resize, zoom and pan are the right part of the picture, and
 cells close and come back."""
 
-from PyQt5.QtCore import QRect, Qt
-from PyQt5.QtGui import QColor, QImage
+from PyQt6.QtCore import QRect, Qt
+from PyQt6.QtGui import QColor, QImage
 
 from gridplayer.mpv_player.quality import FAST
 from gridplayer.params.static import MpvPictureQuality

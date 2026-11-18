@@ -11,8 +11,8 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from PyQt5.QtCore import QSettings, Qt
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import QSettings, Qt
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.dialogs.subtitle_encoding import SetSubtitleEncodingDialog
 from gridplayer.models.playlist import PlaylistVideoDefaults

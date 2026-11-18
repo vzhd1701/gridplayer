@@ -18,7 +18,7 @@ _PROBE = """
 import faulthandler
 faulthandler.enable()
 
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication
 
 app = QApplication([])
 

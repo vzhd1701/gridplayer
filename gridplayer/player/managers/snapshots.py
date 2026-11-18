@@ -1,4 +1,4 @@
-from PyQt5.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal
 
 from gridplayer.models.grid_state import GridState
 from gridplayer.models.playlist import Snapshot

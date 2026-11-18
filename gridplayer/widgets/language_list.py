@@ -1,7 +1,7 @@
-from PyQt5.QtCore import QEvent, QSize, Qt
-from PyQt5.QtGui import QColor, QFont, QFontMetrics, QIcon, QPainter, QPixmap
-from PyQt5.QtSvg import QSvgWidget
-from PyQt5.QtWidgets import (
+from PyQt6.QtCore import QEvent, QSize, Qt
+from PyQt6.QtGui import QColor, QFont, QFontMetrics, QIcon, QPainter, QPixmap
+from PyQt6.QtSvgWidgets import QSvgWidget
+from PyQt6.QtWidgets import (
     QAbstractItemView,
     QHBoxLayout,
     QLabel,

@@ -1,9 +1,9 @@
 import inspect
 import logging
 
-from PyQt5.QtCore import QObject, Qt
-from PyQt5.QtGui import QWindow
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt6.QtCore import QObject, Qt
+from PyQt6.QtGui import QWindow
+from PyQt6.QtWidgets import QApplication, QWidget
 
 from gridplayer.widgets.video_overlay import OverlayBlock
 

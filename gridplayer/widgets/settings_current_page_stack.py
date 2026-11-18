@@ -1,5 +1,5 @@
-from PyQt5.QtCore import QSize, Qt
-from PyQt5.QtWidgets import QSizePolicy, QStackedWidget
+from PyQt6.QtCore import QSize, Qt
+from PyQt6.QtWidgets import QSizePolicy, QStackedWidget
 
 from gridplayer.widgets.settings_page_scroll_area import PageScrollArea
 

@@ -13,9 +13,9 @@ import time
 from ctypes import wintypes
 from pathlib import Path
 
-from PyQt5.QtCore import QPoint, QRect
-from PyQt5.QtGui import QGuiApplication, QImage
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt6.QtCore import QPoint, QRect
+from PyQt6.QtGui import QGuiApplication, QImage
+from PyQt6.QtWidgets import QApplication, QWidget
 
 # the client area only, with what DirectComposition draws in it
 _PW_CLIENTONLY = 1
@@ -32,8 +32,8 @@ _BI_RGB = 0
 # the session bus, and only for that one. argv: path x y width height.
 _GNOME_SHOT = """
 import sys
-from PyQt5.QtCore import QCoreApplication
-from PyQt5.QtDBus import QDBusConnection, QDBusInterface
+from PyQt6.QtCore import QCoreApplication
+from PyQt6.QtDBus import QDBusConnection, QDBusInterface
 
 app = QCoreApplication(sys.argv)
 bus = QDBusConnection.sessionBus()

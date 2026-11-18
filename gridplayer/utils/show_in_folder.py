@@ -13,8 +13,8 @@ import os
 import threading
 from pathlib import Path
 
-from PyQt5.QtCore import QMetaType, QObject, QProcess, QUrl, pyqtSignal
-from PyQt5.QtGui import QDesktopServices
+from PyQt6.QtCore import QMetaType, QObject, QProcess, QUrl, pyqtSignal
+from PyQt6.QtGui import QDesktopServices
 
 from gridplayer.params import env
 
@@ -83,7 +83,7 @@ class FolderRevealer(QObject):
             open_folder(place if not is_file else place.parent)
 
     def _show_linux(self, place: Path, is_file: bool) -> None:
-        from PyQt5.QtDBus import (
+        from PyQt6.QtDBus import (
             QDBusArgument,
             QDBusConnection,
             QDBusMessage,
@@ -115,7 +115,7 @@ class FolderRevealer(QObject):
 
     @staticmethod
     def _linux_replied(watcher, folder: Path) -> None:
-        from PyQt5.QtDBus import QDBusPendingReply
+        from PyQt6.QtDBus import QDBusPendingReply
 
         # PyQt's watcher has no isError() of its own to ask
         reply = QDBusPendingReply(watcher)

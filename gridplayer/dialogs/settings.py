@@ -2,9 +2,9 @@ import contextlib
 import html
 import threading
 
-from PyQt5.QtCore import QLocale, QUrl, pyqtSignal
-from PyQt5.QtGui import QDesktopServices, QIcon
-from PyQt5.QtWidgets import (
+from PyQt6.QtCore import QLocale, QUrl, pyqtSignal
+from PyQt6.QtGui import QDesktopServices, QIcon
+from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,

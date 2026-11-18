@@ -1,5 +1,5 @@
-from PyQt5 import QtWidgets
-from PyQt5.QtCore import Qt
+from PyQt6 import QtWidgets
+from PyQt6.QtCore import Qt
 
 from gridplayer.dialogs.input_dialog import TEXT_INPUT_MIN_WIDTH
 from gridplayer.widgets.bookmark_colors import BookmarkColorPalette

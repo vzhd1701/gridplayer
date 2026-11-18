@@ -1,7 +1,7 @@
-from PyQt5 import sip
-from PyQt5.QtCore import QEvent, Qt, QTimer
-from PyQt5.QtGui import QCursor, QWindow
-from PyQt5.QtWidgets import QApplication
+from PyQt6 import sip
+from PyQt6.QtCore import QEvent, Qt, QTimer
+from PyQt6.QtGui import QCursor, QWindow
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.utils.keymap import KEY_MODIFIERS, modifiers_after

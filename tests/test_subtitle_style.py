@@ -12,8 +12,8 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from PyQt5.QtCore import QEvent, QSettings
-from PyQt5.QtWidgets import QApplication, QLabel
+from PyQt6.QtCore import QEvent, QSettings
+from PyQt6.QtWidgets import QApplication, QLabel
 
 from gridplayer.dialogs.settings import SettingsDialog
 from gridplayer.params.settings_bindings import PLAYLIST_ATTRS, VIDEO_DEFAULT_ATTRS

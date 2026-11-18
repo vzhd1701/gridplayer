@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt6.QtWidgets import QApplication, QWidget
 
 from gridplayer.models.grid_state import GridCell, GridState
 from gridplayer.params.static import GridMode, TileOverlap, TilePull, TileResize
@@ -466,7 +466,7 @@ def test_a_video_added_goes_to_the_room_beside_the_page(mocker):
 
 
 def _area(x, y, width, height):
-    from PyQt5.QtCore import QRect
+    from PyQt6.QtCore import QRect
 
     return QRect(x, y, width, height)
 

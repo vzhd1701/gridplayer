@@ -44,7 +44,7 @@ def _detect_compositor() -> bool:
 
 
 def _qt_platform_name() -> str:
-    from PyQt5.QtGui import QGuiApplication
+    from PyQt6.QtGui import QGuiApplication
 
     return QGuiApplication.platformName()
 

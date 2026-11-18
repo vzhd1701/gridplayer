@@ -5,9 +5,9 @@ soft round shade, straight on the dialog with no frame around it.
 While searching, a page says how much was found on it, and one with
 nothing found is greyed out and can't be picked."""
 
-from PyQt5.QtCore import QRect, QRectF, QSize, Qt
-from PyQt5.QtGui import QColor, QIcon, QPainter, QPalette
-from PyQt5.QtWidgets import (
+from PyQt6.QtCore import QRect, QRectF, QSize, Qt
+from PyQt6.QtGui import QColor, QIcon, QPainter, QPalette
+from PyQt6.QtWidgets import (
     QFrame,
     QListWidget,
     QListWidgetItem,

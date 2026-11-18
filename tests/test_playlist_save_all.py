@@ -2,7 +2,7 @@
 whole grid too, and each one its own once saved."""
 
 import pytest
-from PyQt5.QtCore import QSettings
+from PyQt6.QtCore import QSettings
 
 from gridplayer import playlist_settings as session_module
 from gridplayer.models.grid_state import GridState

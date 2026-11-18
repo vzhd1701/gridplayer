@@ -1,7 +1,7 @@
 """The box asking a question, or telling of a warning, an error or a notice:
 asked as QMessageBox is, laid out as the app's own."""
 
-from PyQt5.QtWidgets import QApplication, QCheckBox, QLabel, QMessageBox, QPushButton
+from PyQt6.QtWidgets import QApplication, QCheckBox, QLabel, QMessageBox, QPushButton
 
 from gridplayer.dialogs import add_choice
 from gridplayer.dialogs.messagebox import QCustomMessageBox

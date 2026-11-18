@@ -2,9 +2,9 @@ from operator import attrgetter
 from types import SimpleNamespace
 
 import pytest
-from PyQt5.QtCore import QEvent, QPoint, QPointF, Qt
-from PyQt5.QtGui import QMouseEvent
-from PyQt5.QtWidgets import QApplication, QDialog, QLineEdit, QWidget
+from PyQt6.QtCore import QEvent, QPoint, QPointF, Qt
+from PyQt6.QtGui import QMouseEvent
+from PyQt6.QtWidgets import QApplication, QDialog, QLineEdit, QWidget
 
 import gridplayer.player.managers.pan as pan_module
 import gridplayer.utils.keymap as keymap_module

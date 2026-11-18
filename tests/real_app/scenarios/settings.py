@@ -64,7 +64,7 @@ def scenario(d):
         )
 
     def press_reset(box):
-        from PyQt5.QtWidgets import QMessageBox
+        from PyQt6.QtWidgets import QMessageBox
 
         reset = next(
             button

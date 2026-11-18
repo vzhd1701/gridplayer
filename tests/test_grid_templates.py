@@ -4,8 +4,8 @@ big cells, listed with the built-in ones and put back from the menu."""
 from types import SimpleNamespace
 
 import pytest
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt6.QtGui import QIcon
+from PyQt6.QtWidgets import QApplication, QWidget
 
 from gridplayer.dialogs.input_dialog import QCustomTextInput
 from gridplayer.dialogs.messagebox import QCustomMessageBox

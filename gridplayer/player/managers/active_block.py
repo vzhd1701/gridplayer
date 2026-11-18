@@ -2,9 +2,9 @@ from collections import Counter
 from operator import attrgetter
 from pathlib import Path
 
-from PyQt5.QtCore import QEvent, Qt, QTimer, pyqtSignal
-from PyQt5.QtGui import QCursor
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import QEvent, Qt, QTimer, pyqtSignal
+from PyQt6.QtGui import QCursor
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.dialogs.crop import SetCropDialog
 from gridplayer.dialogs.position import SetPositionDialog

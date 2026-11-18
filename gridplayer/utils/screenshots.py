@@ -31,8 +31,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from PyQt5.QtCore import QObject, QRect, QRunnable, QSize, Qt, QThreadPool, pyqtSignal
-from PyQt5.QtGui import QImage, QImageReader, QTransform
+from PyQt6.QtCore import QObject, QRect, QRunnable, QSize, Qt, QThreadPool, pyqtSignal
+from PyQt6.QtGui import QImage, QImageReader, QTransform
 
 from gridplayer.params.static import (
     ROTATION_TRANSFORMS,

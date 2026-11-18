@@ -5,7 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from PyQt5.QtCore import QSettings
+from PyQt6.QtCore import QSettings
 
 from gridplayer.dialogs.playlist_lists import Column, PlaylistListsPage
 from gridplayer.models.media_list import ListItem, ListSource, MediaList

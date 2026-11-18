@@ -1,8 +1,8 @@
 from abc import ABCMeta
 
-from PyQt5.QtCore import QCoreApplication, QLocale, QObject, Qt
-from PyQt5.QtGui import QGuiApplication, QScreen
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt6.QtCore import QCoreApplication, QLocale, QObject, Qt
+from PyQt6.QtGui import QGuiApplication, QScreen
+from PyQt6.QtWidgets import QApplication, QWidget
 
 # what a screen saying nothing of its refresh, or too little, is taken to do
 MIN_REFRESH_HZ = 30

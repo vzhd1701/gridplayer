@@ -1,6 +1,6 @@
 from typing import NamedTuple
 
-from PyQt5.QtCore import QLocale
+from PyQt6.QtCore import QLocale
 
 from gridplayer.params import env
 from gridplayer.params.languages_contrib import LANGUAGES_CONTRIB

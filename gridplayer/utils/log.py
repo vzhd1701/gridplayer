@@ -6,8 +6,8 @@ import pprint
 import sys
 from pathlib import Path
 
-from PyQt5.QtCore import qVersion
-from PyQt5.QtWidgets import QStyleFactory
+from PyQt6.QtCore import qVersion
+from PyQt6.QtWidgets import QStyleFactory
 
 from gridplayer.params import env
 from gridplayer.version import __display_name__, __version__

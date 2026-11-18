@@ -1,7 +1,7 @@
 from threading import Event
 
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, pyqtSlot
-from PyQt5.QtWidgets import QWidget
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, pyqtSlot
+from PyQt6.QtWidgets import QWidget
 
 from gridplayer.params import env
 from gridplayer.params.static import (
@@ -20,7 +20,7 @@ from gridplayer.widgets.video_frame_vlc_base import (
 )
 
 if env.IS_MACOS:
-    from PyQt5.QtWidgets import QMacCocoaViewContainer
+    from PyQt6.QtWidgets import QMacCocoaViewContainer
 
 from gridplayer.vlc_player.instance import InstanceVLC
 from gridplayer.vlc_player.player_base import VlcPlayerBase

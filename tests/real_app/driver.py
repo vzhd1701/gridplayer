@@ -51,7 +51,7 @@ class Driver:
     def pump(self, seconds: float = 0.05) -> None:
         """Let the app run for a while: its timers, VLC's callbacks, paints."""
 
-        from PyQt5.QtCore import QEventLoop
+        from PyQt6.QtCore import QEventLoop
 
         deadline = time.monotonic() + seconds
         while True:
@@ -187,7 +187,7 @@ class Driver:
     def windows(self) -> list:
         """The windows open besides the player."""
 
-        from PyQt5.QtWidgets import QApplication
+        from PyQt6.QtWidgets import QApplication
 
         return [
             w
@@ -200,7 +200,7 @@ class Driver:
         error's Details: look at it (a screenshot, then inspect(window)) and
         close it from inside, since open_it only returns once it is."""
 
-        from PyQt5.QtCore import QTimer
+        from PyQt6.QtCore import QTimer
 
         seen = []
         # those open already, as one opened from another is: the new one is
@@ -710,8 +710,8 @@ def _move_pointer_quietly() -> None:
     import ctypes
     import ctypes.util
 
-    from PyQt5.QtCore import QPoint
-    from PyQt5.QtGui import QCursor, QScreen
+    from PyQt6.QtCore import QPoint
+    from PyQt6.QtGui import QCursor, QScreen
 
     class CGPoint(ctypes.Structure):
         _fields_ = [("x", ctypes.c_double), ("y", ctypes.c_double)]

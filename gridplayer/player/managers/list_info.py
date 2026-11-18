@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from uuid import UUID
 
-from PyQt5.QtCore import QObject, Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import QObject, Qt, QTimer, pyqtSignal
 
 from gridplayer.models.media_list import ListItem, merged_details
 from gridplayer.utils.item_info import (

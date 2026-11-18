@@ -6,8 +6,8 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from PyQt5.QtGui import QStandardItemModel
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtGui import QStandardItemModel
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.params.actions import ACTIONS
 from gridplayer.params.menu import SECTIONS, SUBMENUS

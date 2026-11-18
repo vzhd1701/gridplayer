@@ -1,7 +1,7 @@
 import logging
 from abc import abstractmethod
 
-from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt6.QtCore import QObject, pyqtSignal
 
 from gridplayer.params.static import SeekAim
 from gridplayer.utils.qt import MILLISECONDS, QABC

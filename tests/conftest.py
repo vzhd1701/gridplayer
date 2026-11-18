@@ -4,7 +4,7 @@ from threading import Thread
 from types import MappingProxyType, SimpleNamespace
 
 import pytest
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication
 from requests.cookies import RequestsCookieJar
 
 from gridplayer.params.static import ProxyMode

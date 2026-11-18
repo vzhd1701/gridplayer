@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 
-from PyQt5.QtCore import (
+from PyQt6.QtCore import (
     QEvent,
     QPropertyAnimation,
     QRect,
@@ -9,8 +9,8 @@ from PyQt5.QtCore import (
     pyqtProperty,
     pyqtSignal,
 )
-from PyQt5.QtGui import QColor, QCursor, QFontMetrics, QPainter
-from PyQt5.QtWidgets import QWIDGETSIZE_MAX
+from PyQt6.QtGui import QColor, QCursor, QFontMetrics, QPainter
+from PyQt6.QtWidgets import QWIDGETSIZE_MAX
 
 from gridplayer.utils.qt import QABC
 from gridplayer.widgets.video_overlay_elements import OverlayWidget, mixed_color

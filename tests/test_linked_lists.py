@@ -10,9 +10,9 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from PyQt5.QtCore import QPoint, QSettings, Qt
-from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QApplication, QLabel, QWidget
+from PyQt6.QtCore import QPoint, QSettings, Qt
+from PyQt6.QtTest import QTest
+from PyQt6.QtWidgets import QApplication, QLabel, QWidget
 
 from gridplayer.dialogs.media_list import ListReading, MediaListDialog
 from gridplayer.models.media_list import (
@@ -1045,7 +1045,7 @@ class TestTheSortMenu:
 
 
 def _uris_mime(*uris):
-    from PyQt5.QtCore import QMimeData, QUrl
+    from PyQt6.QtCore import QMimeData, QUrl
 
     data = QMimeData()
     data.setUrls([QUrl(uri) for uri in uris])
@@ -1284,7 +1284,7 @@ class TestTheQuestion:
         dialog.deleteLater()
 
     def test_warned_enter_does_not_unlink(self):
-        from PyQt5.QtWidgets import QDialogButtonBox
+        from PyQt6.QtWidgets import QDialogButtonBox
 
         from gridplayer.dialogs.unlink_list import BIG_LIST_BYTES, UnlinkListDialog
 

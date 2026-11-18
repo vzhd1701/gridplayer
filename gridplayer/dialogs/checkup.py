@@ -16,10 +16,10 @@ import logging
 import re
 import threading
 
-from PyQt5 import QtWidgets
-from PyQt5.QtCore import QObject, Qt, QTimer, pyqtSignal
-from PyQt5.QtGui import QIcon, QPalette
-from PyQt5.QtWidgets import QApplication, QDialog, QDialogButtonBox
+from PyQt6 import QtWidgets
+from PyQt6.QtCore import QObject, Qt, QTimer, pyqtSignal
+from PyQt6.QtGui import QIcon, QPalette
+from PyQt6.QtWidgets import QApplication, QDialog, QDialogButtonBox
 
 from gridplayer.params.theme import set_html_with_links
 from gridplayer.utils.checkup import (

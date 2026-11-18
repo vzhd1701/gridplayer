@@ -13,10 +13,10 @@ and goes once the pointer leaves, unless "Show grid lines on hover" is off.
 
 import shutil
 
-from PyQt5.QtCore import QEvent, QPoint, Qt
-from PyQt5.QtGui import QCursor, QMouseEvent
-from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import QEvent, QPoint, Qt
+from PyQt6.QtGui import QCursor, QMouseEvent
+from PyQt6.QtTest import QTest
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.models.grid_state import GridState
 from gridplayer.params.static import GridMode

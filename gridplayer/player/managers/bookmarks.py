@@ -9,8 +9,8 @@ again, finds them where they were.
 from pathlib import Path
 from uuid import UUID
 
-from PyQt5.QtCore import QObject, pyqtSignal
-from PyQt5.QtWidgets import QMessageBox
+from PyQt6.QtCore import QObject, pyqtSignal
+from PyQt6.QtWidgets import QMessageBox
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.playlist_bookmarks import PlaylistBookmarksPage

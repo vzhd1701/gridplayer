@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
 import pytest
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt6.QtWidgets import QApplication, QWidget
 
 from gridplayer.models.grid_state import GridState
 from gridplayer.models.playlist import Playlist

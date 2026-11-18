@@ -4,10 +4,10 @@ and a note saying what's missing and what plays instead."""
 from pathlib import Path
 
 import pytest
-from PyQt5.QtCore import QEvent, QPoint, QPointF, QSettings, Qt
-from PyQt5.QtGui import QWheelEvent
-from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QApplication, QComboBox
+from PyQt6.QtCore import QEvent, QPoint, QPointF, QSettings, Qt
+from PyQt6.QtGui import QWheelEvent
+from PyQt6.QtTest import QTest
+from PyQt6.QtWidgets import QApplication, QComboBox
 
 from gridplayer.dialogs import settings as settings_dialog
 from gridplayer.dialogs.settings import SettingsDialog

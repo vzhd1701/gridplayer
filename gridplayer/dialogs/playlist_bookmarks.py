@@ -12,7 +12,7 @@ from enum import Enum, IntEnum, auto
 from pathlib import Path
 
 from pydantic import ValidationError
-from PyQt5.QtCore import (
+from PyQt6.QtCore import (
     QEvent,
     QPoint,
     QRect,
@@ -22,7 +22,7 @@ from PyQt5.QtCore import (
     QTimer,
     pyqtSignal,
 )
-from PyQt5.QtGui import (
+from PyQt6.QtGui import (
     QColor,
     QContextMenuEvent,
     QFont,
@@ -34,7 +34,7 @@ from PyQt5.QtGui import (
     QStandardItem,
     QStandardItemModel,
 )
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QAbstractItemView,
     QApplication,
     QHBoxLayout,

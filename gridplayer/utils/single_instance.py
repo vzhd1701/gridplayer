@@ -5,7 +5,7 @@ from multiprocessing import connection
 from pathlib import Path
 from threading import Thread
 
-from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt6.QtCore import QObject, pyqtSignal
 
 from gridplayer.params import env
 

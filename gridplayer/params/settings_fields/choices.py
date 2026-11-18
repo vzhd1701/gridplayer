@@ -6,7 +6,7 @@ built, not when this is imported.
 
 import logging
 
-from PyQt5.QtGui import QFontDatabase
+from PyQt6.QtGui import QFontDatabase
 
 from gridplayer.params import env
 from gridplayer.params.static import (

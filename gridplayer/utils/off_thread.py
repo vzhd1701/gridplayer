@@ -4,7 +4,7 @@ import contextlib
 import sys
 import threading
 
-from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt6.QtCore import QObject, pyqtSignal
 
 
 class OffThread(QObject):

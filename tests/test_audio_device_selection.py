@@ -3,7 +3,7 @@
 import json
 
 import pytest
-from PyQt5.QtCore import QSettings
+from PyQt6.QtCore import QSettings
 
 from gridplayer.models.audio_device import AudioDevice, resolve_device_id
 from gridplayer.models.playlist import Playlist

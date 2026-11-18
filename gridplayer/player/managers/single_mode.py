@@ -1,4 +1,4 @@
-from PyQt5.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal
 
 from gridplayer.params.static import NO_FILL_LIMIT, StripMode, StripSide
 from gridplayer.player.managers.base import ManagerBase

@@ -10,9 +10,9 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from PyQt5.QtCore import QPoint, QSettings
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt6.QtCore import QPoint, QSettings
+from PyQt6.QtGui import QIcon
+from PyQt6.QtWidgets import QApplication, QWidget
 
 from gridplayer.models.bookmark import Bookmark
 from gridplayer.models.chapter import Chapter

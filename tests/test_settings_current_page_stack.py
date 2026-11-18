@@ -2,8 +2,8 @@
 as tall as the tallest one that cannot needs to be."""
 
 import pytest
-from PyQt5.QtCore import QSize
-from PyQt5.QtWidgets import QApplication, QVBoxLayout, QWidget
+from PyQt6.QtCore import QSize
+from PyQt6.QtWidgets import QApplication, QVBoxLayout, QWidget
 
 from gridplayer.widgets.settings_current_page_stack import CurrentPageStackedWidget
 from gridplayer.widgets.settings_page_scroll_area import PageScrollArea

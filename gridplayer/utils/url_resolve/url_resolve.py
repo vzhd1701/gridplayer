@@ -4,7 +4,7 @@ from collections.abc import Iterator
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
-from PyQt5.QtCore import QObject, QThread, pyqtSignal
+from PyQt6.QtCore import QObject, QThread, pyqtSignal
 
 from gridplayer.models.resolver_patterns import ResolverPatterns
 from gridplayer.params.static import URLResolver

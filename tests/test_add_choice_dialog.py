@@ -1,7 +1,7 @@
 """The dialog asking how what is being added goes into the grid."""
 
-from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import (
+from PyQt6.QtGui import QFont
+from PyQt6.QtWidgets import (
     QApplication,
     QCheckBox,
     QDialog,

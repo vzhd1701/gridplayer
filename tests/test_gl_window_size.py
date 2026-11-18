@@ -6,8 +6,8 @@ import sys
 from unittest.mock import MagicMock
 
 import pytest
-from PyQt5.QtCore import QEvent, QSize
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt6.QtCore import QEvent, QSize
+from PyQt6.QtWidgets import QApplication, QWidget
 
 from gridplayer.utils import gl_window_size
 

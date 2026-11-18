@@ -16,7 +16,7 @@ early.
 import collections
 import time
 
-from PyQt5.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer
 
 from gridplayer.widgets.video_block_guards import VideoBlockPart
 

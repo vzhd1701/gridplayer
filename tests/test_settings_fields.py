@@ -3,7 +3,7 @@
 defaults in gridplayer.settings."""
 
 import pytest
-from PyQt5.QtWidgets import QWidget
+from PyQt6.QtWidgets import QWidget
 
 from gridplayer.models.grid_state import GridState
 from gridplayer.models.playlist import Playlist, PlaylistVideoDefaults

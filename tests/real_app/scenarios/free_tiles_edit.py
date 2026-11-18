@@ -18,10 +18,10 @@ Auto (Fit Shapes), Edit Grid makes Free Tiles; from Auto rows, a Fixed
 Grid, which Undo takes back to rows, the editor gone.
 """
 
-from PyQt5.QtCore import QEvent, QPoint, QPointF, Qt
-from PyQt5.QtGui import QCursor, QKeySequence, QMouseEvent
-from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import QEvent, QPoint, QPointF, Qt
+from PyQt6.QtGui import QCursor, QKeySequence, QMouseEvent
+from PyQt6.QtTest import QTest
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.params.static import GridMode, TileOverlap, TileResize
 from gridplayer.widgets.settings_controls import SegmentedChoice, Switch

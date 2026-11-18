@@ -1,8 +1,8 @@
 """SponsorBlock's segments on the seek bar, and under the mouse."""
 
 import pytest
-from PyQt5.QtCore import QPoint, Qt
-from PyQt5.QtGui import QColor
+from PyQt6.QtCore import QPoint, Qt
+from PyQt6.QtGui import QColor
 
 from gridplayer.models.seek_mark import SeekMark, SeekMarkKind, segments_at
 from gridplayer.widgets.video_overlay import OverlayBlock

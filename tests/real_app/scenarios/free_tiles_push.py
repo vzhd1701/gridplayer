@@ -5,9 +5,9 @@ them all back with nothing to undo; let go of, the drag is one change to
 undo. Make Room sets aside the tiles one is over.
 """
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QDrag
-from PyQt5.QtTest import QTest
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QDrag
+from PyQt6.QtTest import QTest
 
 from gridplayer.params.static import TileOverlap
 from tests.real_app.scenarios.free_tiles import (

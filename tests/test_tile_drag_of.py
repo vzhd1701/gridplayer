@@ -85,7 +85,7 @@ def test_in_free_tiles_it_snaps_to_any():
     ],
 )
 def test_an_edge_is_found_only_on_the_page(monkeypatch, at, is_found):
-    from PyQt5.QtCore import QPoint, QRect
+    from PyQt6.QtCore import QPoint, QRect
 
     from gridplayer.player.managers import free_tiles
 

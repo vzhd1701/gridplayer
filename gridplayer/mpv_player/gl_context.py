@@ -554,7 +554,7 @@ def macos_gl_format():
     "videotoolbox" and not "videotoolbox-copy". On an Intel HD 4600, 9 cells
     of mixed clips played at 27 fps rather than 10, on less CPU."""
 
-    from PyQt5.QtGui import QSurfaceFormat
+    from PyQt6.QtGui import QSurfaceFormat
 
     surface_format = QSurfaceFormat()
     surface_format.setVersion(3, 2)
@@ -563,7 +563,7 @@ def macos_gl_format():
 
 
 def _format_name(surface_format) -> str:
-    from PyQt5.QtGui import QSurfaceFormat
+    from PyQt6.QtGui import QSurfaceFormat
 
     profile = {
         QSurfaceFormat.OpenGLContextProfile.CoreProfile: "Core",
@@ -578,7 +578,7 @@ class QtGLContext:
     a QtShareGroup, for textures drawn by Qt."""
 
     def __init__(self, surface, share=None):
-        from PyQt5.QtGui import QOpenGLContext, QSurfaceFormat
+        from PyQt6.QtGui import QOpenGLContext, QSurfaceFormat
 
         self._surface = surface
         self._context = QOpenGLContext()
@@ -612,7 +612,7 @@ class QtGLContext:
         self.is_gles = self._context.isOpenGLES()
 
     def get_proc_address(self, name: bytes) -> int:
-        from PyQt5.QtCore import QByteArray
+        from PyQt6.QtCore import QByteArray
 
         # sip gives None for a function the driver doesn't have
         address = self._context.getProcAddress(QByteArray(name))
@@ -644,7 +644,7 @@ class _QtGLCalls:
     a list for the textures."""
 
     def __init__(self, context):
-        from PyQt5.QtCore import QByteArray
+        from PyQt6.QtCore import QByteArray
 
         proto = ctypes.WINFUNCTYPE if env.IS_WINDOWS else ctypes.CFUNCTYPE
 
@@ -669,7 +669,7 @@ def qt_gl_functions(context):
     """GL calls in a context of Qt's, current: OpenGL 2.0's, else what PyQt5
     has for it, else ctypes ones. None if it has none of them."""
 
-    from PyQt5.QtGui import QOpenGLVersionProfile
+    from PyQt6.QtOpenGL import QOpenGLVersionProfile
 
     profile = QOpenGLVersionProfile()
     profile.setVersion(2, 0)
@@ -702,7 +702,7 @@ class QtShareGroup:
     """
 
     def __init__(self):
-        from PyQt5.QtGui import QOffscreenSurface, QOpenGLContext
+        from PyQt6.QtGui import QOffscreenSurface, QOpenGLContext
 
         group = QOpenGLContext.globalShareContext()
         if group is None:
@@ -759,7 +759,7 @@ class QtShareGroup:
         """GUI thread: textures of the group gone, whether a widget that showed
         them has a context of its own yet or has one no longer."""
 
-        from PyQt5.QtGui import QOpenGLContext
+        from PyQt6.QtGui import QOpenGLContext
 
         previous = QOpenGLContext.currentContext()
         previous_surface = previous.surface() if previous is not None else None

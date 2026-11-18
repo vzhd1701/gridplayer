@@ -6,10 +6,10 @@ the strip is dragged as the grid's are, snapping where the big video just
 fits, and Undo takes it back. Leaving Single Mode puts the grid back.
 """
 
-from PyQt5.QtCore import QPoint, Qt
-from PyQt5.QtGui import QCursor
-from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import QPoint, Qt
+from PyQt6.QtGui import QCursor
+from PyQt6.QtTest import QTest
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.params.static import StripMode
 

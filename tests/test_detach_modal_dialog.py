@@ -7,8 +7,8 @@ change, so the property has to land on a window that has not been shown.
 """
 
 import pytest
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QDialog, QWidget
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QDialog, QWidget
 
 from gridplayer.utils import qt as qt_utils
 from gridplayer.utils.qt import (

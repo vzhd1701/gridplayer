@@ -1,8 +1,8 @@
 """A row of links to the sections of a long settings page, over what
 scrolls: the one in view marked, and a click scrolls to the one clicked."""
 
-from PyQt5.QtCore import QPoint, Qt
-from PyQt5.QtWidgets import (
+from PyQt6.QtCore import QPoint, Qt
+from PyQt6.QtWidgets import (
     QAbstractButton,
     QButtonGroup,
     QScrollArea,

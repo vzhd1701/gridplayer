@@ -1,8 +1,8 @@
 from typing import NamedTuple
 
-from PyQt5.QtCore import QPoint, QRect, Qt
-from PyQt5.QtGui import QCursor
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import QPoint, QRect, Qt
+from PyQt6.QtGui import QCursor
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.models.tile_snaps import TileSnaps
 from gridplayer.params.gestures import GESTURE_ZOOM_SELECT

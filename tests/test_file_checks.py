@@ -5,7 +5,7 @@ import threading
 import time
 from pathlib import Path
 
-from PyQt5.QtTest import QTest
+from PyQt6.QtTest import QTest
 
 from gridplayer.utils.file_checks import FileChecks
 

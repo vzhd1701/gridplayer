@@ -11,14 +11,14 @@ from collections.abc import Callable
 from enum import IntEnum
 from uuid import UUID
 
-from PyQt5.QtCore import QPoint, Qt, QTimer
-from PyQt5.QtGui import (
+from PyQt6.QtCore import QPoint, Qt, QTimer
+from PyQt6.QtGui import (
     QContextMenuEvent,
     QPainter,
     QStandardItem,
     QStandardItemModel,
 )
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QAbstractItemView,
     QHBoxLayout,
     QHeaderView,

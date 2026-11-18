@@ -1,6 +1,6 @@
-from PyQt5.QtCore import QEvent, QPoint, Qt
-from PyQt5.QtGui import QCursor, QWindow
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import QEvent, QPoint, Qt
+from PyQt6.QtGui import QCursor, QWindow
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.params.gestures import GESTURE_PAN
 from gridplayer.player.managers.base import ManagerBase

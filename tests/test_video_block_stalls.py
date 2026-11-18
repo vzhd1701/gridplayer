@@ -5,7 +5,7 @@ fetching it, else after the buffering timeout; started over, at once."""
 import logging
 
 import pytest
-from PyQt5.QtCore import QSettings
+from PyQt6.QtCore import QSettings
 
 from gridplayer.models.video import Video
 from gridplayer.params.static import VideoInitialState

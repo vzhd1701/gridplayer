@@ -17,10 +17,10 @@ kept are as they were. Rows First takes the videos in the order the tiles are
 read in.
 """
 
-from PyQt5.QtCore import QEvent, QPoint, Qt
-from PyQt5.QtGui import QCursor, QDrag, QMouseEvent
-from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import QEvent, QPoint, Qt
+from PyQt6.QtGui import QCursor, QDrag, QMouseEvent
+from PyQt6.QtTest import QTest
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.params.static import GridMode
 from gridplayer.utils.layout.free_tiles import Rect

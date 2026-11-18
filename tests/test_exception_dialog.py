@@ -1,6 +1,6 @@
 import pytest
-from PyQt5.QtCore import QEvent
-from PyQt5.QtWidgets import QApplication, QDialog, QDialogButtonBox
+from PyQt6.QtCore import QEvent
+from PyQt6.QtWidgets import QApplication, QDialog, QDialogButtonBox
 
 from gridplayer.dialogs.exception import ExceptionDialog
 from gridplayer.version import __app_bugtracker_url__

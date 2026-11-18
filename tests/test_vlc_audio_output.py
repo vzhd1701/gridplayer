@@ -12,7 +12,7 @@ PipeWire desktop is served by pipewire-pulse.
 import logging
 
 import pytest
-from PyQt5.QtCore import QSettings
+from PyQt6.QtCore import QSettings
 
 from gridplayer.params import env
 from gridplayer.settings import Settings

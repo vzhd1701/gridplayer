@@ -1,4 +1,4 @@
-from PyQt5.QtCore import qInstallMessageHandler
+from PyQt6.QtCore import qInstallMessageHandler
 
 from gridplayer.settings import Settings
 from gridplayer.utils import log_config

@@ -8,8 +8,8 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from PyQt5.QtCore import QSettings
-from PyQt5.QtWidgets import QApplication, QDialog, QWidget
+from PyQt6.QtCore import QSettings
+from PyQt6.QtWidgets import QApplication, QDialog, QWidget
 
 from gridplayer.dialogs.add_choice import AddedItem
 from gridplayer.models.media_list import (

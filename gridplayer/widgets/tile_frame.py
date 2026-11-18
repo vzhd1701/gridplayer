@@ -1,8 +1,8 @@
 from collections.abc import Callable
 from typing import NamedTuple
 
-from PyQt5.QtCore import QPointF, QRect, QRectF, Qt
-from PyQt5.QtGui import (
+from PyQt6.QtCore import QPointF, QRect, QRectF, Qt
+from PyQt6.QtGui import (
     QColor,
     QPainter,
     QPainterPath,
@@ -10,7 +10,7 @@ from PyQt5.QtGui import (
     QPen,
     QRegion,
 )
-from PyQt5.QtWidgets import QWidget
+from PyQt6.QtWidgets import QWidget
 
 from gridplayer.utils.compositor_linux import is_compositor_running
 from gridplayer.utils.layout.free_tiles import MOVE, Handle

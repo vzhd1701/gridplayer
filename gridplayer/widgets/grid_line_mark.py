@@ -1,7 +1,7 @@
 from collections.abc import Callable, Sequence
 
-from PyQt5.QtCore import QPoint, QPointF, QRect, QRectF, QSize, QSizeF, Qt
-from PyQt5.QtGui import (
+from PyQt6.QtCore import QPoint, QPointF, QRect, QRectF, QSize, QSizeF, Qt
+from PyQt6.QtGui import (
     QBitmap,
     QBrush,
     QColor,
@@ -9,7 +9,7 @@ from PyQt5.QtGui import (
     QPainter,
     QPainterPath,
 )
-from PyQt5.QtWidgets import QWidget
+from PyQt6.QtWidgets import QWidget
 
 from gridplayer.utils.compositor_linux import is_compositor_running
 from gridplayer.utils.layout.free_tiles import Gap, Guide, GuideKind

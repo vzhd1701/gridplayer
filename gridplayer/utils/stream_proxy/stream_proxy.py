@@ -1,6 +1,6 @@
 import logging
 
-from PyQt5.QtCore import QThread
+from PyQt6.QtCore import QThread
 
 from gridplayer.models.stream import Stream
 from gridplayer.utils.stream_proxy.server import ProxyRequestHandler, StreamProxyServer

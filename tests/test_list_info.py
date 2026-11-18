@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 
 import pytest
-from PyQt5.QtTest import QTest
+from PyQt6.QtTest import QTest
 
 from gridplayer.models.media_list import ItemDetails, ListItem, MediaList
 from gridplayer.player.managers import list_info

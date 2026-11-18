@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from contextlib import suppress
 from pathlib import Path
 
-from PyQt5.QtCore import (
+from PyQt6.QtCore import (
     QElapsedTimer,
     QMargins,
     QPoint,
@@ -17,8 +17,8 @@ from PyQt5.QtCore import (
     QTimer,
     pyqtSignal,
 )
-from PyQt5.QtGui import QImage, QPainter, QPixmap
-from PyQt5.QtWidgets import QStackedLayout, QWidget
+from PyQt6.QtGui import QImage, QPainter, QPixmap
+from PyQt6.QtWidgets import QStackedLayout, QWidget
 
 from gridplayer.models.chapter import Chapter
 from gridplayer.models.stream import Stream

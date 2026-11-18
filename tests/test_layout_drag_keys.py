@@ -4,8 +4,8 @@ Shift counts at once, held still, and Esc puts it back."""
 from types import SimpleNamespace
 
 import pytest
-from PyQt5.QtCore import QEvent, Qt
-from PyQt5.QtGui import QKeyEvent
+from PyQt6.QtCore import QEvent, Qt
+from PyQt6.QtGui import QKeyEvent
 
 from gridplayer.player.managers.layout_drag import LayoutDragManager
 

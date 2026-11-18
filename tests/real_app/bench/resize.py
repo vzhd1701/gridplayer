@@ -28,7 +28,7 @@ import time
 from pathlib import Path
 
 from common import clips_for
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication
 
 DRIVER = os.environ.get("DRIVER", "vlc_hw")
 CLIP = os.environ.get("CLIP", "h264_1080p30")

@@ -2,7 +2,7 @@
 screenshot the same as one of square pixels, whether VLC says how wide they
 are on opening or only once the stream is decoded."""
 
-from PyQt5.QtGui import QImage
+from PyQt6.QtGui import QImage
 
 from gridplayer.params.static import VideoTransform
 

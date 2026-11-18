@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QSize
+from PyQt6.QtCore import QSize
 
 import gridplayer.widgets.video_frame_vlc_base as vlc_base
 from gridplayer.params.static import HWCropBorderOffset

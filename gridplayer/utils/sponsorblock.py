@@ -18,7 +18,7 @@ import threading
 import time
 from dataclasses import dataclass, replace
 
-from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt6.QtCore import QObject, pyqtSignal
 
 from gridplayer.models.seek_mark import SeekMark, SeekMarkKind
 from gridplayer.models.sponsor_segment import SponsorSegment

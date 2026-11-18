@@ -5,7 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from PyQt5.QtCore import QObject
+from PyQt6.QtCore import QObject
 
 from gridplayer.utils.sponsorblock import SkipSpan
 from gridplayer.widgets import video_block_time_ahead

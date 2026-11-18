@@ -10,13 +10,13 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 
-from PyQt5.QtCore import QModelIndex, QSortFilterProxyModel, Qt, pyqtSignal
-from PyQt5.QtGui import (
+from PyQt6.QtCore import QModelIndex, QSortFilterProxyModel, Qt, pyqtSignal
+from PyQt6.QtGui import (
     QIcon,
     QStandardItem,
     QStandardItemModel,
 )
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
     QDialog,

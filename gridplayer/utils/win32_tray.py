@@ -21,9 +21,9 @@ import uuid
 import weakref
 from pathlib import Path
 
-from PyQt5.QtCore import QObject, QPoint, QRect, QSize, Qt, pyqtSignal
-from PyQt5.QtGui import QCursor, QGuiApplication, QIcon
-from PyQt5.QtWidgets import QMenu, QSystemTrayIcon
+from PyQt6.QtCore import QObject, QPoint, QRect, QSize, Qt, pyqtSignal
+from PyQt6.QtGui import QCursor, QGuiApplication, QIcon
+from PyQt6.QtWidgets import QMenu, QSystemTrayIcon
 
 from gridplayer.params import env
 
@@ -310,7 +310,7 @@ def _from_native(point: QPoint) -> QPoint | None:
 
 
 def _hicon(icon: QIcon) -> int | None:
-    from PyQt5.QtWinExtras import QtWin
+    from PyQt6.QtWinExtras import QtWin
 
     size = _win32().small_icon_size()
     pixmap = icon.pixmap(QSize(size, size))

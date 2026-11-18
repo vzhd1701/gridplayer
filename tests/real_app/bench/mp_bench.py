@@ -45,7 +45,7 @@ def run_renderers(clip, jobs, hwdec):
     """Players and a render thread for these (shared memory name, render size). Qt's event
     loop is the caller's."""
 
-    from PyQt5.QtCore import QObject, Qt, pyqtSlot
+    from PyQt6.QtCore import QObject, Qt, pyqtSlot
 
     from gridplayer.mpv_player.libmpv import load_mpv
     from gridplayer.mpv_player.player import MpvPlayer
@@ -123,7 +123,7 @@ def run_renderers(clip, jobs, hwdec):
 
 
 def worker(config):
-    from PyQt5.QtCore import QCoreApplication
+    from PyQt6.QtCore import QCoreApplication
 
     app = QCoreApplication(["worker"])
     keep = run_renderers(
@@ -176,9 +176,9 @@ def main():
     settle = float(os.environ.get("SETTLE", "8"))
     measure = float(os.environ.get("MEASURE", "20"))
 
-    from PyQt5.QtCore import QEventLoop, QRectF, Qt, QTimer
-    from PyQt5.QtGui import QImage, QPainter
-    from PyQt5.QtWidgets import QApplication, QGridLayout, QWidget
+    from PyQt6.QtCore import QEventLoop, QRectF, Qt, QTimer
+    from PyQt6.QtGui import QImage, QPainter
+    from PyQt6.QtWidgets import QApplication, QGridLayout, QWidget
 
     os.environ.setdefault("QT_XCB_GL_INTEGRATION", "none")
     _app = QApplication(["bench", "-platform", "xcb"])

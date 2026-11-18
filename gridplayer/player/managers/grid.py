@@ -5,10 +5,10 @@ import random
 from collections.abc import Mapping, Sequence
 from typing import NamedTuple
 
-from PyQt5 import sip
-from PyQt5.QtCore import QRect, QTimer, pyqtSignal
-from PyQt5.QtGui import QRegion
-from PyQt5.QtWidgets import QMessageBox
+from PyQt6 import sip
+from PyQt6.QtCore import QRect, QTimer, pyqtSignal
+from PyQt6.QtGui import QRegion
+from PyQt6.QtWidgets import QMessageBox
 
 from gridplayer.dialogs.input_dialog import QCustomSpinboxInput, QFixedGridSizeDialog
 from gridplayer.dialogs.messagebox import QCustomMessageBox

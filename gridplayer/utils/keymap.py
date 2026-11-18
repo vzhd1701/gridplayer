@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from enum import Enum, auto
 
-from PyQt5.QtCore import QEvent, Qt
-from PyQt5.QtGui import QKeySequence, QWheelEvent
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import QEvent, Qt
+from PyQt6.QtGui import QKeySequence, QWheelEvent
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.models.keymap_overrides import KeymapOverrides
 from gridplayer.params.actions import ACTIONS

@@ -8,9 +8,9 @@ with Stop to go on with what is found by then, and asks once it is read."""
 
 from typing import Any, NamedTuple
 
-from PyQt5.QtCore import QSize, Qt, pyqtSignal
-from PyQt5.QtGui import QIcon, QPalette
-from PyQt5.QtWidgets import (
+from PyQt6.QtCore import QSize, Qt, pyqtSignal
+from PyQt6.QtGui import QIcon, QPalette
+from PyQt6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
     QDialog,

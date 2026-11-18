@@ -1,6 +1,6 @@
-from PyQt5 import QtWidgets
-from PyQt5.QtCore import QPoint, QPointF, QRect, QRectF, QSize, Qt, pyqtSignal
-from PyQt5.QtGui import QBrush, QColor, QConicalGradient, QPainter, QPen, QPolygonF
+from PyQt6 import QtWidgets
+from PyQt6.QtCore import QPoint, QPointF, QRect, QRectF, QSize, Qt, pyqtSignal
+from PyQt6.QtGui import QBrush, QColor, QConicalGradient, QPainter, QPen, QPolygonF
 
 from gridplayer.utils.qt import translate
 from gridplayer.widgets.settings_controls import DISABLED_OPACITY, theme_color

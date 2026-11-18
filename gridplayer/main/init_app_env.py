@@ -1,9 +1,9 @@
 import multiprocessing
 import os
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QGuiApplication, QSurfaceFormat
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QGuiApplication, QSurfaceFormat
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.mpv_player.gl_context import macos_gl_format
 from gridplayer.params import env
@@ -128,7 +128,7 @@ def init_app_env():
         os.environ.setdefault("QT_XCB_GL_INTEGRATION", "none")
 
     if env.IS_WINDOWS:
-        from PyQt5.QtWinExtras import QtWin
+        from PyQt6.QtWinExtras import QtWin
 
         QtWin.setCurrentProcessExplicitAppUserModelID(__app_id__)
 

@@ -3,7 +3,7 @@
 from types import SimpleNamespace
 
 import pytest
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.models.stream import (
     STREAM_QUALITY_AUDIO_ONLY,

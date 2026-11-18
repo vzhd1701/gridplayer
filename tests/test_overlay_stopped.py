@@ -3,9 +3,9 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from PyQt5.QtCore import QPoint, QRect, Qt
-from PyQt5.QtGui import QColor, QImage, QRegion
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt6.QtCore import QPoint, QRect, Qt
+from PyQt6.QtGui import QColor, QImage, QRegion
+from PyQt6.QtWidgets import QApplication, QWidget
 
 from gridplayer.params import env
 from gridplayer.params.actions import ACTIONS

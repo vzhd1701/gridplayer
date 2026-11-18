@@ -1,6 +1,6 @@
 """The marks shown over the player while a line or a tile is moved."""
 
-from PyQt5.QtCore import QPoint, QRect
+from PyQt6.QtCore import QPoint, QRect
 
 from gridplayer.widgets import grid_line_mark
 from gridplayer.widgets.grid_line_mark import GridLineTag, ShapeMark

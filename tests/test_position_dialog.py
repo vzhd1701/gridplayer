@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from PyQt5.QtWidgets import QApplication, QDialog
+from PyQt6.QtWidgets import QApplication, QDialog
 
 from gridplayer.dialogs.position import SetPositionDialog
 from gridplayer.params.static import (

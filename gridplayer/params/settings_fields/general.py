@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QSystemTrayIcon
+from PyQt6.QtWidgets import QSystemTrayIcon
 
 from gridplayer.params import env
 from gridplayer.params.settings_fields import choices

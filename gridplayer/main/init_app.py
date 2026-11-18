@@ -1,9 +1,9 @@
 import logging
 import sys
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QFont
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.main.init_app_env import gl_line_fix, pick_qt_platform, set_gl_alpha
 from gridplayer.main.init_icons import init_icon

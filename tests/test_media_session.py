@@ -2,8 +2,8 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from PyQt5.QtCore import QObject, pyqtSignal
-from PyQt5.QtWidgets import QWidget
+from PyQt6.QtCore import QObject, pyqtSignal
+from PyQt6.QtWidgets import QWidget
 
 from gridplayer.player.managers import media_session as media_session_module
 from gridplayer.player.managers.actions import ActionsManager

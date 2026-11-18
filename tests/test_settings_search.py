@@ -2,10 +2,10 @@
 show it."""
 
 import pytest
-from PyQt5.QtCore import QEvent, QPoint, Qt
-from PyQt5.QtGui import QKeyEvent
-from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import QEvent, QPoint, Qt
+from PyQt6.QtGui import QKeyEvent
+from PyQt6.QtTest import QTest
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.dialogs import settings as settings_dialog
 from gridplayer.dialogs.paged_dialog import SEARCH_DELAY_MS

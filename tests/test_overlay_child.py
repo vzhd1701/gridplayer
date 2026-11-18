@@ -11,9 +11,9 @@ everywhere else, the overlay stays floating.
 from unittest.mock import MagicMock
 
 import pytest
-from PyQt5.QtCore import QEvent, QObject, QPoint, QPointF, QRect, QSettings, Qt
-from PyQt5.QtGui import QEnterEvent, QMouseEvent
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt6.QtCore import QEvent, QObject, QPoint, QPointF, QRect, QSettings, Qt
+from PyQt6.QtGui import QEnterEvent, QMouseEvent
+from PyQt6.QtWidgets import QApplication, QWidget
 
 from gridplayer.models.video import Video
 from gridplayer.params.static import VideoInitialState

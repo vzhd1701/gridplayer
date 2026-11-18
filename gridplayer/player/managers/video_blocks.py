@@ -1,7 +1,7 @@
 import contextlib
 from functools import partial
 
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal
 
 from gridplayer.dialogs.audio_delay import SetAudioDelayDialog
 from gridplayer.dialogs.input_dialog import QCustomSpinboxInput, QCustomSpinboxTimeInput

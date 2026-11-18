@@ -1,7 +1,7 @@
 """A stream in three sizes, switched between; and a link that fails, tried
 again, shown with its Details and reloaded."""
 
-from PyQt5.QtWidgets import QLabel
+from PyQt6.QtWidgets import QLabel
 
 SETTINGS = {
     "video_defaults/network_retry_mode": "times",

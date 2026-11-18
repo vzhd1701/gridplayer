@@ -1,8 +1,8 @@
 """The SponsorBlock page, from the widgets to the ini and back."""
 
 import pytest
-from PyQt5.QtCore import QEvent, QSettings, Qt
-from PyQt5.QtWidgets import QApplication, QComboBox
+from PyQt6.QtCore import QEvent, QSettings, Qt
+from PyQt6.QtWidgets import QApplication, QComboBox
 
 from gridplayer.dialogs import settings as settings_dialog
 from gridplayer.dialogs.paged_dialog import SECTION_PAGE_ROLE

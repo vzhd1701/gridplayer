@@ -1,6 +1,6 @@
 import sys
 
-from PyQt5.QtCore import QTimer
+from PyQt6.QtCore import QTimer
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.main.init_app import init_app

@@ -7,7 +7,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from PyQt5.QtCore import (
+from PyQt6.QtCore import (
     QEvent,
     QMimeData,
     QObject,
@@ -18,9 +18,9 @@ from PyQt5.QtCore import (
     Qt,
     pyqtSignal,
 )
-from PyQt5.QtGui import QDragEnterEvent, QDragMoveEvent, QDropEvent, QIcon, QPalette
-from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QAbstractItemView, QApplication, QLineEdit
+from PyQt6.QtGui import QDragEnterEvent, QDragMoveEvent, QDropEvent, QIcon, QPalette
+from PyQt6.QtTest import QTest
+from PyQt6.QtWidgets import QAbstractItemView, QApplication, QLineEdit
 
 from gridplayer.dialogs import media_list as dialog_module
 from gridplayer.dialogs.bookmarks import ROW_HEIGHT
@@ -2140,8 +2140,8 @@ def _video(video_id, views, days_ago, **fields):
 
 
 def _jpeg() -> bytes:
-    from PyQt5.QtCore import QBuffer, QByteArray, QIODevice
-    from PyQt5.QtGui import QImage
+    from PyQt6.QtCore import QBuffer, QByteArray, QIODevice
+    from PyQt6.QtGui import QImage
 
     image = QImage(320, 180, QImage.Format.Format_RGB32)
     image.fill(Qt.GlobalColor.darkCyan)
@@ -2402,7 +2402,7 @@ class TestSortedBySite:
 class TestWhatASiteSays:
     @pytest.fixture(autouse=True)
     def _english(self):
-        from PyQt5.QtCore import QLocale
+        from PyQt6.QtCore import QLocale
 
         kept = QLocale()
         QLocale.setDefault(

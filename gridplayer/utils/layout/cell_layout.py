@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable
 
-from PyQt5 import sip
-from PyQt5.QtCore import QEasingCurve, QRect, QSize, QVariantAnimation, pyqtSignal
-from PyQt5.QtWidgets import QLayout, QWidget, QWidgetItem
+from PyQt6 import sip
+from PyQt6.QtCore import QEasingCurve, QRect, QSize, QVariantAnimation, pyqtSignal
+from PyQt6.QtWidgets import QLayout, QWidget, QWidgetItem
 
 from gridplayer.utils.layout.boxes import Box, box_rect
 

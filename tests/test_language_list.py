@@ -3,10 +3,10 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import pytest
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont, QFontMetrics
-from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QFont, QFontMetrics
+from PyQt6.QtTest import QTest
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.main.init_icons import switch_icon_theme
 from gridplayer.main.init_resources import init_resources
@@ -197,7 +197,7 @@ def test_clicking_authors_selects_row_without_text_selection():
         & Qt.TextInteractionFlag.LinksAccessibleByMouse
     )
 
-    with patch("PyQt5.QtGui.QDesktopServices.openUrl"):
+    with patch("PyQt6.QtGui.QDesktopServices.openUrl"):
         QTest.mouseClick(row.authors, Qt.MouseButton.LeftButton)
         QApplication.processEvents()
 

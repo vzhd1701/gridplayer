@@ -1,5 +1,5 @@
 import pytest
-from PyQt5.QtCore import QEvent, QObject
+from PyQt6.QtCore import QEvent, QObject
 
 from gridplayer.player.manager import Commands, Context, ManagersManager
 from gridplayer.player.managers.base import ManagerBase

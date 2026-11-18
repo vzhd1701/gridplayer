@@ -1,7 +1,7 @@
 import threading
 
 import pytest
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.utils import list_progress
 from gridplayer.utils.list_progress import ReadingEnough, ReadingStopped, Throttled

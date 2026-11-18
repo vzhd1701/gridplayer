@@ -49,9 +49,9 @@ import time
 from contextlib import suppress
 from functools import partial
 
-from PyQt5.QtCore import QElapsedTimer, QObject, Qt, QThread, QTimer, pyqtSignal
-from PyQt5.QtGui import QGuiApplication, QOffscreenSurface
-from PyQt5.QtWidgets import QWidget
+from PyQt6.QtCore import QElapsedTimer, QObject, Qt, QThread, QTimer, pyqtSignal
+from PyQt6.QtGui import QGuiApplication, QOffscreenSurface
+from PyQt6.QtWidgets import QWidget
 
 from gridplayer.mpv_player import abilities
 from gridplayer.mpv_player.gl_context import (

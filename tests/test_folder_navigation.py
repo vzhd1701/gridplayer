@@ -7,8 +7,8 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
-from PyQt5.QtCore import QSettings
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt6.QtCore import QSettings
+from PyQt6.QtWidgets import QApplication, QWidget
 
 from gridplayer.models.audio_selection import AudioExternal
 from gridplayer.models.playlist import Playlist

@@ -1,5 +1,5 @@
 import pytest
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt6.QtWidgets import QApplication, QWidget
 
 from gridplayer.utils.qt import topmost
 

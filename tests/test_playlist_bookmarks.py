@@ -7,10 +7,10 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
-from PyQt5.QtCore import QPoint, QSettings, Qt
-from PyQt5.QtGui import QContextMenuEvent, QKeySequence
-from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QApplication, QLabel, QWidget
+from PyQt6.QtCore import QPoint, QSettings, Qt
+from PyQt6.QtGui import QContextMenuEvent, QKeySequence
+from PyQt6.QtTest import QTest
+from PyQt6.QtWidgets import QApplication, QLabel, QWidget
 
 from gridplayer.dialogs import playlist_bookmarks as viewer_module
 from gridplayer.dialogs.messagebox import QCustomMessageBox

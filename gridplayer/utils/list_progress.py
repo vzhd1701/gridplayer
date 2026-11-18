@@ -3,7 +3,7 @@ interface, and how it is asked to stop."""
 
 import time
 
-from PyQt5.QtCore import QLocale
+from PyQt6.QtCore import QLocale
 
 from gridplayer.utils.qt import count_txt, translate
 

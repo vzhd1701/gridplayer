@@ -10,8 +10,8 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from PyQt5.QtCore import QObject, QSettings, pyqtSignal
-from PyQt5.QtWidgets import QWidget
+from PyQt6.QtCore import QObject, QSettings, pyqtSignal
+from PyQt6.QtWidgets import QWidget
 
 from gridplayer.models.chapter import Chapter
 from gridplayer.models.seek_mark import SeekMark, SeekMarkKind

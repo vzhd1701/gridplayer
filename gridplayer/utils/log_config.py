@@ -4,7 +4,7 @@ from logging.config import dictConfig
 from logging.handlers import QueueHandler, QueueListener
 from pathlib import Path
 
-from PyQt5 import QtCore
+from PyQt6 import QtCore
 
 from gridplayer.utils.qt import is_qt_log_ignored
 

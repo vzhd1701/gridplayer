@@ -1,8 +1,8 @@
 import math
 
-from PyQt5.QtCore import QRect, QRectF, Qt
-from PyQt5.QtGui import QImage, QPainter, QRegion
-from PyQt5.QtWidgets import QWidget
+from PyQt6.QtCore import QRect, QRectF, Qt
+from PyQt6.QtGui import QImage, QPainter, QRegion
+from PyQt6.QtWidgets import QWidget
 
 from gridplayer.params.static import VideoTransform, ViewParams
 from gridplayer.utils.aspect_calc import ViewPlacement, calc_view_placement

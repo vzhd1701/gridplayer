@@ -1,7 +1,7 @@
 import sys
 from enum import Enum, auto
 
-from PyQt5.QtCore import (
+from PyQt6.QtCore import (
     QEvent,
     QPoint,
     QRect,
@@ -11,8 +11,8 @@ from PyQt5.QtCore import (
     pyqtSignal,
     pyqtSlot,
 )
-from PyQt5.QtGui import QGuiApplication, QPainter, QPalette, QRegion
-from PyQt5.QtWidgets import (
+from PyQt6.QtGui import QGuiApplication, QPainter, QPalette, QRegion
+from PyQt6.QtWidgets import (
     QApplication,
     QHBoxLayout,
     QLayout,

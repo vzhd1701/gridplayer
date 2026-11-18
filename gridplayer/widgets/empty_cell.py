@@ -1,10 +1,10 @@
-from PyQt5.QtCore import QEvent, QRectF, QSize, Qt
-from PyQt5.QtGui import (
+from PyQt6.QtCore import QEvent, QRectF, QSize, Qt
+from PyQt6.QtGui import (
     QFont,
     QPainter,
     QPainterPath,
 )
-from PyQt5.QtWidgets import QLabel, QSizePolicy, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QLabel, QSizePolicy, QVBoxLayout, QWidget
 
 from gridplayer.params.static import FONT_SIZE_BIG_INFO, INFO_LABEL_MIN_SIZE
 from gridplayer.utils.drop_zone import DropIndicator

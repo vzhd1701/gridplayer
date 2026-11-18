@@ -1,6 +1,6 @@
 import pytest
-from PyQt5.QtCore import QEvent
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import QEvent
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.dialogs.paged_dialog import SECTION_LINKS_MIN
 from gridplayer.dialogs.settings import SettingsDialog

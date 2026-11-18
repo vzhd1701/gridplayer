@@ -1,5 +1,5 @@
-from PyQt5.QtCore import QDir, QDirIterator
-from PyQt5.QtGui import QFontDatabase, QIcon
+from PyQt6.QtCore import QDir, QDirIterator
+from PyQt6.QtGui import QFontDatabase, QIcon
 
 from gridplayer.params import env
 

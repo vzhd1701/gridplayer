@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from typing import NamedTuple
 
-from PyQt5.QtCore import (
+from PyQt6.QtCore import (
     QPoint,
     QPointF,
     QRect,
@@ -11,8 +11,8 @@ from PyQt5.QtCore import (
     QTimer,
     pyqtSignal,
 )
-from PyQt5.QtGui import QColor, QCursor, QPainter, QPen, QRegion
-from PyQt5.QtWidgets import QApplication, QHBoxLayout, QLabel, QWidget
+from PyQt6.QtGui import QColor, QCursor, QPainter, QPen, QRegion
+from PyQt6.QtWidgets import QApplication, QHBoxLayout, QLabel, QWidget
 
 from gridplayer.params.settings_fields import choices
 from gridplayer.params.static import GridMode, TileOverlap, TilePull, TileResize

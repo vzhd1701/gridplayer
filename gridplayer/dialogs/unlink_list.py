@@ -1,9 +1,9 @@
 """Asked before a linked list is kept whole in the playlist from now on: what
 that means, and for a long list, what it does to the playlist's file."""
 
-from PyQt5.QtCore import QLocale, QSize, Qt
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import (
+from PyQt6.QtCore import QLocale, QSize, Qt
+from PyQt6.QtGui import QIcon
+from PyQt6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QHBoxLayout,

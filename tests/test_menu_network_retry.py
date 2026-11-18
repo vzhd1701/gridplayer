@@ -4,7 +4,7 @@ from functools import partial
 from unittest.mock import Mock
 
 import pytest
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.params.actions import ACTIONS
 from gridplayer.params.menu import SECTIONS, SUBMENUS
@@ -98,7 +98,7 @@ def test_a_file_on_disk_has_no_network_to_fail(name):
 
 
 def test_the_divider_goes_when_the_count_below_it_does():
-    from PyQt5.QtWidgets import QMenu
+    from PyQt6.QtWidgets import QMenu
 
     from gridplayer.player.managers.menu import _strip_trailing_separator
 
@@ -112,7 +112,7 @@ def test_the_divider_goes_when_the_count_below_it_does():
 
 
 def test_a_divider_with_something_under_it_stays():
-    from PyQt5.QtWidgets import QMenu
+    from PyQt6.QtWidgets import QMenu
 
     from gridplayer.player.managers.menu import _strip_trailing_separator
 

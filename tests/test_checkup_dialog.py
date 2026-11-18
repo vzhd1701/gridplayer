@@ -10,7 +10,7 @@ import threading
 import time
 
 import pytest
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt6.QtWidgets import QApplication, QWidget
 
 from gridplayer.dialogs.checkup import CheckupDialog, _linked
 from gridplayer.utils.checkup import Check, CheckResult, CheckStatus

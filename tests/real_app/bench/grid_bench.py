@@ -18,7 +18,7 @@ import time
 from pathlib import Path
 
 from common import clips_for, nested, source_fps
-from PyQt5.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer
 
 from tests.real_app.composed import is_direct
 
@@ -201,8 +201,8 @@ def instrument():
             pass
 
     if "nofill" in EXP or "nosmooth" in EXP:
-        from PyQt5.QtCore import QRectF
-        from PyQt5.QtGui import QPainter
+        from PyQt6.QtCore import QRectF
+        from PyQt6.QtGui import QPainter
 
         smooth = "nosmooth" not in EXP
         fill = "nofill" not in EXP
@@ -277,7 +277,7 @@ def instrument_mpv():
         # macOS: the render thread's context Qt's default, legacy OpenGL 2.1,
         # as it was before 3.2 Core. Copy only: Shared's context is its
         # group's, set up before the app starts
-        from PyQt5.QtGui import QSurfaceFormat
+        from PyQt6.QtGui import QSurfaceFormat
 
         renderer.macos_gl_format = QSurfaceFormat
 
@@ -871,7 +871,7 @@ def scenario(d):
         if len(blocks) == CELLS and loaded == CELLS:
             break
 
-    from PyQt5.QtGui import QGuiApplication
+    from PyQt6.QtGui import QGuiApplication
 
     result["load_s"] = round(time.monotonic() - started, 2)
     result["load_stall_s"] = round(load_stall, 2)

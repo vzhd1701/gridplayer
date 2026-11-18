@@ -1,9 +1,9 @@
 from types import SimpleNamespace
 
 import pytest
-from PyQt5.QtCore import QRectF, QSize, Qt
-from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QApplication, QDialog
+from PyQt6.QtCore import QRectF, QSize, Qt
+from PyQt6.QtGui import QPixmap
+from PyQt6.QtWidgets import QApplication, QDialog
 
 from gridplayer.dialogs.crop import QCompactCropPicker, SetCropDialog
 from gridplayer.params.static import VideoCellViewMode, VideoCrop, VideoTransform

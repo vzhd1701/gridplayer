@@ -18,8 +18,8 @@ import math
 from dataclasses import dataclass
 from time import monotonic
 
-from PyQt5 import sip
-from PyQt5.QtCore import (
+from PyQt6 import sip
+from PyQt6.QtCore import (
     QEvent,
     QMargins,
     QObject,
@@ -31,7 +31,7 @@ from PyQt5.QtCore import (
     QTimer,
     QVariantAnimation,
 )
-from PyQt5.QtGui import (
+from PyQt6.QtGui import (
     QAbstractTextDocumentLayout,
     QColor,
     QCursor,
@@ -43,7 +43,7 @@ from PyQt5.QtGui import (
     QTextDocument,
     QTextOption,
 )
-from PyQt5.QtWidgets import QAbstractItemView, QApplication, QWidget
+from PyQt6.QtWidgets import QAbstractItemView, QApplication, QWidget
 
 from gridplayer.params.theme import current_colors
 from gridplayer.utils.compositor_linux import is_compositor_running

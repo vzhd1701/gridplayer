@@ -2,9 +2,9 @@
 row of buttons for a choice short enough to show all of it, and buttons
 that stay pressed for some of a few."""
 
-from PyQt5.QtCore import QPoint, QRect, QRectF, QSize, Qt, pyqtSignal
-from PyQt5.QtGui import QColor, QIcon, QPainter, QPainterPath, QPalette, QPixmap
-from PyQt5.QtWidgets import (
+from PyQt6.QtCore import QPoint, QRect, QRectF, QSize, Qt, pyqtSignal
+from PyQt6.QtGui import QColor, QIcon, QPainter, QPainterPath, QPalette, QPixmap
+from PyQt6.QtWidgets import (
     QAbstractButton,
     QAbstractSpinBox,
     QCheckBox,

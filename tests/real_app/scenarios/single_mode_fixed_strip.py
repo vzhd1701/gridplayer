@@ -7,9 +7,9 @@ Mode submenu is there in Single Mode only; its Off takes the strip away,
 its Left puts it on the left.
 """
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QCursor
-from PyQt5.QtTest import QTest
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QCursor
+from PyQt6.QtTest import QTest
 
 from gridplayer.params.static import StripMode
 

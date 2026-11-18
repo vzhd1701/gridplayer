@@ -14,8 +14,8 @@ painted.
 
 from dataclasses import replace
 
-from PyQt5.QtCore import QRectF, Qt, QTimer, pyqtSignal
-from PyQt5.QtGui import QImage
+from PyQt6.QtCore import QRectF, Qt, QTimer, pyqtSignal
+from PyQt6.QtGui import QImage
 
 from gridplayer.models.stream import Stream
 from gridplayer.mpv_player.conf import conf_lines

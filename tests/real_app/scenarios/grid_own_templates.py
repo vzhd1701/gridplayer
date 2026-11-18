@@ -27,7 +27,7 @@ def _submenu(items, name):
 def _shot_menu(d, name, shot):
     """The menu as it opens, its items made by the player's MenuManager."""
 
-    from PyQt5.QtCore import QPoint
+    from PyQt6.QtCore import QPoint
 
     from gridplayer.widgets.custom_menu import CustomMenu
 
@@ -49,7 +49,7 @@ def _shot_menu(d, name, shot):
 
 def _press(role):
     def press(box):
-        from PyQt5.QtWidgets import QMessageBox
+        from PyQt6.QtWidgets import QMessageBox
 
         next(
             b
@@ -186,7 +186,7 @@ def scenario(d):
 def _shot_generated(d, action, shot):
     """A generated submenu as it opens."""
 
-    from PyQt5.QtCore import QPoint
+    from PyQt6.QtCore import QPoint
 
     from gridplayer.widgets.custom_menu import CustomMenu
 

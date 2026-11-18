@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from PyQt5.QtCore import QEvent, Qt, QTimer, pyqtSignal
-from PyQt5.QtGui import QCursor, QDrag
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import QEvent, Qt, QTimer, pyqtSignal
+from PyQt6.QtGui import QCursor, QDrag
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.models.media_list import as_path
 from gridplayer.params import env

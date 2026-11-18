@@ -8,7 +8,7 @@ off: the window's own are only to be had through a COM call pywinrt does
 not offer.
 """
 
-from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt6.QtCore import QObject, pyqtSignal
 from winrt.windows.media import (
     MediaPlaybackStatus,
     MediaPlaybackType,

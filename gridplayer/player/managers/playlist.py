@@ -2,8 +2,8 @@ import weakref
 from pathlib import Path
 from typing import Any
 
-from PyQt5.QtCore import QDir, QTimer, pyqtSignal
-from PyQt5.QtWidgets import QFileDialog, QMessageBox
+from PyQt6.QtCore import QDir, QTimer, pyqtSignal
+from PyQt6.QtWidgets import QFileDialog, QMessageBox
 
 from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.dialogs.playlist_settings import PlaylistSettingsDialog

@@ -10,7 +10,7 @@ reach the player at all.
 import logging
 import os
 
-from PyQt5.QtCore import (
+from PyQt6.QtCore import (
     Q_CLASSINFO,
     QMetaType,
     QObject,
@@ -18,7 +18,7 @@ from PyQt5.QtCore import (
     pyqtSignal,
     pyqtSlot,
 )
-from PyQt5.QtDBus import (
+from PyQt6.QtDBus import (
     QDBusAbstractAdaptor,
     QDBusArgument,
     QDBusConnection,

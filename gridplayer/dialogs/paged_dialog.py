@@ -3,9 +3,9 @@ and the Playlist window; with a search over the index, in the first."""
 
 from collections.abc import Callable
 
-from PyQt5.QtCore import QEvent, Qt, QTimer
-from PyQt5.QtGui import QIcon, QKeySequence, QPainter
-from PyQt5.QtWidgets import (
+from PyQt6.QtCore import QEvent, Qt, QTimer
+from PyQt6.QtGui import QIcon, QKeySequence, QPainter, QShortcut
+from PyQt6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QFrame,
@@ -13,7 +13,6 @@ from PyQt5.QtWidgets import (
     QLabel,
     QLineEdit,
     QListWidgetItem,
-    QShortcut,
     QStyle,
     QToolButton,
     QVBoxLayout,

@@ -1,6 +1,6 @@
-from PyQt5.QtCore import QEvent
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QMenu
+from PyQt6.QtCore import QEvent
+from PyQt6.QtGui import QIcon
+from PyQt6.QtWidgets import QMenu
 
 from gridplayer.params.menu import SECTIONS, SUBMENUS
 from gridplayer.player.managers.actions import QDynamicAction

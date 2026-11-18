@@ -3,8 +3,8 @@ import logging
 import winreg
 from ctypes import wintypes
 
-from PyQt5.QtCore import QAbstractNativeEventFilter, QObject, QTimer
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import QAbstractNativeEventFilter, QObject, QTimer
+from PyQt6.QtWidgets import QApplication
 
 _WM_SETTINGCHANGE = 0x001A
 _WM_THEMECHANGED = 0x031A

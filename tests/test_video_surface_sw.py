@@ -4,9 +4,9 @@ what was there before, on any cell size and screen scale."""
 import math
 
 import pytest
-from PyQt5.QtCore import QPoint
-from PyQt5.QtGui import QColor, QImage, QRegion
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt6.QtCore import QPoint
+from PyQt6.QtGui import QColor, QImage, QRegion
+from PyQt6.QtWidgets import QApplication, QWidget
 
 from gridplayer.params.static import VideoCellViewMode, VideoTransform, ViewParams
 from gridplayer.widgets.video_surface_sw import SoftwareVideoSurface

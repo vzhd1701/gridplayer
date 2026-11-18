@@ -9,7 +9,7 @@ told apart by counting.
 
 from pathlib import Path
 
-from PyQt5.QtWidgets import QFileDialog
+from PyQt6.QtWidgets import QFileDialog
 
 from gridplayer.dialogs.input_dialog import QCustomTextInput
 from gridplayer.dialogs.messagebox import QCustomMessageBox

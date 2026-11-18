@@ -2,8 +2,7 @@
 
 from types import SimpleNamespace
 
-from PyQt5.QtGui import QStandardItemModel
-from PyQt5.QtWidgets import QAction
+from PyQt6.QtGui import QAction, QStandardItemModel
 
 from gridplayer.params.actions import ACTIONS
 from gridplayer.params.menu import SECTIONS

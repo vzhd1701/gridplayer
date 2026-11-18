@@ -5,7 +5,7 @@ the stream is let go of, so its picture is put up over it first
 from unittest.mock import MagicMock
 
 import pytest
-from PyQt5.QtGui import QImage
+from PyQt6.QtGui import QImage
 
 from gridplayer.widgets.video_frame_mpv_window import (
     VideoDriverMpvWindow,

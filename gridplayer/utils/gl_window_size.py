@@ -30,22 +30,22 @@ import math
 import time
 from pathlib import Path
 
-from PyQt5.QtCore import QCoreApplication, QEvent, QObject, Qt, QTimer
-from PyQt5.QtWidgets import QWidget
+from PyQt6.QtCore import QCoreApplication, QEvent, QObject, Qt, QTimer
+from PyQt6.QtWidgets import QWidget
 
 from gridplayer.params import env
 from gridplayer.utils.qt import paint_interval_s
 
 # QWindowSystemInterface::flushWindowSystemEvents(QEventLoop::ProcessEventsFlags)
 _FLUSH_WINDOWS = (
-    "Qt5Gui.dll",
+    "Qt6Gui.dll",
     (
         "?flushWindowSystemEvents@QWindowSystemInterface@@"
         "SA_NV?$QFlags@W4ProcessEventsFlag@QEventLoop@@@@@Z"
     ),
 )
 _FLUSH_LINUX = (
-    "libQt5Gui.so.5",
+    "libQt6Gui.so.6",
     (
         "_ZN22QWindowSystemInterface23flushWindowSystemEvents"
         "E6QFlagsIN10QEventLoop17ProcessEventsFlagEE"
@@ -59,12 +59,12 @@ logger = logging.getLogger(__name__)
 
 
 def _qt_gui_macos() -> str:
-    """macOS: Qt's QtGui, the framework PyQt5's wheel carries, or one found by
+    """macOS: Qt's QtGui, the framework PyQt6's wheel carries, or one found by
     its name where Qt is the system's."""
 
-    import PyQt5
+    import PyQt6
 
-    bundled = Path(PyQt5.__file__).parent / "Qt5/lib/QtGui.framework/Versions/5/QtGui"
+    bundled = Path(PyQt6.__file__).parent / "Qt6/lib/QtGui.framework/Versions/A/QtGui"
     return str(bundled) if bundled.exists() else "QtGui"
 
 
@@ -79,7 +79,7 @@ def _qt_flush():
         library, name = _FLUSH_LINUX
 
     try:
-        # loaded already, by PyQt5
+        # loaded already, by PyQt6
         flush = getattr(ctypes.CDLL(library), name)
     except (OSError, AttributeError):
         logger.warning("Qt can't be asked for a window's new size first")

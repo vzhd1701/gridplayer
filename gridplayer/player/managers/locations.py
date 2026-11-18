@@ -8,9 +8,9 @@ which a video that cannot play drops.
 
 from pathlib import Path
 
-from PyQt5.QtCore import QProcess, QUrl
-from PyQt5.QtGui import QDesktopServices
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import QProcess, QUrl
+from PyQt6.QtGui import QDesktopServices
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.params import env
 from gridplayer.player.managers.base import ManagerBase

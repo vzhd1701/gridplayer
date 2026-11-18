@@ -1,8 +1,8 @@
 import logging
 import os
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QGuiApplication
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QGuiApplication
 
 _GNOME_INTERFACE = "org.gnome.desktop.interface"
 

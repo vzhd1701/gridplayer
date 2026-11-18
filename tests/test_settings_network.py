@@ -6,8 +6,8 @@ nobody wired to a setting is edited and never stored.
 """
 
 import pytest
-from PyQt5.QtCore import QEvent, QSettings, Qt
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtCore import QEvent, QSettings, Qt
+from PyQt6.QtWidgets import QApplication
 
 from gridplayer.dialogs import settings as settings_dialog
 from gridplayer.dialogs.paged_dialog import SECTION_PAGE_ROLE

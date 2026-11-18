@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
 import pytest
-from PyQt5.QtWidgets import QApplication, QMenu
+from PyQt6.QtWidgets import QApplication, QMenu
 
 from gridplayer.params.menu import SECTIONS
 from gridplayer.params.static import GridMode

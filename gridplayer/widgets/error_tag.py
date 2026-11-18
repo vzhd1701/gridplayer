@@ -1,9 +1,9 @@
 """The tag of an error in a dialog: where it broke, filled in the theme's
 border grey, and its code after it, rimmed as one."""
 
-from PyQt5.QtCore import QRectF, QSize, Qt
-from PyQt5.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen
-from PyQt5.QtWidgets import QSizePolicy, QWidget
+from PyQt6.QtCore import QRectF, QSize, Qt
+from PyQt6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen
+from PyQt6.QtWidgets import QSizePolicy, QWidget
 
 from gridplayer.params.theme import current_colors
 
