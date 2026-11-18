@@ -3,15 +3,15 @@
 The move from PyQt5 (Qt 5.15) to PyQt6 on Qt 6.12, on the `qt6` branch. This file says what changes, in what order,
 and how each step is checked. Tick an item only once it has been seen working.
 
-**Status: planned 2026-11-18, nothing built yet.**
+**Status: stages 0-4 done (2026-11-19); macOS next.**
 
 | | Stage | State |
 |---|---|---|
 | 0 | Baseline on PyQt5: tests, scenarios, benches, screenshots | **done 2026-11-18** but the Macs (before stage 5) and benches (stage 3) |
 | 1 | Rewrites that work on both: full enum names, `exec()`, flag values | **done 2026-11-18** |
-| 2 | The switch: PyQt6 6.12, imports, removed APIs, events; tests pass | **done 2026-11-18**, uncommitted |
-| 3 | Windows: DPI, native windows, GL, look, input | **done 2026-11-18**, uncommitted; hand checks left (DPI, keys, drag and drop, tray, SMTC) |
-| 4 | Linux: X11, Wayland, D-Bus | not started |
+| 2 | The switch: PyQt6 6.12, imports, removed APIs, events; tests pass | **done 2026-11-18** |
+| 3 | Windows: DPI, native windows, GL, look, input | **done 2026-11-18**; hand checks left (DPI, keys, drag and drop, tray, SMTC) |
+| 4 | Linux: X11, Wayland, D-Bus | **done 2026-11-19**, uncommitted |
 | 5 | macOS | not started |
 | 6 | Translations: pylupdate6 | not started |
 | 7 | Packaging and CI | not started |
@@ -357,12 +357,62 @@ The main platform and the one Qt 6 changes most under us. Each item against the 
 
 On `test_ubuntu` and `test_gpu`, X11 and Wayland.
 
+Each item on both bindings side by side, by a scenario that reads back from the desktop what the app did (scratchpad
+`linux_native.py`, run with the session bus left to it): on `test_ubuntu` (GNOME 46, Wayland and Xwayland) against a
+PyQt5 venv of `2d05022` in `/tmp/gp-base`, and on `test_gpu` (sway, Intel HD 4600) against `/opt/venv` (PyQt5), with
+PyQt6 in `/opt/venv6`. Outputs in `build/qt6-stage4/`.
+
 - 4.1 X11: `QT_XCB_GL_INTEGRATION` none/xcb_egl as now, the window-type property (`utils/qt.py`), the overlays as X11
   children, skip-taskbar, compositor check, `forkserver`.
+  **Done 2026-11-19.** The same on both: `none` for VLC, `xcb_egl` and `forkserver` for MPV Shared, the compositor
+  found, a detached dialog `_NET_WM_WINDOW_TYPE_NORMAL`, the floating overlay's window types and its skip-taskbar,
+  skip-pager and sticky states, GNOME's block on hiding the taskbar button. Hiding it under sway does nothing on
+  either binding (sway's X11 doesn't take the request). **Found and fixed:** `gl_window_size`'s held paint passed
+  `Qt.EventPriority` to `postEvent`, which takes an int in PyQt6: every paint held for the next refresh raised
+  instead, on any platform, with MPV Shared on a real display only (offscreen paints are never held). Fixed, with a
+  test; a sweep of every call passing a plain enum where PyQt6 wants an int found no other (scratchpad
+  `enum_to_int_args.py`).
 - 4.2 Wayland: Qt 6's fractional scaling, `wayland_frames.py` (GNOME), `utils/wayland.py`'s cursor, the pure Wayland
   tests, MPV's own EGL display.
+  **Done 2026-11-19.** GNOME: Qt's own frame (margins 3,30,3,3) and the Yaru cursor from the portal on both; sway:
+  the compositor's frames. MPV Shared, MPV Copy and VLC Software play on Wayland. Sway at 1.5: **Qt 6 draws at 1.5**
+  (`wp_fractional_scale`), 1280x720 physical pixels for the 853x480 window, where Qt 5 draws at 2 and the compositor
+  scales it down: the sharp 125%/150% the ROADMAP expected, same layout. Not tried: GNOME's own fractional scaling
+  (experimental there).
+  **The header on GNOME** (Wayland chosen; Auto takes X11 there): Qt 6 picks its `adwaita` decoration on GNOME
+  instead of Qt 5's `bradient`, with GNOME's thin border, but its colours are its own (white over our #eeeeee, near
+  black over #444444), it follows GNOME's light or dark rather than the app's, and draws no line between header and
+  content; Qt has no way to give it ours (`bradient` takes our palette, with the thick border back). Decided
+  2026-11-19: keep `adwaita`, and a 1 px line in the theme's border colour along the top of each window with Qt's
+  header (`utils/wayland.py`, `draw_header_lines`). Our own header, for our colours and scheme, waits for after the
+  move.
 - 4.3 D-Bus: MPRIS with `@pyqtClassInfo`, the portal's dark mode (`darkmode_linux.py`), the tray.
+  **Done 2026-11-19**, GNOME, X11 and Wayland: MPRIS named, Identity, PlaybackStatus, Metadata, PlayPause and Play
+  from `gdbus` acting on the cells; GNOME's colour scheme switched and back, the app following both ways; the tray
+  icon in GNOME's top bar on both. Qt 6 registers it as `<unique name>@/StatusNotifierItem` rather than Qt 5's
+  `org.kde.StatusNotifierItem-<pid>-1`; Ubuntu's AppIndicator shows either.
 - 4.4 Scenarios and benches against stage 0.
+  **Done 2026-11-19.** Scenarios on `test_ubuntu`: 83 passed, 1 xfailed (`external_audio_jump`), as stage 0. Unit
+  tests on `test_ubuntu` (Python 3.12) and `test_gpu` (Debian 13, Python 3.13) pass. Benches on `test_gpu`, `mix`,
+  4, 9 and 16 cells, real X11 windows, A/B back to back: VLC hardware (multi- and single-process), MPV Copy, Shared
+  and Direct at the same frame rates, CPU and memory on both; MPV Shared at 16 cells a little less CPU on PyQt6 (294
+  against 352%); MPV Copy at 16 cells is past the machine (30-31.5 fps on both over three runs each).
+  Look (`look.py` hidden on GNOME's X11, light and dark): the same but for text a pixel higher and some rows or
+  dialogs 1-4 px shorter (Qt 6's font metrics), and the About icon's drop shadow, which Qt 6's SVG renderer draws
+  (filters, Qt 6.7) and Qt 5's left out.
+  **Found on the way:**
+  - Qt 6's C locale writes numbers without the thousands separator (1200; Qt 5: 1,200), so tests expecting "1,200"
+    failed in a container with no locale, as on GitHub's runners (`LANG=C.UTF-8`). The tests now set `en_US` as the
+    default locale; the app keeps Qt's, which is right for C.
+  - `test_a_file_that_isnt_a_library` passed on Windows only by luck: where libmpv loads in the run (Linux), an
+    earlier import left `mpv` on its package, which `from gridplayer.mpv_player import mpv` took without loading the
+    junk file. The test takes it off.
+  - The PyQt5 copy's venv on `test_ubuntu` is Python 3.14, whose default start method on Linux is `forkserver`
+    (3.12 and 3.13: `fork`): not Qt's.
+  - `GLGridSurface.initializeGL` said it was ready by `QTimer.singleShot(0, self.ready.emit)`: a call queued apart
+    from the surface, which PyQt6 makes on the signal of a surface gone meanwhile and crashes (found as the tests,
+    whose windows go as each test ends, crashed once a later one ran the event loop). Now a timer of the surface's
+    own; no other `singleShot` is handed a signal's `emit`.
 
 ## Stage 5: macOS
 

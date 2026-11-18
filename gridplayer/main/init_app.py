@@ -17,7 +17,7 @@ from gridplayer.params.theme import (
 )
 from gridplayer.utils.darkmode import watch_system_theme
 from gridplayer.utils.mouse_windows import keep_held_buttons
-from gridplayer.utils.wayland import follow_desktop_cursor
+from gridplayer.utils.wayland import draw_header_lines, follow_desktop_cursor
 
 
 def settle_gl_line_fix() -> None:
@@ -72,6 +72,8 @@ def init_app():
         app.styleHints().colorSchemeChanged.connect(
             lambda _scheme: on_system_theme_changed(app)
         )
+
+    draw_header_lines(app)
 
     init_icon(app)
 

@@ -1,8 +1,10 @@
 import logging
 import os
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QGuiApplication
+from PyQt6 import sip
+from PyQt6.QtCore import QEvent, QObject, Qt, QTimer
+from PyQt6.QtGui import QColor, QGuiApplication, QPainter
+from PyQt6.QtWidgets import QApplication, QWidget
 
 _GNOME_INTERFACE = "org.gnome.desktop.interface"
 
@@ -43,6 +45,129 @@ def follow_desktop_cursor() -> None:
     )
 
 
+class _HeaderLine(QWidget):
+    """A line in the theme's border colour along the top of a window's
+    content. On GNOME, Qt 6 draws the window's header with its own colours
+    (the adwaita plugin's, after GNOME's light or dark, not the app's) and
+    puts no line between the header and the content."""
+
+    def __init__(self, window: QWidget):
+        super().__init__(window)
+
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.hide()
+
+    def paintEvent(self, event):
+        from gridplayer.params.theme import current_colors
+
+        painter = QPainter(self)
+        painter.fillRect(self.rect(), QColor(current_colors()["border"]))
+
+
+class _HeaderLines(QObject):
+    """Gives each window with a header Qt draws a line under it, kept over
+    the window's other children."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        # The header is there only once the window is on screen: looked at
+        # when the events of the moment are through, once however many came.
+        # By address, found again among the windows there are then: one Qt
+        # made itself (a combo box's list) may be gone by then, which its
+        # Python wrapper can't tell.
+        self._due: set[int] = set()
+        self._place = QTimer(self)
+        self._place.setSingleShot(True)
+        self._place.setInterval(0)
+        self._place.timeout.connect(self._place_due)
+
+    def _place_due(self):
+        due, self._due = self._due, set()
+        for window in QApplication.topLevelWidgets():
+            if sip.unwrapinstance(window) in due:
+                _place_header_line(window)
+
+    def eventFilter(self, watched, event):
+        kind = event.type()
+
+        if kind in _WINDOW_CHANGES:
+            if isinstance(watched, QWidget) and watched.isWindow():
+                self._due.add(sip.unwrapinstance(watched))
+                if not self._place.isActive():
+                    self._place.start()
+
+        # a child raised or added over the line
+        elif kind == QEvent.Type.ZOrderChange:
+            line = _header_line(_parent_window(watched))
+            if line is not None and watched is not line and line.isVisible():
+                line.raise_()
+
+        elif kind == QEvent.Type.ChildAdded:
+            line = _header_line(watched)
+            if line is not None and event.child() is not line and line.isVisible():
+                line.raise_()
+
+        return False
+
+
+_WINDOW_CHANGES = frozenset(
+    {QEvent.Type.Show, QEvent.Type.Resize, QEvent.Type.WindowStateChange}
+)
+
+
+def draw_header_lines(app) -> None:
+    """On Wayland, where the compositor leaves the window's header to Qt
+    (GNOME), a line between it and each window's content."""
+
+    if QGuiApplication.platformName() != "wayland":
+        return
+
+    from gridplayer.utils.wayland_frames import compositor_draws_frames
+
+    if compositor_draws_frames():
+        return
+
+    app._header_lines = _HeaderLines(app)
+    app.installEventFilter(app._header_lines)
+
+
+def _parent_window(widget) -> QWidget | None:
+    if not isinstance(widget, QWidget) or widget.isWindow():
+        return None
+
+    parent = widget.parentWidget()
+
+    return parent if parent is not None and parent.isWindow() else None
+
+
+def _header_line(window) -> "_HeaderLine | None":
+    if not isinstance(window, QWidget):
+        return None
+
+    return getattr(window, "_header_line", None)
+
+
+def _place_header_line(window: QWidget) -> None:
+    handle = window.windowHandle()
+    has_header = handle is not None and _has_client_frame(handle)
+
+    line = _header_line(window)
+
+    if not has_header:
+        if line is not None:
+            line.hide()
+        return
+
+    if line is None:
+        line = window._header_line = _HeaderLine(window)
+
+    line.setGeometry(0, 0, window.width(), 1)
+    line.show()
+    line.raise_()
+
+
 def refresh_window_frames() -> None:
     """Have the frames Qt draws itself on Wayland take the current palette.
 
@@ -63,6 +188,12 @@ def refresh_window_frames() -> None:
         flags = window.flags()
         window.setFlags(flags | Qt.WindowType.FramelessWindowHint)
         window.setFlags(flags)
+
+    # the lines under the headers, in the theme's colour now
+    for widget in QApplication.topLevelWidgets():
+        line = _header_line(widget)
+        if line is not None:
+            line.update()
 
 
 def _has_client_frame(window) -> bool:
