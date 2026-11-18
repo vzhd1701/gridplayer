@@ -89,7 +89,7 @@ plugin must be built for exactly that one: a compiled part to keep up for every 
 ## Architecture refactor
 
 After the move to Qt 6 (said 2026-11-18), so the big diff of each isn't fought twice. What and in what order is in
-`ARCHITECTURE_REVIEW.md`, a read of the whole app done 2026-11-16. In short: the managers, connections, commands,
+`docs/reviews/ARCHITECTURE_REVIEW.md`, a read of the whole app done 2026-11-16. In short: the managers, connections, commands,
 actions, menu, block parts, drivers, resolvers and settings are each a closed list written out by hand in one file, so
 a feature means editing five to thirteen files, and a plugin could edit none of them. Each list becomes a registry
 that things add themselves to.
@@ -117,7 +117,7 @@ Not measured: whether VLC's own `:adaptive-maxbuffer` would read further ahead t
 
 ### Gamepad hotkeys
 
-Planned 2026-10-07, not started. The plan is in `GAMEPAD.md`:
+Planned 2026-10-07, not started. The plan is in `docs/plans/GAMEPAD.md`:
 
 - SDL2 through `pysdl2` (Qt's gamepad module isn't in PyQt5 and is gone from Qt 6), behind an interface so SDL3 can
   replace it.

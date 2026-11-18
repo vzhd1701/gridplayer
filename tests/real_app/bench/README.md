@@ -1,7 +1,7 @@
 # Load bench
 
 Measures how many videos the real app plays and what that costs, for any video driver. It's what
-`docs/MPV_PERFORMANCE.md` was measured with. Nothing here runs with `pytest`.
+`docs/findings/MPV_PERFORMANCE.md` was measured with. Nothing here runs with `pytest`.
 
 | File | What it is |
 |---|---|

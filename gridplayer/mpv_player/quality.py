@@ -3,7 +3,7 @@
 Each level names every option either of them sets, so going from one to the other
 leaves nothing of the last behind. They can change while a video plays.
 
-Measured in docs/MPV_PERFORMANCE.md, "Picture quality": High costs nothing in
+Measured in docs/findings/MPV_PERFORMANCE.md, "Picture quality": High costs nothing in
 frames for one big video, on NVIDIA or an AMD iGPU, but on the iGPU it cost 4
 cells of 1080p a sixth of their frames and 4 of 4K three quarters, and one 4K
 video shrunk into the whole window a tenth. Hence Auto.

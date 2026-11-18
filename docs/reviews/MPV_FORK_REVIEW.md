@@ -57,7 +57,7 @@ weren't built or tried.
 
 ## Nothing to take
 
-- Multi-process mpv: measured here, no gain (`MPV_PERFORMANCE.md`).
+- Multi-process mpv: measured here, no gain (`docs/findings/MPV_PERFORMANCE.md`).
 - Their software driver: renders at the video's full size; ours at the cell's.
 - Their fixes for live streams' length, default tracks, audio and subtitle files added while playing: ours has them.
 - Their crash fix (python-mpv letting go of the update callback while mpv may still call it): ours sets it once.

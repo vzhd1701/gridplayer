@@ -16,7 +16,7 @@ look as they would with a surface each.
 A QOpenGLWidget a cell cost a context made as each came up, about 40 ms on
 NVIDIA, and each frame a context switch and a framebuffer of its own: at 36
 cells the GUI thread was busy half the time and frames were lost. See 13.5
-in docs/MPV_PLAN.md.
+in docs/plans/MPV_PLAN.md.
 """
 
 import contextlib

@@ -1,7 +1,7 @@
 # VLC notes
 
 What was found and done about VLC itself while working on the `mpv` branch: freezes, CPU, 32-bit, single process against
-multi-process, resizing. These are items of `MPV_PLAN.md`'s Stage 10 and keep their numbers there, as commits and the plan's log name them.
+multi-process, resizing. These are items of `docs/plans/MPV_PLAN.md`'s Stage 10 and keep their numbers there, as commits and the plan's log name them.
 The longer stories have files of their own: `VLC_WAITS.md` (10.26) and `VLC_HELPER.md` (the native log helper designed for 10.24, not
 built).
 
@@ -116,7 +116,7 @@ built).
     and load time. **Done (2026-11-09):** the Processes tooltip and the README said a single process can freeze or load the CPU past
     4-6 videos, which 10.24, 10.25 and 10.26 made untrue; both now say what's left (crash takes one process or the app, load time).
 - [x] 10.29 **Hardware VLC in a single process on Linux keeps threads and memory after its videos close.** Found measuring the arena
-  limit (`MPV_PLAN.md` 10.5) on `test_gpu`, real X11, VLC 3.0.24, `churn.py` with up to 8 cells: everything closed after 5 minutes
+  limit (`docs/plans/MPV_PLAN.md` 10.5) on `test_gpu`, real X11, VLC 3.0.24, `churn.py` with up to 8 cells: everything closed after 5 minutes
   (5069 opens, closes, reloads and seeks), 1267 threads left and 3278 MB; after 10 minutes, 2376 threads and 5186 MB. MPV in the same
   churn goes back to 8 threads.
   - **Four leaks, all fixed 2026-11-10.** None is 10.25's; the first two are as old as the players (`master` the same).

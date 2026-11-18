@@ -7,7 +7,7 @@ working.
 
 **Status: open are 10.4 (other GPUs) and 11.4 (Macs with a real GPU). Packaged everywhere but the Snap, which waits for Qt 6.**
 
-**Load tests against VLC: `MPV_PERFORMANCE.md`.** No multi-process mode for MPV. New items 10.13-10.16. 10.16, the long run, ran
+**Load tests against VLC: `docs/findings/MPV_PERFORMANCE.md`.** No multi-process mode for MPV. New items 10.13-10.16. 10.16, the long run, ran
 overnight 2026-11-09: new items 10.21-10.23.
 
 | | Stage | State |
@@ -271,7 +271,7 @@ doesn't load mpv, so a restart gets out of it.
 - A stand-in is now the same kind as the pick: VLC Software with no VLC runs on Software <MPV>,
   Software <MPV> with no libmpv runs on VLC Software.
 - Software <MPV> decodes on the CPU and still draws on the GPU, through OpenGL. See "What Software MPV
-  uses" in `MPV_PERFORMANCE.md`.
+  uses" in `docs/findings/MPV_PERFORMANCE.md`.
 - `mpv_basics` passes on both MPV drivers on Windows, and on Software <MPV> on `test_gpu`.
 - `uv run pytest` 7807 passed, 7 skipped; `pytest -m real_app` on VLC 31 passed, 1 skipped,
   1 xfailed; ruff clean.
@@ -773,7 +773,7 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
       | Hardware MPV, Fast | 43.5 · 47% · 791 MB | 39.3 · 115% · 1681 MB | 35.1 · 159% · 2645 MB |
       | Software MPV | 43.5 · 149% · 339 MB | 39.3 · 234% · 777 MB | 36.7 · 375% · 1168 MB |
 
-      The RTX 3060 plays all 16 on Hardware MPV (`MPV_PERFORMANCE.md`, "A real grid"); the iGPU falls behind at 16 on
+      The RTX 3060 plays all 16 on Hardware MPV (`docs/findings/MPV_PERFORMANCE.md`, "A real grid"); the iGPU falls behind at 16 on
       Steady, copying every frame back and reading it back again. The CPU (a Ryzen) keeps up with all of it in software.
     - Auto's video memory: DXGI says 48 GB for the iGPU, which uses the system's memory, so Auto never moves a video to the CPU there.
     - The bench's frame counter took `present_rgb32`'s arguments as they were before 10.7, which stopped every Steady and
@@ -785,7 +785,7 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     - MPV churn, 10 minutes, all closed after 5 and 10: Hardware 1797 / 2126 MB, 2 arenas 897 / 972, 4 arenas 890 / 1101. Software
       1656 / 2169 against 1139 / 1568 (2 arenas).
     - VLC 3.0.24, 2 arenas: 1-4% less (Hardware single process 16: 1759-1784 against 1729-1740; Software single 9: 2430-2476 against
-      2329-2400; multi-process 16: 2035-2038 against 1991-1997). Its churn said nothing either way then, as it leaked threads (`VLC.md`, 10.29, fixed since).
+      2329-2400; multi-process 16: 2035-2038 against 1991-1997). Its churn said nothing either way then, as it leaked threads (`docs/findings/VLC.md`, 10.29, fixed since).
   - So it's worth having, for MPV above all, and it costs VLC nothing: apply it always on Linux, not only with MPV.
   - **Built 2026-11-09, 8 arenas (your pick):** `utils/glibc_malloc.py`, first thing in `main()` (and in the real-app driver):
     `mallopt(M_ARENA_MAX, 8)`, and `MALLOC_ARENA_MAX=8` for processes started fresh; forked ones keep it. A `MALLOC_ARENA_MAX`
@@ -794,7 +794,7 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     cap 985-991 MB and 31.5-32.6 fps; 4 arenas 780-796 MB, 31.0-31.6; 8 arenas 807-820 MB, 29.6-31.8; churn all closed after 10 min,
     8 arenas 1105 MB (4: 1101). Both caps show about 1 fps of 32 less there, the GPU's decoder at its limit; 8 no better than 4, so
     likely not the lock, and not seen with Software MPV or VLC.
-  - **2026-11-10:** the same module now also gives back what glibc keeps freed, 2 s after a video is let go of (`VLC.md`, 10.29):
+  - **2026-11-10:** the same module now also gives back what glibc keeps freed, 2 s after a video is let go of (`docs/findings/VLC.md`, 10.29):
     Hardware MPV churn, all closed after 10 minutes, 519 MB (1105 with the cap alone).
 - [x] 10.6 `churn.py`'s 30 KB per close on X11: check it's bounded
   - **Run 2026-11-10, `test_gpu`, real X11, the mix, 25 minutes each (the runner's limit), all closed every 5 minutes.**
@@ -873,20 +873,20 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     the first the file marks or the first; `mpv_view` checks each turned file as first opened.
 - [x] 10.12 mpv to VLC Hardware live, on a real GPU with X11. Passes on `test_gpu`, 2 rounds, and the
   pass counts: with the old cause forced, decoder processes do die with signal 6 there. NVIDIA on
-  Linux not run. See `MPV_PERFORMANCE.md`
+  Linux not run. See `docs/findings/MPV_PERFORMANCE.md`
 - [x] 10.13 Skip frames, with `vd-lavc-skipframe=nonref`: the setting "Skip frames to play more videos"
   on the Video Decoder page, off by default, for both MPV drivers, applied with no reload. 16x1080p60
   goes from 7 to 31 fps. It costs half the frames at any load, 4x1080p60 goes from 60 to 31. No use on
   video with no B frames. Automatic left out: it would need ignoring the startup burst, a way back,
   and a way to hide the pause: each switch stops a video for about a third of a second
-- [x] 10.16 Ran overnight 2026-11-09, see `MPV_PERFORMANCE.md`, "Overnight". Found: an MPV crash closing a video as it loads, fixed (see 10.1);
+- [x] 10.16 Ran overnight 2026-11-09, see `docs/findings/MPV_PERFORMANCE.md`, "Overnight". Found: an MPV crash closing a video as it loads, fixed (see 10.1);
   Linux memory growing 790 MB an hour with 9 videos playing, in Mesa (10.21); Software MPV on Windows keeping 1.5 MB a video closed (10.22); VLC
-  hanging 42 s at load on Linux and at 29 fps from 9 cells on Windows (10.23, now in `VLC.md`). The limits held over 3 runs. How it was run:
+  hanging 42 s at load on Linux and at 29 fps from 9 cells on Windows (10.23, now in `docs/findings/VLC.md`). The limits held over 3 runs. How it was run:
   **To run overnight, by you.** All of it, about 4.5 hours, from Git Bash at the repo root on Windows:
   `GP_LIBMPV_PATH='C:\path\to\libmpv-2.dll' bash tests/real_app/bench/overnight.sh`. It starts `test_gpu` too. The PC has
   to stay awake, your screen stays clear, and changing virtual desktop stops the Windows part. Results in
   `build/bench/overnight` and on `test_gpu` in `/opt/bench_out/overnight`. Then ask me to read them into
-  `MPV_PERFORMANCE.md`. What it answers:
+  `docs/findings/MPV_PERFORMANCE.md`. What it answers:
   - Crashes, hangs and leaks: churn and soak (10.1), the reason multi-process stays off the table. A 1-minute churn on
     `test_gpu` left about 1 GB in use with every video closed, up from 80 MB, and 30 s on Windows about 320 MB, up from 60.
     Leak, or an allocator holding on to it? Not known yet
@@ -922,7 +922,7 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     third of a core for 16x1080p60 on Windows. Side by side at 640x360 and 320x180 cells the five look much the same; zimg's
     lanczos is the smoothest, fast bilinear like today's GL bilinear, with the same few jaggies at 36 cells.
   - **Measured, Software MPV against Hardware MPV decoding on the CPU (today's mode), bench clips, finished code.** See
-    `MPV_PERFORMANCE.md`, "Fully software MPV". Windows offscreen: less CPU everywhere (16x1080p60 616% to 470%, one 2160p60 167%
+    `docs/findings/MPV_PERFORMANCE.md`, "Fully software MPV". Windows offscreen: less CPU everywhere (16x1080p60 616% to 470%, one 2160p60 167%
     to 88%), half the memory or less (16x1080p30 2402 MB to 1118, 36 small 3878 to 1068), the GPU 20-38% busy to 1-4%, the same
     frame rates. `test_gpu`, real X11: the same CPU, more played past the limit (16x1080p30 20.4 to 29.9 fps, 9x1080p60 28.9 to
     48.8, 16 mixed 12.8 to 24.9, 4x2160p60 10.0 to 14.8), one 1080p30 105% against 90%; the GPU 80-97% busy to 18-38%, what's left
@@ -1017,7 +1017,7 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     GPU lacks). `churn.py` takes `DR=0`. Checked on Windows, NVIDIA, Software MPV churn, 6 minutes, the mix, all closed after 5 and 6
     minutes (start 60 MB): on 1189 / 1229 MB, off 530 / 471, threads back to 23-24 both. Since 10.17 it sits under "Decode on
     the CPU", Hardware MPV's only: fully software MPV has no direct rendering.
-- 10.23-10.28 are VLC's own, not MPV's: moved to `VLC.md` with their numbers (10.23 an overnight load freeze on Linux,
+- 10.23-10.28 are VLC's own, not MPV's: moved to `docs/findings/VLC.md` with their numbers (10.23 an overnight load freeze on Linux,
   10.24 and 10.25 single-process freezes, 10.26 VLC's waits, 10.27 32-bit address space, 10.28 single against multi-process; all done).
 - [x] 10.30 **Your call (2026-11-11):** what goes by the time to the frame, rather than a setting for finer time. The time
   reaches the app once in 200 ms while playing (4.2, and since 10.19 asked for rather than sent by mpv), on VLC as well; paused,
@@ -1123,7 +1123,7 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
   - Idea from Brick2892's fork (github.com/Brick2892/gridplayermpv, its Auto preset). Ours is written from scratch;
     credit the idea in the CHANGELOG and as co-author of the first `feat` commit (see "Credit" in AGENTS.md).
   - **Built 2026-11-14** (`mpv_player/quality.py`, "Picture quality" under Video Decoder). Measured in
-    `docs/MPV_PERFORMANCE.md`, "Picture quality": no middle level, as `catmull_rom` cost the AMD iGPU as much as High
+    `docs/findings/MPV_PERFORMANCE.md`, "Picture quality": no middle level, as `catmull_rom` cost the AMD iGPU as much as High
     wherever either cost anything. Auto is High for a picture shown at 1 MP or more (one video over a 1080p window
     is 2 MP), unless shrunk from over 2.5 times the pixels (4K into the window cost the iGPU a tenth); Fast below.
     By the part on show, zoomed or cropped; once High it holds a fifth past either line, against switching to and fro.
@@ -1158,7 +1158,7 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
     scripts, other files; `vo` / `gpu-api` only on Direct, Direct's subtitle layout only elsewhere. Checked: unit
     tests, real libmpv (Check and a playing video agree), Direct on `vo=gpu-next` draws. Credit in the CHANGELOG
     still due (12.5).
-- [x] 10.36 Hardware VLC resizing like it's stuck in tar, against MPV: VLC's own, in `VLC.md`. Left as it is (your call,
+- [x] 10.36 Hardware VLC resizing like it's stuck in tar, against MPV: VLC's own, in `docs/findings/VLC.md`. Left as it is (your call,
   2026-11-15): VLC's pictures follow their cells late whatever is done, and MPV is the answer for live resizing.
 
 ## Stage 11: macOS
@@ -1477,7 +1477,7 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
 ## Stage 13: GL output, a choice beside readback
 
 **Your call (2026-11-08):** readback stays, as the default, and GL becomes a choice on MPV's row, the way Processes is on VLC's,
-even if the shaking during a window resize can't be fixed. Why: `MPV_PERFORMANCE.md`, "Readback against GL", 20-35 points of a
+even if the shaking during a window resize can't be fixed. Why: `docs/findings/MPV_PERFORMANCE.md`, "Readback against GL", 20-35 points of a
 core less while the decoder keeps up, at the same frame rates. Suggested words: "Video output", "Steady" and "Fast".
 
 - [x] 13.1 Windows spike in the real app: a `QOpenGLWidget` a cell, the render thread's textures shared with Qt's contexts, nothing
@@ -1637,7 +1637,7 @@ core less while the decoder keeps up, at the same frame rates. Suggested words: 
 Wayland and macOS keep Steady and Fast: on Wayland a surface is only its own client's to draw into, and mpv's Wayland
 backend always opens a window of its own (`wid` takes an X11 window or a Windows handle).
 
-Why, from Brick2892's fork (`docs/MPV_FORK_REVIEW.md`, not committed): mpv's own `vo=gpu` on Direct3D 11 into a native
+Why, from Brick2892's fork (`docs/reviews/MPV_FORK_REVIEW.md`): mpv's own `vo=gpu` on Direct3D 11 into a native
 child window a cell, with `wid`. A bare prototype against our outputs, the mix, one process, on the screen and off it:
 
 - CPU a fifth to a half of ours on the RTX 3060 and the AMD iGPU (on screen at 16: 54% against Steady's 103% and Fast's
@@ -1953,7 +1953,7 @@ How it goes in, by what's there already:
     waited 2763 times, never as long as the 3 s. `OWN_WINDOWS_WAIT_FOR_GONE` is gone: the wait is in `_start_next`
     before either way of starting. The turns stay on Windows. Left open: Intel on Windows (no machine), and whether
     `d3d11-flip=no` is worth having on NVIDIA (0 of 44 against 3 of 44, a hint). All of it written up in
-    `MPV_DIRECT_CRASHES.md`; what the turns cost, 14.13.
+    `docs/findings/MPV_DIRECT_CRASHES.md`; what the turns cost, 14.13.
 - [x] 14.12 **Closed (2026-11-15, your call): seen only by the test's screenshot, never on screen.** Parked
   2026-11-12; the notes are kept in case it turns up. X11, Direct, a GNOME screenshot taken as a video says it has loaded shows the
   loading card, the picture 0.3-0.7 s later. `mpv_transport`'s random start sees it, failing on the Ubuntu VM 5 runs of
@@ -1966,7 +1966,7 @@ How it goes in, by what's there already:
   - Next, if it's ever seen: on `test_gpu` (sway, a real GPU, 50-150 ms there before), and mpv's X window given a black
     background so it's never the card's pixels; or mpv's drawing traced (Present, Damage) to see what holds it.
 - [x] 14.13 **Direct's starts in turn, at less cost (your call, 2026-11-13; built 2026-11-13).** What crashes is mpvs making
-  and letting go of their outputs at once (`MPV_DIRECT_CRASHES.md`), not opening files. The turns held all of a start, network
+  and letting go of their outputs at once (`docs/findings/MPV_DIRECT_CRASHES.md`), not opening files. The turns held all of a start, network
   and buffering too: the next waited for the last to play or 1 s. Rejected instead: a setting to start them together, crashes or
   speed (1 in 250-1200 opens of three on NVIDIA, about 1 in 50 on AMD, the whole app down each time).
   - Built: every mpv opens its file at once and is held at `on_preloaded`, tracks picked, nothing made
@@ -2033,7 +2033,7 @@ Newest first. What was finished and seen working, and anything that changed the 
 - 2026-11-16: MPV the default on Windows too (your call), so Hardware MPV everywhere but macOS before 12. Every stream
   scenario passes on the Ubuntu VM as well. CHANGELOG written, AGENTS.md says libmpv builds differ (12.5).
 - 2026-11-15: 10.36 Hardware VLC's slow live resizing measured with drags by hand: what feels like tar is VLC's pictures
-  following late, not slow steps. Six ways tried, none kept (your call); MPV is the answer. Findings in `VLC.md`.
+  following late, not slow steps. Six ways tried, none kept (your call); MPV is the answer. Findings in `docs/findings/VLC.md`.
 - 2026-11-15: 11.4 overnight on the real Mac: every scenario passes there. Fixed: VLC Software's picture of turned files
   (VideoToolbox), the cocoa harness's drags. MPV on macOS asks for OpenGL 3.2 Core (zero-copy VideoToolbox), and Shared
   output runs there, its default: 9 videos at 39 fps where Copy on 2.1 did 10.
@@ -2103,11 +2103,11 @@ Newest first. What was finished and seen working, and anything that changed the 
   unturned until a transform or reload.
 - 2026-11-10: 10.17, Software MPV is fully software: libmpv's software renderer, no GL. On Windows less CPU, half the memory and the GPU idle; on `test_gpu` the same CPU and up to twice the frames past the limit. The old mode is Hardware MPV's new "Decode on the CPU", Off / On, Auto to come with 10.11.
 - 2026-11-10: 10.22, a setting to turn off MPV's direct rendering, "Hand frames straight to the GPU", on by default. Off, Software MPV on Windows with NVIDIA no longer keeps about 1.5 MB per video closed: 6-minute churn, all closed, 471 MB against 1229.
-- 2026-11-09: 10.26, VLC in a single process on Windows no longer burns up to 13 cores with 15 videos: VLC 3's waits pointed at Windows' own (`VLC_WAITS.md`). Checked in the 32-bit app too; found there 10.27, 32-bit single process out of address space with many videos, and fixed Hardware VLC's window check failing in 32-bit.
+- 2026-11-09: 10.26, VLC in a single process on Windows no longer burns up to 13 cores with 15 videos: VLC 3's waits pointed at Windows' own (`docs/findings/VLC_WAITS.md`). Checked in the 32-bit app too; found there 10.27, 32-bit single process out of address space with many videos, and fixed Hardware VLC's window check failing in 32-bit.
 - 2026-11-09: 10.28, VLC single process against multi-process on Windows with 10.26 in: the same frame rate and CPU, a little less memory single, slower loading of many videos. Processes tooltip and README no longer warn of freezes past 4-6 videos.
 - 2026-11-09: 10.16, the overnight run. An MPV crash closing a video as it loads, fixed (10.1). New: 10.21 Mesa's memory on `test_gpu`, 10.22 Software MPV's direct rendering on Windows, 10.23 VLC. The limits held over 3 runs, and VLC's freeze at 36 cells is Linux's only.
 - 2026-11-09: 13.10, 120 fps videos play at 120 again with a few cells, 110 at 9: mpv let go of the app's 1 ms timers after each wait, now asked once and kept (`MPV_HRT`), and the pacing waits a millisecond less. The 64 a second measured before was Windows throttling the bench's window on the other desktop: the bench opts out now.
-- 2026-11-08: 13.6 checked on Linux, the same cause there and fixed the same way. 13.7, a growing picture redrawn on the way. 13.8, NVIDIA's black rows: a Black line fix setting, on for NVIDIA by default. On a real screen Windows GL saves CPU only with a few videos, see `MPV_PERFORMANCE.md`.
+- 2026-11-08: 13.6 checked on Linux, the same cause there and fixed the same way. 13.7, a growing picture redrawn on the way. 13.8, NVIDIA's black rows: a Black line fix setting, on for NVIDIA by default. On a real screen Windows GL saves CPU only with a few videos, see `docs/findings/MPV_PERFORMANCE.md`.
 - 2026-11-08: 13.6, the shaking of GL output during a window resize on Windows, fixed: frames drawn at the old size, as Qt took the new one too late. Backward jumps of up to 12 px down to 1-2 px of rounding.
 - 2026-11-08: Stage 13, GL output, built: 13.1 to 13.4. "Fast" in Video output, after a restart. Same frame rates for 20-35 points of a core less, and on Linux the display server's share too. On Linux VLC's processes then have to start from `forkserver`.
 - 2026-11-08: Stage 9 built, see Stage 9 results. YouTube on MPV seeks in about a second, not 6, and no longer goes back to the start on 0.40 or stops after the first segment on 0.35: streams go to mpv as they come, not as made for VLC. Two proxy bugs found on the way, fixed for VLC too: a live stream that went away froze for good.
@@ -2137,7 +2137,7 @@ Newest first. What was finished and seen working, and anything that changed the 
   frame skipping stops a video for about a third of a second.
 - 2026-11-06: 10.13 built as a setting, your call: a switch on the Video Decoder page. The bench moved to
   `tests/real_app/bench` with its own README, and works on `test_gpu` and Windows.
-- 2026-11-06: Load tests of VLC against MPV on `test_gpu` and Windows, see `MPV_PERFORMANCE.md`. The
+- 2026-11-06: Load tests of VLC against MPV on `test_gpu` and Windows, see `docs/findings/MPV_PERFORMANCE.md`. The
   decoder is the limit, not the GIL, so no multi-process mode for MPV. 10.12 settled for Intel. VLC is
   now installed on `test_gpu`.
 - 2026-11-06: The note became a bubble below the Video Decoder block (your pick, V2), with "How to

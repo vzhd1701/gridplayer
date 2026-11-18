@@ -3,7 +3,7 @@
 Fewer arenas. glibc gives threads that allocate at the same time arenas of
 their own, up to 8 a core. Each keeps what was freed in it for its own
 threads, so with the many decoder threads of many videos, memory freed by one
-is held where the others don't reach it. Measured on 8 cores (MPV_PLAN.md,
+is held where the others don't reach it. Measured on 8 cores (docs/plans/MPV_PLAN.md,
 10.5): Hardware MPV with 16 videos 985-991 MB, with 8 arenas 807-820; opening
 and closing videos for 10 minutes, 2126 MB still held with all closed, with 8
 arenas 1105. VLC 1-4% less with 2. Fewer arenas means more threads share one
@@ -13,8 +13,9 @@ machine.
 What a closed video freed, given back. Its big buffers (frames: 8 MB at 1080p)
 come from the arenas rather than mapped on their own once a few have been
 freed, and an arena gives back only what is free at its very end. After 3
-minutes of opening and closing (VLC.md, 10.29), with all closed: Software VLC
-in a single process 5362 MB, 277 once given back; Hardware MPV 1105, 309.
+minutes of opening and closing (docs/findings/VLC.md, 10.29), with all closed:
+Software VLC in a single process 5362 MB, 277 once given back; Hardware MPV
+1105, 309.
 """
 
 import ctypes

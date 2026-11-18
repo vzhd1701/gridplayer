@@ -27,8 +27,9 @@ _MIB = 1024 * 1024
 
 # What a hardware decoded video takes: so much whatever its size, and so much
 # by its pixels, the decoder's frames and the output's textures. Measured on an
-# RTX 3060 (MPV_PLAN.md, 10.11): 240 MB at 1080p, 570 at 2160p, either output.
-# 10-bit takes half as much again, 365 MB at 1080p, which the spare covers.
+# RTX 3060 (docs/plans/MPV_PLAN.md, 10.11): 240 MB at 1080p, 570 at 2160p,
+# either output. 10-bit takes half as much again, 365 MB at 1080p, which the
+# spare covers.
 # Intel's VAAPI takes about 25 bytes a pixel and nothing fixed.
 FIXED_BYTES = 128 * 1024 * 1024
 BYTES_PER_PIXEL = 56

@@ -2,7 +2,7 @@
 kept beside a video, what's picked coming back after a reload, ways out of the
 machine, channel modes and the delay, songs with no picture, and switching the
 picture off. mpv's own word is what's checked. What comes out of a speaker is
-compared with VLC in docs/MPV_PLAN.md.
+compared with VLC in docs/plans/MPV_PLAN.md.
 
 Everything here stays muted: nothing is to come out of the machine it runs on.
 """

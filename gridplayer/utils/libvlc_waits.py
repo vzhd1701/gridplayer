@@ -17,7 +17,7 @@ instance is made, which is before any thread can be waiting in a slot.
 
 The pointers are found in VLC's own code, each where the result of looking
 up its name is stored, and changed only when what they hold is exactly the
-stand-in. See docs/VLC_WAITS.md.
+stand-in. See docs/findings/VLC_WAITS.md.
 """
 
 import ctypes

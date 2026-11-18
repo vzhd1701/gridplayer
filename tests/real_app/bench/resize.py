@@ -11,7 +11,7 @@ Leaves resize.json in the run's folder.
 
 What it can't show: a drag by hand. The window resized here doesn't go
 through Windows' own sizing loop, and what a drag felt like with Hardware VLC
-wasn't in these numbers (docs/VLC.md, 10.36).
+wasn't in these numbers (docs/findings/VLC.md, 10.36).
 
     PYTHONPATH=.;tests/real_app/bench DRIVER=vlc_hw CELLS=12 AWAY=1 \\
         REAL_APP_QT_PLATFORM=windows uv run --with psutil python -m tests.real_app.run \\
