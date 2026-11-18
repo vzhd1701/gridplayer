@@ -2,12 +2,9 @@
 
 set -e
 
-SCRIPT_DIR="$( cd "$( dirname $0 )" && pwd )"
-
 . "scripts/init_app_vars.sh"
 
-PYLUPDATE=$(uv run --frozen which pylupdate5)
-DEST_TS_FILE="$RESOURCES_DIR/translations/en_US.ts"
+DEST_TS_FILE="${1:-$RESOURCES_DIR/translations/en_US.ts}"
 
 TEMPD=$(mktemp -d)
 
@@ -16,15 +13,15 @@ cp -a "$APP_BASE_DIR" "$TEMPD"
 
 APP_BASE_TMP="$TEMPD/$APP_MODULE"
 
-echo "Putting translate calls on single lines"
-
-# pylupdate5 misses a translate(***) whose text does not start on the line it opens on
-uv run --frozen python "$SCRIPT_DIR/flatten_translate_calls.py" "$APP_BASE_TMP"
-
 echo "Extracting translation lines"
 cp "$DEST_TS_FILE" "$APP_BASE_TMP/en_US.ts"
 
-(cd "$APP_BASE_TMP" && $PYLUPDATE -noobsolete -verbose $(find ./ -name "*.py" -printf "%p ") -ts "en_US.ts")
+# Run from inside the copy, so each location reads "dialogs/about.py"
+# whatever the checkout's path
+(cd "$APP_BASE_TMP" && uv run --frozen --project "$OLDPWD" pylupdate6 --no-obsolete . --ts en_US.ts)
+
+# pylupdate6 writes the path with the system's separator: "/" everywhere
+sed -i -E '/<location /s#\\#/#g' "$APP_BASE_TMP/en_US.ts"
 
 cp "$APP_BASE_TMP/en_US.ts" "$DEST_TS_FILE"
 
