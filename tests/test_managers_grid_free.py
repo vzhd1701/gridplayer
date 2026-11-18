@@ -12,6 +12,7 @@ from gridplayer.player.managers.grid import GridManager
 from gridplayer.settings import Settings, _default_settings
 from gridplayer.utils.drop_zone import DropZone
 from gridplayer.utils.layout import Box, GridLayout
+from gridplayer.utils.layout.arrange import ArrangeCache
 from gridplayer.utils.layout.free_tiles import Rect
 
 
@@ -757,9 +758,10 @@ def test_tiles_arranged_leave_a_locked_one_where_it_is():
     rects = _rects(manager)
     _approx(rects["A"], (600, 0, 1000, 500))
     assert not _overlapping(rects)
-    # the others in the room left of it, one above the other
-    _approx(rects["B"], (50, 0, 550, 250))
-    _approx(rects["C"], (50, 250, 550, 500))
+    # the others in the room left of it, one above the other, against it:
+    # the room they leave at the window's edge
+    _approx(rects["B"], (100, 0, 600, 250))
+    _approx(rects["C"], (100, 250, 600, 500))
     assert list(manager._free.tiles)[-1] == "A"
 
 
@@ -1149,7 +1151,7 @@ def test_in_mosaic_a_tile_moved_turns_reorder_to_fit_off():
     assert not manager._flow.is_reordered
 
 
-def test_in_mosaic_a_tile_sized_stays_as_made_till_the_next_change():
+def test_in_mosaic_a_tile_sized_is_locked_as_made():
     shapes = {"A": 16 / 9, "B": 16 / 9, "C": 16 / 9, "D": 16 / 9}
     manager = _mosaic(
         shapes,
@@ -1168,7 +1170,17 @@ def test_in_mosaic_a_tile_sized_stays_as_made_till_the_next_change():
     # where it was made, over the room under it none took
     _approx(rects["A"], (big.left, big.top, big.right, 500))
     assert not _overlapping(rects)
-    # no size kept for it: arranged again, as any other
+    assert manager.is_tile_locked("A")
+
+    # arranged again: where it was made, as big, or giving a little
+    manager.cmd_arrange_tiles()
+    rects = _rects(manager)
+    assert (rects["A"].left, rects["A"].top) == pytest.approx((big.left, big.top))
+    assert 0.85 <= rects["A"].width / big.width <= 1.15
+    assert not _overlapping(rects)
+
+    # let go of: as any other
+    manager.lock_free_tile("A", False)
     manager.cmd_arrange_tiles()
     areas = [r.width * r.height for r in _rects(manager).values()]
     assert areas == pytest.approx([areas[0]] * 4)
@@ -1250,11 +1262,14 @@ def test_in_mosaic_with_reorder_to_fit_the_window_resized_is_reordered_once_done
     manager._keep_parent.resize(800, 500)
     manager._place_free(800, 500)
     # as it goes, in the order they are in, which may be quick
-    arrange.assert_called_once_with(is_reordered=False)
+    arrange.assert_called_once_with(
+        is_reordered=False, cache=manager._resize_cache, is_resizing=True
+    )
 
     _arranged_when_due(manager)
     # once done, reordered
-    assert arrange.call_args == ()
+    assert not arrange.call_args.args
+    assert "is_reordered" not in arrange.call_args.kwargs
 
 
 def test_in_mosaic_the_others_make_room_as_a_tile_is_moved():
@@ -1667,3 +1682,246 @@ def test_in_mosaic_with_no_room_for_the_others_no_landing_is_shown():
     # let go, all are arranged anew: where it lands is not known
     assert not manager._holding.has_room
     assert manager.free_tile_landing() is None
+
+
+@pytest.mark.parametrize("is_auto_lock", [True, False])
+def test_in_mosaic_a_tile_let_go_is_locked_if_told(mocker, is_auto_lock):
+    manager = _mosaic(ROW, **SMALL)
+    mocker.patch.object(manager, "is_tile_auto_lock", return_value=is_auto_lock)
+
+    manager.begin_grid_change()
+    _moved_by(manager, "A", 300, 200)
+    manager.end_grid_change()
+
+    assert manager.is_tile_locked("A") == is_auto_lock
+
+
+def test_in_mosaic_a_tile_sized_by_hand_is_locked_at_that_size(mocker):
+    manager = _mosaic(ROW, **SMALL)
+    mocker.patch.object(manager, "is_tile_auto_lock", return_value=False)
+
+    _by_hand(manager, "A", (0, 0, 600, 337.5))
+
+    assert manager.is_tile_locked("A")
+    assert _rects(manager)["A"] == pytest.approx(Rect(0, 0, 600, 337.5))
+
+
+def test_in_mosaic_a_locked_tile_is_moved_by_hand_and_stays_locked():
+    manager = _mosaic(ROW, **SMALL)
+    manager.lock_free_tile("A", True)
+    was = _rects(manager)["A"]
+
+    _by_hand(manager, "A", (500, 250, 900, 475))
+    rects = _rects(manager)
+
+    assert rects["A"] != was
+    assert manager.is_tile_locked("A")
+    # the others around where it went, not where it was
+    assert not _overlapping(rects)
+    others = {i: r for i, r in rects.items() if i != "A"}
+    assert any(r.overlaps(was) for r in others.values())
+
+
+def test_all_the_tiles_unlocked_at_once_can_be_undone():
+    manager = _mosaic(ROW, **SMALL)
+    manager.lock_free_tile("A", True)
+    manager.lock_free_tile("B", True)
+    assert manager.has_locked_tiles()
+
+    manager.cmd_unlock_all_tiles()
+    assert not manager.has_locked_tiles()
+
+    manager.cmd_undo_grid()
+    assert manager.is_tile_locked("A")
+    assert manager.is_tile_locked("B")
+
+
+def _resized(manager, width, height):
+    manager._keep_parent.resize(width, height)
+    manager._place_free(width, height)
+    return manager._free.rects(width, height)
+
+
+@pytest.mark.parametrize("other", [(800, 500), (500, 900), (1400, 500)])
+def test_in_mosaic_a_locked_tile_is_as_big_again_with_the_window(other):
+    manager = _mosaic(ROW, **SMALL)
+    _by_hand(manager, "A", (0, 0, 600, 337.5))
+    manager.lock_free_tile("A", True)
+    locked = _rects(manager)["A"]
+
+    back = []
+    for _ in range(3):
+        _resized(manager, *other)
+        _arranged_when_due(manager)
+        back.append(_resized(manager, 1000, 500)["A"])
+        _arranged_when_due(manager)
+
+    # not a little smaller each time: as it was put, or giving a little
+    assert all(rect == pytest.approx(back[0]) for rect in back)
+    assert (back[0].left, back[0].top) == pytest.approx((locked.left, locked.top))
+    assert 0.85 <= back[0].width / locked.width <= 1.15
+    assert not _overlapping(manager._free.rects(1000, 500))
+
+
+def test_where_a_locked_tile_was_put_is_saved():
+    manager = _mosaic(ROW, **SMALL)
+    manager.lock_free_tile("A", True)
+    locked = _rects(manager)["A"]
+    _resized(manager, 800, 500)
+
+    state = GridState.model_validate(manager.grid_state().model_dump(mode="json"))
+    assert [home.video_id for home in state.locked_homes] == ["A"]
+
+    manager._load_grid_state(state)
+    assert _resized(manager, 1000, 500)["A"] == pytest.approx(locked)
+
+
+@pytest.mark.parametrize("sized", ["A", "D", "F"])
+def test_in_mosaic_no_tile_is_flipped_to_and_fro_as_the_window_is_resized(sized):
+    # one sized by hand, so locked: no tile gone far from where it was, and
+    # back there at the next step
+    shapes = dict.fromkeys("ABCDEF", 16 / 9)
+    manager = _mosaic(
+        shapes, **{i: (n * 160, 0, n * 160 + 150, 84) for n, i in enumerate("ABCDEF")}
+    )
+    a = _rects(manager)[sized]
+    _by_hand(manager, sized, (a.left, a.top, a.left + 450, a.top + 253))
+
+    steps = []
+    for width in [*range(1000, 480, -20), *range(500, 1020, 20)]:
+        rects = _resized(manager, width, 500)
+        steps.append(
+            {i: (r.center_x / width, r.center_y / 500) for i, r in rects.items()}
+        )
+
+    def away(one, other):
+        return max(abs(one[0] - other[0]), abs(one[1] - other[1]))
+
+    flips = [
+        i
+        for before, now, after in zip(steps, steps[1:], steps[2:])
+        for i in now
+        if away(before[i], after[i]) < 0.05
+        and min(away(now[i], before[i]), away(now[i], after[i])) > 0.2
+    ]
+    assert not flips
+
+
+def test_in_mosaic_no_tile_is_moved_again_once_the_resize_is_done():
+    shapes = dict.fromkeys("ABCDEF", 16 / 9)
+    manager = _mosaic(
+        shapes, **{i: (n * 160, 0, n * 160 + 150, 84) for n, i in enumerate("ABCDEF")}
+    )
+
+    for width in range(1000, 590, -30):
+        shown = _resized(manager, width, 500)
+    _arranged_when_due(manager)
+
+    assert _same_rects(manager._free.rects(width, 500), shown)
+
+
+def test_a_locked_tile_from_a_playlist_with_no_homes_stays_in_its_place_in_the_stack(
+    mocker,
+):
+    # not put in front again, in whatever order the locked ones come
+    manager = _mosaic(ROW, **SMALL)
+    manager.lock_free_tile("A", True)
+    manager.lock_free_tile("B", True)
+    state = manager.grid_state().model_copy(update={"locked_homes": []})
+    order = list(manager._free.tiles)
+    stack = mocker.spy(type(manager._free), "stack")
+
+    manager._load_grid_state(state)
+
+    stack.assert_not_called()
+    assert list(manager._free.tiles) == order
+    assert manager._free.homes.keys() == {"A", "B"}
+
+
+def test_in_mosaic_a_locked_tile_moved_is_not_made_smaller_by_arranging_again():
+    manager = _locked_in_corner()
+    # giving a little, to close a gap
+    assert manager._gives["A"][1] != 1.0
+
+    manager.begin_grid_change()
+    _moved_by(manager, "A", 0, 60)
+    manager.end_grid_change()
+    moved = _rects(manager)["A"]
+    manager.cmd_arrange_tiles()
+
+    # its home its own size: not the size it gave to, given again
+    assert _rects(manager)["A"] == pytest.approx(moved)
+
+
+def test_in_mosaic_a_locked_tile_let_go_with_no_room_is_home_where_it_went():
+    manager = _mosaic(ROW, **SMALL)
+    manager.lock_free_tile("A", True)
+    manager.lock_free_tile("B", True)
+    b = _rects(manager)["B"]
+
+    manager.begin_grid_change()
+    _held_at(manager, "A", (0, 0, 1000, 495))
+    manager.end_grid_change()
+    a = _rects(manager)["A"]
+    manager.cmd_arrange_tiles()
+
+    # not back where none of the others fit, nor the locks let go of
+    assert manager._free.home_rects(["A"], 1000, 500)["A"] == pytest.approx(a)
+    assert _rects(manager)["B"] == pytest.approx(b)
+    assert not _overlapping(_rects(manager))
+
+
+def test_how_the_tiles_were_arranged_as_the_window_was_resized_is_let_go_of():
+    # Mosaic left before the resize was done: not kept for the next one
+    manager = _manager(ROW)
+    _free(manager, **SMALL)
+    manager._resize_cache = ArrangeCache()
+
+    manager._arrange_due()
+
+    assert manager._resize_cache is None
+
+
+def _locked_in_corner():
+    # A locked in the top left, giving a little, nothing above it
+    shapes = dict.fromkeys("ABCD", 16 / 9)
+    manager = _mosaic(
+        shapes,
+        A=(0, 0, 150, 90),
+        B=(300, 0, 450, 90),
+        C=(0, 300, 150, 390),
+        D=(300, 300, 450, 390),
+    )
+    _by_hand(manager, "A", (0, 0, 600, 337.5))
+    manager.cmd_arrange_tiles()
+    return manager
+
+
+def test_in_mosaic_a_locked_tile_moved_off_an_edge_slides_back_as_big_as_it_is():
+    manager = _locked_in_corner()
+    a = _rects(manager)["A"]
+
+    # nothing above it put there: to the top, not stretched there
+    _by_hand(manager, "A", a.moved(0, 60))
+
+    assert tuple(_rects(manager)["A"]) == pytest.approx(tuple(a))
+    assert not _overlapping(_rects(manager))
+
+
+@pytest.mark.parametrize("is_auto_lock", [True, False])
+def test_in_mosaic_a_tile_moved_keeps_its_size_if_locked_once_let_go(
+    mocker, is_auto_lock
+):
+    manager = _locked_in_corner()
+    manager.lock_free_tile("A", False)
+    mocker.patch.object(manager, "is_tile_auto_lock", return_value=is_auto_lock)
+    a = _rects(manager)["A"]
+
+    _by_hand(manager, "A", a.moved(0, 60))
+
+    moved = _rects(manager)["A"]
+    if is_auto_lock:
+        assert tuple(moved) == pytest.approx(tuple(a))
+    else:
+        # stretched over the room it left, arranged again later anyway
+        assert (moved.top, moved.bottom) == pytest.approx((0, a.bottom + 60))

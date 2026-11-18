@@ -58,6 +58,8 @@ class TileEditManager(LayoutEditManager):
                 set_pull=commands.set_tile_pull,
                 is_animated=commands.is_tile_animate,
                 set_animated=self._set_animated,
+                is_auto_lock=commands.is_tile_auto_lock,
+                set_auto_lock=self._set_auto_lock,
             ),
             swap_key=drop_switch_modifier,
             can_undo=commands.is_grid_undoable,
@@ -108,6 +110,10 @@ class TileEditManager(LayoutEditManager):
     def _set_animated(self, is_animated: bool):
         if self._ctx.commands.is_tile_animate() != is_animated:
             self._ctx.commands.toggle_tile_animate()
+
+    def _set_auto_lock(self, is_auto_lock: bool):
+        if self._ctx.commands.is_tile_auto_lock() != is_auto_lock:
+            self._ctx.commands.toggle_tile_auto_lock()
 
     def _set_snapping(self, is_snapping: bool):
         if self._ctx.commands.is_grid_line_snap() != is_snapping:

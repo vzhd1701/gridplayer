@@ -182,4 +182,5 @@ def grid_state_for_dump(live) -> GridState:
         page_shape=live.page_shape,
         page_height=live.page_height,
         locked_tiles=list(live.locked_tiles),
+        locked_homes=[home.model_copy() for home in live.locked_homes],
     )

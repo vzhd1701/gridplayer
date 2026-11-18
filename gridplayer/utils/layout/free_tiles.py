@@ -37,6 +37,10 @@ _SHAPE_NEAR = 0.01
 # how many halvings a move cut short at a tile in the way is looked for in
 _STEPS = 16
 
+# how much smaller, together, the locked tiles are made in a window of
+# another shape where they would go over each other (see home_rects)
+HOME_SHRINKS = (1.0, 0.9, 0.8, 0.7, 0.6, 0.5)
+
 K = TypeVar("K")
 
 
@@ -244,6 +248,10 @@ class FreeTiles:
     A tile locked is neither moved nor sized by hand, nor pushed aside,
     nor gone over: the others stop at its edges. It is in front of those
     not locked, and stays where it is when they are arranged, or shuffled.
+    Where it was when locked, or last put by hand, is kept with the size
+    of the page then (see home_rects): arranged for another size, it is
+    made bigger or smaller from there, not from where the last size had
+    it, and is back where it was with that size.
 
     A video added goes where there is the most room for it, in a tile the
     size the others have, if there is room enough (see ROOM_SHARE); none
@@ -271,6 +279,9 @@ class FreeTiles:
         self.is_as_placed = is_as_placed
         # the videos whose tiles are locked
         self.locked: set[str] = set(locked)
+        # where each locked tile was put, on a page of this width and
+        # height (see home_rects)
+        self.homes: dict[str, tuple[Box, float, float]] = {}
         # each video's shape, for its tile when it is added
         self.shape_of: Callable[[str], float] = lambda _video_id: DEFAULT_SHAPE
 
@@ -284,11 +295,13 @@ class FreeTiles:
             self.is_as_placed,
         )
         tiles.shape_of = self.shape_of
+        tiles.homes = dict(self.homes)
         return tiles
 
     def clear(self) -> None:
         self.tiles = {}
         self.locked = set()
+        self.homes = {}
 
     # --- the page ---
 
@@ -379,27 +392,48 @@ class FreeTiles:
         self, video_id: str, rect: Rect, page_width: float, page_height: float
     ) -> None:
         self.tiles[video_id] = rect.as_box(page_width, page_height)
+        if video_id in self.locked:
+            self.set_home(video_id, rect, page_width, page_height)
+
+    def set_home(
+        self, video_id: str, rect: Rect, page_width: float, page_height: float
+    ) -> None:
+        """Where a locked tile was put, on a page of this size: where it
+        goes as the page is resized (see home_rects), wherever it is shown."""
+
+        self.homes[video_id] = (
+            rect.as_box(page_width, page_height),
+            page_width,
+            page_height,
+        )
 
     def handle_at(
-        self, x: float, y: float, page_width: float, page_height: float
+        self,
+        x: float,
+        y: float,
+        page_width: float,
+        page_height: float,
+        is_locked_held: bool = False,
     ) -> tuple[str, Handle] | None:
         """The tile at a point on the page and what of it is there: an edge
         or a corner, within LINE_REACH of it, to size it by, or the rest of
         it, to move it by. The tile the point is in goes first, where two
         meet, the one in front where one is over another. None of a locked
-        tile, nor of those behind it there, their edges either."""
+        tile, nor of those behind it there, their edges either; unless
+        locked tiles are moved by hand too (is_locked_held), as in Mosaic."""
 
+        fixed = set() if is_locked_held else self.locked
         rects = self.rects(page_width, page_height)
         inside = [i for i, r in reversed(rects.items()) if _contains(r, x, y)]
-        locked = [rects[i] for i in inside if i in self.locked]
+        locked = [rects[i] for i in inside if i in fixed]
         others = [
             i
             for i in rects
             if i not in inside
-            and i not in self.locked
+            and i not in fixed
             and not any(rects[i].overlaps(r) for r in locked)
         ]
-        inside = list(takewhile(lambda i: i not in self.locked, inside))
+        inside = list(takewhile(lambda i: i not in fixed, inside))
 
         for video_id in inside + others:
             rect = rects[video_id]
@@ -453,6 +487,7 @@ class FreeTiles:
     def remove(self, video_id: str) -> None:
         self.tiles.pop(video_id, None)
         self.locked.discard(video_id)
+        self.homes.pop(video_id, None)
 
     def free_capacity(self) -> int | None:
         return None
@@ -500,6 +535,7 @@ class FreeTiles:
         self.tiles = dict(tiles)
         if place.is_locked:
             self.locked.add(video_id)
+            self.set_home_here(video_id)
         self._restack()
 
         page = Rect(0, 0, self.page_shape, 1)
@@ -624,6 +660,9 @@ class FreeTiles:
             for video_id, box in self.tiles.items()
         }
         self.locked = {new_id if i == old_id else i for i in self.locked}
+        self.homes = {
+            (new_id if i == old_id else i): home for i, home in self.homes.items()
+        }
 
     def drop(
         self,
@@ -656,6 +695,11 @@ class FreeTiles:
         # each in the other's tile: the one closed with it
         traded = {src_id: dst_id, dst_id: src_id}
         self.locked = {traded.get(i, i) for i in self.locked} & set(self.tiles)
+        self.homes = {
+            traded.get(i, i): home
+            for i, home in self.homes.items()
+            if traded.get(i, i) in self.locked
+        }
         self._restack()
         return []
 
@@ -677,9 +721,54 @@ class FreeTiles:
 
         if is_locked:
             self.locked.add(video_id)
+            self.set_home_here(video_id)
             self.stack(video_id, True)
         else:
             self.locked.discard(video_id)
+            self.homes.pop(video_id, None)
+
+    def unlock_all(self) -> None:
+        self.locked = set()
+        self.homes = {}
+
+    def set_home_here(self, video_id: str) -> None:
+        """A locked tile's home where it is now, on the page as it is."""
+
+        if video_id in self.tiles and self.page_height:
+            self.homes[video_id] = (
+                self.tiles[video_id],
+                self.page_height * self.page_shape,
+                self.page_height,
+            )
+
+    def home_rects(
+        self, video_ids: Collection[str], width: float, height: float
+    ) -> dict[str, Rect]:
+        """These locked tiles in an area of this size, where they were put:
+        their shapes kept, the same share of the area, against the same
+        edges of it (see kept_in_place). Where they would go over each other
+        there, all made smaller alike till none does (see HOME_SHRINKS);
+        else none of them."""
+
+        put = {}
+        for video_id in video_ids:
+            if video_id not in self.locked or video_id not in self.homes:
+                continue
+            box, page_width, page_height = self.homes[video_id]
+            rect = Rect.of_box(box, Rect(0, 0, page_width, page_height))
+            put[video_id] = (rect, page_width, page_height)
+
+        for shrink in HOME_SHRINKS:
+            found = {
+                video_id: kept_in_place(*home, width, height, shrink)
+                for video_id, home in put.items()
+            }
+            rects = list(found.values())
+            if not any(
+                a.overlaps(b) for i, a in enumerate(rects) for b in rects[i + 1 :]
+            ):
+                return found
+        return {}
 
     def _restack(self) -> None:
         """The locked tiles in front of the others."""
@@ -843,6 +932,40 @@ def _fitted(
     x = (width - group.width * scale) / 2 - group.left * scale
     y = (height - group.height * scale) / 2 - group.top * scale
     return {video_id: _scaled(r, scale, x, y) for video_id, r in rects.items()}
+
+
+def kept_in_place(
+    rect: Rect,
+    page_width: float,
+    page_height: float,
+    width: float,
+    height: float,
+    shrink: float = 1.0,
+) -> Rect:
+    """A tile on a page of one size, on a page of another: its shape kept,
+    the same share of the page's area, as far as it fits in it (times
+    shrink), against the same edges of it, else as far across it as its
+    middle was. Not as much smaller as the page's tighter side: a window
+    made only lower would leave it small in all that width."""
+
+    scale = shrink * min(
+        math.sqrt(width * height / (page_width * page_height)),
+        width / rect.width,
+        height / rect.height,
+    )
+    tile_width, tile_height = rect.width * scale, rect.height * scale
+
+    def start(low: float, high: float, page: float, new: float, size: float):
+        if low < _NEAR:
+            return 0.0
+        if high > page - _NEAR:
+            return new - size
+        middle = (low + high) / 2 / page * new
+        return min(max(middle - size / 2, 0.0), new - size)
+
+    left = start(rect.left, rect.right, page_width, width, tile_width)
+    top = start(rect.top, rect.bottom, page_height, height, tile_height)
+    return Rect(left, top, left + tile_width, top + tile_height)
 
 
 def _beside(place: TilePlace, rects: dict[str, Rect]) -> Rect | None:

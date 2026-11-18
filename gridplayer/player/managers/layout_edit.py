@@ -20,7 +20,8 @@ EDITOR_ACTIONS = {
     "redo": "Redo Grid Change",
     "reopen": "Reopen Closed Video",
 }
-# and those of what the editors' bars set, shown there as their keys set it
+# and those of what the editors' bars set, shown there as their keys set
+# it, or of what the tiles are, changed with no button of its own there
 SETTING_ACTIONS = (
     "Snap Lines",
     *(f"Snap to {snap.name.replace('_', ' ').title()}" for snap in TileSnap),
@@ -29,6 +30,8 @@ SETTING_ACTIONS = (
     *(f"Tile Crop {crop}%" for crop in TILE_CROPS),
     *(f"Pull to Edge {pull.name.title()}" for pull in TilePull),
     "Animate Tiles",
+    "Lock Tiles You Move",
+    "Unlock All Tiles",
     "Reorder to Fit",
 )
 

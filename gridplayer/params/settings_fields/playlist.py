@@ -428,6 +428,16 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
             "The other tiles slide to their new places as you move one.",
         ),
     ),
+    CheckboxField(
+        settings_key="playlist/tile_auto_lock",
+        label=translate("Lock Tiles You Move", "Lock tiles you move"),
+        shown_when=When("playlist/grid_mode", (GridMode.MOSAIC,)),
+        tooltip=translate(
+            "Lock Tiles You Move",
+            "A tile you move is locked where you drop it. Arrange and resizing"
+            " the window leave it there.",
+        ),
+    ),
     ComboField(
         settings_key="playlist/drop_action_internal",
         label=translate("SettingsDialog", "In-window drag"),

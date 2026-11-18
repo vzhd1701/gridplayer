@@ -20,6 +20,15 @@ class GridTile(BaseModel):
     box: list[float]
 
 
+class LockedHome(BaseModel):
+    """Where a locked tile was put: its edges as shares of a page of this
+    width and height (see FreeTiles.homes)."""
+
+    video_id: str
+    box: list[float]
+    page: list[float]
+
+
 class GridState(BaseModel):
     mode: GridMode = default_field("playlist/grid_mode")
     is_fit: bool = default_field("playlist/grid_fit")
@@ -57,3 +66,6 @@ class GridState(BaseModel):
     is_tiles_as_placed: bool = Field(default=True, exclude=True)
     # the videos whose tiles are locked
     locked_tiles: list[str] = Field(default_factory=list)
+    # and where each was put; none in a playlist saved before they were
+    # kept, where they are on its page then
+    locked_homes: list[LockedHome] = Field(default_factory=list)

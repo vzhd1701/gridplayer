@@ -12,6 +12,7 @@ from gridplayer.utils.layout.free_tiles import (
     Rect,
     TileDrag,
     TilePlace,
+    kept_in_place,
 )
 from gridplayer.widgets.grid_line_mark import guides_clear_of
 
@@ -1245,3 +1246,82 @@ def test_a_tile_under_a_locked_one_has_no_room_to_go_further_under_it():
     tiles.set_locked("L", True)
 
     assert _room(tiles, "A") is None
+
+
+def test_a_locked_tile_held_by_hand_has_its_edges_and_middle():
+    # as in Mosaic, where locked means only that arranging leaves it be
+    tiles = _locked(_tiles(a=(100, 100, 300, 200), b=(300, 100, 500, 200)), "b")
+
+    assert tiles.handle_at(400, 150, W, H, is_locked_held=True) == ("b", MOVE)
+    assert tiles.handle_at(498, 150, W, H, is_locked_held=True) == ("b", (1, 0))
+
+
+def test_a_locked_tile_is_kept_where_it_was_put():
+    tiles = _locked(_tiles(a=(0, 0, 400, 200), b=(400, 0, 1000, 500)), "a")
+    put = tiles.rects(W, H)["a"]
+
+    # the page made another size since: from where it was put still
+    tiles.fill(W - 200, H)
+    tiles.fill(W, H)
+
+    assert tiles.home_rects({"a"}, W, H) == {"a": pytest.approx(put)}
+    assert tiles.home_rects({"a"}, 500, 250) == {
+        "a": pytest.approx(kept_in_place(put, W, H, 500, 250))
+    }
+
+
+def test_a_locked_tile_put_by_hand_is_kept_there_and_let_go_of_forgotten():
+    tiles = _locked(_tiles(a=(0, 0, 400, 200), b=(400, 0, 1000, 500)), "a")
+
+    tiles.set_rect("a", Rect(100, 100, 300, 200), W, H)
+    assert tiles.home_rects({"a"}, W, H) == {
+        "a": pytest.approx(Rect(100, 100, 300, 200))
+    }
+
+    tiles.replace_id("a", "c")
+    assert set(tiles.home_rects({"c"}, W, H)) == {"c"}
+
+    tiles.set_locked("c", False)
+    assert tiles.homes == {}
+
+
+@pytest.mark.parametrize(
+    ("rect", "kept"),
+    [
+        # against the top and left edges: there still, half as big
+        (Rect(0, 0, 400, 200), Rect(0, 0, 200, 100)),
+        # against the right and bottom edges
+        (Rect(600, 300, 1000, 500), Rect(300, 150, 500, 250)),
+        # against none: its middle as far across
+        (Rect(400, 150, 600, 350), Rect(200, 75, 300, 175)),
+    ],
+)
+def test_a_tile_kept_in_place_keeps_its_shape_and_edges(rect, kept):
+    assert kept_in_place(rect, 1000, 500, 500, 250) == pytest.approx(kept)
+
+
+def test_a_tile_kept_in_place_keeps_its_share_of_a_window_made_lower():
+    # not as small as the tighter side has it: half as high, about 0.7 as big
+    kept = kept_in_place(Rect(0, 0, 400, 200), 1000, 500, 1000, 250)
+
+    assert kept.width * kept.height == pytest.approx(400 * 200 / 2)
+    assert kept.width / kept.height == pytest.approx(2)
+
+
+def test_a_tile_kept_in_place_fits_the_window():
+    # its share of the area would be 63 high, in a window 50 high
+    kept = kept_in_place(Rect(0, 0, 400, 200), 1000, 500, 1000, 50)
+
+    assert kept.height == pytest.approx(50)
+    assert kept.width == pytest.approx(100)
+
+
+def test_locked_tiles_that_would_go_over_each_other_are_made_smaller_alike():
+    tiles = _locked(_tiles(a=(0, 0, 500, 250), b=(500, 250, 1000, 500)), "a", "b")
+
+    # much narrower: each its share of the area would have them meet
+    homes = tiles.home_rects({"a", "b"}, 400, 500)
+
+    assert set(homes) == {"a", "b"}
+    assert not homes["a"].overlaps(homes["b"])
+    assert homes["a"].width == pytest.approx(homes["b"].width)

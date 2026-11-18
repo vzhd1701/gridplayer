@@ -9,6 +9,7 @@ from gridplayer.utils.layout.arrange import (
     _biggest_room,
     _tile_score,
     arrange_around,
+    arrange_giving,
     open_pieces,
 )
 from gridplayer.utils.layout.flow_layout import SWITCH_GAIN, FlowLayout, FlowMode
@@ -337,3 +338,74 @@ def test_reordered_what_was_arranged_is_not_kept():
 
     for left in (304, 500):
         assert arranged(left, cache) == arranged(left)
+
+
+def _empty(boxes, walls):
+    covered = sum((b.right - b.left) * (b.bottom - b.top) for b in boxes.values())
+    return 1 - covered - sum(r.width * r.height for r in walls) / (WIDTH * HEIGHT)
+
+
+def test_the_room_a_piece_leaves_goes_to_the_edge_of_the_area():
+    # beside a wall on the right: against it, the room left at the left edge
+    shapes = dict.fromkeys("BC", 16 / 9)
+    wall = Rect(1000, 0, 1600, 900)
+    boxes = arrange_around(WIDTH, HEIGHT, [wall], ["B", "C"], {}, shapes, 0)
+    rects = _rects(boxes).values()
+
+    assert max(r.right for r in rects) == pytest.approx(1000)
+    assert min(r.left for r in rects) > 100
+
+
+def test_a_piece_on_both_edges_has_the_room_left_around_its_tiles_evenly():
+    # as Fit Shapes lays out the window
+    shapes = dict.fromkeys("AB", 16 / 9)
+    boxes = arrange_around(WIDTH, HEIGHT, [], ["A", "B"], {}, shapes, 0)
+    rects = _rects(boxes).values()
+
+    left = min(r.left for r in rects)
+    right = WIDTH - max(r.right for r in rects)
+    top = min(r.top for r in rects)
+    bottom = HEIGHT - max(r.bottom for r in rects)
+    assert left == pytest.approx(right)
+    assert top == pytest.approx(bottom)
+
+
+def test_a_locked_tile_gives_a_little_to_close_the_room_the_others_leave():
+    shapes = dict.fromkeys("BCD", 16 / 9)
+    wall = Rect(0, 0, 900, 506.25)
+    as_put = arrange_around(WIDTH, HEIGHT, [wall], list(shapes), {}, shapes, 0)
+
+    boxes, given, scales = arrange_giving(
+        WIDTH, HEIGHT, {"A": wall}, list(shapes), {}, shapes, 0
+    )
+
+    assert scales == {"A": 0.9}
+    # in its corner still, its shape kept
+    assert given["A"] == pytest.approx(Rect(0, 0, 810, 455.625))
+    assert _empty(as_put, [wall]) > 0.1
+    assert _empty(boxes, given.values()) < 0.02
+
+
+def test_a_locked_tile_keeps_its_size_where_that_is_about_as_good():
+    shapes = dict.fromkeys("BCD", 16 / 9)
+    wall = Rect(0, 0, 800, 450)
+
+    _boxes, given, scales = arrange_giving(
+        WIDTH, HEIGHT, {"A": wall}, list(shapes), {}, shapes, 0, gives={"A": 1.15}
+    )
+
+    # back as it was put, whatever it gave before
+    assert scales == {"A": 1.0}
+    assert given == {"A": wall}
+
+
+def test_locked_tiles_give_none_over_another():
+    shapes = dict.fromkeys("CD", 16 / 9)
+    walls = {"A": Rect(0, 0, 800, 450), "B": Rect(800, 0, 1600, 450)}
+
+    _boxes, given, _scales = arrange_giving(
+        WIDTH, HEIGHT, walls, list(shapes), {}, shapes, 0
+    )
+
+    assert not given["A"].overlaps(given["B"])
+    assert all(r.right <= WIDTH and r.bottom <= HEIGHT for r in given.values())

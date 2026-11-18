@@ -25,9 +25,16 @@ class _Tiles:
     """The editor, and the tiles it changes, as Free Tiles would keep
     them: each change shown in it again, as TileEditManager does."""
 
-    def __init__(self, boxes: dict[str, Box], overlap=TileOverlap.OFF, locked=()):
+    def __init__(
+        self,
+        boxes: dict[str, Box],
+        overlap=TileOverlap.OFF,
+        locked=(),
+        is_mosaic=False,
+    ):
         self.tiles = FreeTiles(boxes, WIDTH / HEIGHT, locked)
         self.overlap = overlap
+        self.is_mosaic = is_mosaic
         self.changes = []
         # the tile held in each change sent, and whether to be pulled to
         # the window's edge
@@ -45,7 +52,7 @@ class _Tiles:
                 set_crop=lambda _: None,
                 is_reordered=lambda: False,
                 set_reordered=lambda _: None,
-                is_mosaic=lambda: False,
+                is_mosaic=lambda: self.is_mosaic,
                 is_snapping=lambda: True,
                 set_snapping=lambda _: None,
                 snaps=frozenset,
@@ -54,6 +61,8 @@ class _Tiles:
                 set_pull=lambda _: None,
                 is_animated=lambda: True,
                 set_animated=lambda _: None,
+                is_auto_lock=lambda: False,
+                set_auto_lock=lambda _: None,
             ),
             swap_key=lambda: Qt.ShiftModifier,
             can_undo=lambda: False,
@@ -74,6 +83,10 @@ class _Tiles:
         self.show()
 
     def _drag_of(self, tiles, video_id, handle, width, height, at):
+        if self.is_mosaic:
+            # as Free Tiles makes it: not in its own way (see tile_drag_of)
+            tiles = tiles.copy()
+            tiles.locked = tiles.locked - {video_id}
         return TileDrag(
             tiles,
             video_id,
@@ -190,6 +203,15 @@ class TestKeys:
 
         assert tiles.rect("a") == (20, 20, 220, 120)
         assert tiles.changes == []
+
+    def test_in_mosaic_a_locked_tile_is_moved(self):
+        tiles = _Tiles({"a": _box(20, 20, 220, 120)}, locked={"a"}, is_mosaic=True)
+        tiles.editor.pick("a")
+
+        QTest.keyClick(tiles.editor, Qt.Key_Right)
+
+        assert tiles.rect("a") != (20, 20, 220, 120)
+        assert tiles.tiles.locked == {"a"}
 
     def test_tab_picks_the_next_as_they_are_read(self, two):
         two.editor.pick("a")
@@ -407,6 +429,8 @@ class TestPopups:
                 set_pull=lambda v: settings.update(pull=v),
                 is_animated=lambda: settings["animated"],
                 set_animated=lambda v: settings.update(animated=v),
+                is_auto_lock=lambda: settings.get("auto_lock", False),
+                set_auto_lock=lambda v: settings.update(auto_lock=v),
             ),
             swap_key=lambda: None,
             can_undo=lambda: False,
@@ -434,20 +458,23 @@ class TestPopups:
         assert chips.picked() == frozenset({TileSnap.TILE_EDGES})
         assert settings["snapping"] is False
 
-    def test_in_mosaic_arrange_has_pull_to_edge_and_animate_tiles(
+    def test_in_mosaic_arrange_has_pull_to_edge_animate_and_lock_tiles(
         self, editor, settings
     ):
         settings["mosaic"] = True
         editor._arrange_settings.click()
         crop, pull = editor._popup.findChildren(SegmentedChoice)
-        _reorder, animated = editor._popup.findChildren(Switch)
+        _reorder, animated, auto_lock = editor._popup.findChildren(Switch)
         assert pull.currentData() == TilePull.NEAR
         assert animated.isChecked()
+        assert not auto_lock.isChecked()
 
         pull.setCurrentIndex(pull.findData(TilePull.FAR))
         animated.setChecked(False)
+        auto_lock.setChecked(True)
         assert settings["pull"] == TilePull.FAR
         assert settings["animated"] is False
+        assert settings["auto_lock"] is True
 
         # changed from the menu, say
         settings.update(pull=TilePull.OFF, animated=True)

@@ -5,14 +5,17 @@ The room the locked tiles leave is cut along their edges into pieces, each
 cut going right across what it cuts. The videos are shared out among the
 pieces in the order they are read, and each piece is laid out as Fit Shapes
 lays out the window. Of the ways to cut the room, the one that shows the
-videos best is kept.
+videos best is kept. What room a piece's videos leave goes to the edge of
+the area it is on, not between them and the pieces and locked tiles beside
+it (see _slack_of).
 """
 
 from __future__ import annotations
 
+import copy
 import functools
 import math
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from itertools import accumulate, combinations, pairwise, product
 from typing import NamedTuple
 
@@ -54,6 +57,10 @@ _HAIR = 1e-6
 # in pixels, two edges this near are taken to be in line, and walls this far
 # into each other or into a piece are not over it (as Rect.overlaps has it)
 _NEAR = 0.5
+
+# where the room a piece's videos leave goes, across and down: before them
+# this share of it, the rest after them (see _slack_of)
+CENTRED = (0.5, 0.5)
 
 SplitFinder = Callable[[tuple, tuple | None], tuple[Split, ...]]
 
@@ -98,7 +105,8 @@ class ArrangeCache:
     the same videos, shapes and crop limit: the lines' splits, which do not
     change as the pieces do, and how they were arranged the last time, to
     stay so while no other way shows them much better (see _kept). Kept
-    while a tile is held, the others arranged around it as it goes."""
+    while a tile is held, the others arranged around it as it goes, and
+    as the window is resized."""
 
     def __init__(self):
         self.find_splits: SplitFinder = functools.lru_cache(maxsize=SPLITS_KEPT)(
@@ -117,6 +125,7 @@ def arrange_around(
     crop_limit: int,
     is_reordered: bool = False,
     cache: ArrangeCache | None = None,
+    laid: dict[tuple, _Laid] | None = None,
 ) -> dict[str, Box] | None:
     """Where each video goes, as shares of an area of this size, around
     the walls in it (the locked tiles; all of these in pixels). Each
@@ -134,7 +143,8 @@ def arrange_around(
     reordered, they stay arranged as the last time, in the room there is
     now, unless another way shows the pictures SWITCH_GAIN times bigger.
     A wall moved a little at a time would else flip them to and fro where
-    two ways show them about as well.
+    two ways show them about as well. laid keeps each piece's lay-outs,
+    to share between calls for the same videos, shapes and crop limit.
     """
 
     if not ids:
@@ -158,9 +168,10 @@ def arrange_around(
         find_splits = functools.cache(best_splits.__wrapped__)
     else:
         find_splits = cache.find_splits
-    laid: dict[tuple, _Laid] = {}
+    if laid is None:
+        laid = {}
     sharings = {
-        is_down: _Sharing(pieces, shapes, crops, find_splits, laid)
+        is_down: _Sharing(pieces, area, shapes, crops, find_splits, laid)
         for is_down, pieces in cuts.items()
     }
 
@@ -190,7 +201,7 @@ def arrange_around(
     if cache is not None and not is_reordered:
         plan = _Plan(is_down, best.runs)
         if cache.plan is not None and plan != cache.plan:
-            kept = _kept(cache.plan, ways, ids, shapes, crops)
+            kept = _kept(cache.plan, ways, area, ids, shapes, crops)
             if kept is not None and not is_much_better(
                 best.score, kept.score, len(ids)
             ):
@@ -213,6 +224,7 @@ def _ways_to_cut(area: Rect, walls: Sequence[Rect]) -> dict[bool, list[Rect]]:
 def _kept(
     plan: _Plan,
     ways: Mapping[bool, Sequence[Rect]],
+    area: Rect,
     ids: Sequence[str],
     shapes: Mapping[str, float],
     crops: Sequence[int],
@@ -229,7 +241,7 @@ def _kept(
 
     return _all_laid(
         [
-            _lay_out_as(piece, run, shapes, crops)
+            _lay_out_as(piece, run, shapes, crops, _slack_of(piece, area))
             for piece, run in zip(pieces, plan.runs, strict=True)
         ]
     )
@@ -430,12 +442,14 @@ class _Sharing:
     def __init__(
         self,
         pieces: Sequence[Rect],
+        area: Rect,
         shapes: Mapping[str, float],
         crops: Sequence[int],
         find_splits: SplitFinder,
         laid: dict[tuple, _Laid],
     ):
         self.pieces = pieces
+        self._area = area
         self._shapes = shapes
         self._crops = crops
         self._find_splits = find_splits
@@ -519,6 +533,7 @@ class _Sharing:
                 self._shapes,
                 self._crops,
                 self._find_splits,
+                _slack_of(self.pieces[piece], self._area),
             )
         return laid[key]
 
@@ -543,10 +558,12 @@ def _lay_out(
     shapes: Mapping[str, float],
     crops: Sequence[int],
     find_splits: SplitFinder,
+    slack: tuple[float, float],
 ) -> _Laid:
     """The videos laid out in the piece as Fit Shapes lays them out, cut
     by the least of the crops that fills it, else by the most; column_ids
-    them in the order they go down columns in."""
+    them in the order they go down columns in. What room they leave goes
+    around them as slack has it (see _slid)."""
 
     if not ids:
         return _NONE_LAID
@@ -564,11 +581,15 @@ def _lay_out(
         if _is_filled(boxes):
             break
 
-    return _laid_in(piece, run, boxes, shown)
+    return _laid_in(piece, run, boxes, shown, slack)
 
 
 def _lay_out_as(
-    piece: Rect, run: _Run, shapes: Mapping[str, float], crops: Sequence[int]
+    piece: Rect,
+    run: _Run,
+    shapes: Mapping[str, float],
+    crops: Sequence[int],
+    slack: tuple[float, float],
 ) -> _Laid:
     """The videos laid out in the piece in the lines they had, whatever
     its size is now: cut as in _lay_out."""
@@ -589,20 +610,63 @@ def _lay_out_as(
         if _is_filled(boxes):
             break
 
-    return _laid_in(piece, run, boxes, shown)
+    return _laid_in(piece, run, boxes, shown, slack)
+
+
+def _slack_of(piece: Rect, area: Rect) -> tuple[float, float]:
+    """Where the room a piece's videos leave goes (see _slid):
+    to the edge of the area the piece is on, the videos against the pieces
+    and walls beside it, not apart from them with a gap between; evenly
+    around them in a piece on both edges, or on neither."""
+
+    def share(low: float, high: float, start: float, end: float) -> float:
+        on_start, on_end = low <= start + _NEAR, high >= end - _NEAR
+        if on_start and not on_end:
+            return 1.0
+        if on_end and not on_start:
+            return 0.0
+        return 0.5
+
+    return (
+        share(piece.left, piece.right, area.left, area.right),
+        share(piece.top, piece.bottom, area.top, area.bottom),
+    )
+
+
+def _slid(boxes: Sequence[Box], slack: tuple[float, float]) -> Sequence[Box]:
+    """The boxes, laid out evenly in the room, moved together so that of
+    the room they leave this share is before them, across and down."""
+
+    if slack == CENTRED or not boxes:
+        return boxes
+    left = min(b.left for b in boxes)
+    top = min(b.top for b in boxes)
+    across = (1 - (max(b.right for b in boxes) - left)) * slack[0] - left
+    down = (1 - (max(b.bottom for b in boxes) - top)) * slack[1] - top
+    return [
+        Box(b.left + across, b.top + down, b.right + across, b.bottom + down)
+        for b in boxes
+    ]
+
+
+def _covered(boxes: Iterable[Box]) -> float:
+    return sum((b.right - b.left) * (b.bottom - b.top) for b in boxes)
 
 
 def _is_filled(boxes: Sequence[Box]) -> bool:
-    covered = sum((b.right - b.left) * (b.bottom - b.top) for b in boxes)
-    return covered >= FILLED
+    return _covered(boxes) >= FILLED
 
 
 def _laid_in(
-    piece: Rect, run: _Run, boxes: Sequence[Box], shown: Mapping[str, float]
+    piece: Rect,
+    run: _Run,
+    boxes: Sequence[Box],
+    shown: Mapping[str, float],
+    slack: tuple[float, float],
 ) -> _Laid:
     rects = {
         video_id: Rect.of_box(box, piece)
-        for video_id, box in zip(run.ids, boxes, strict=True)
+        for video_id, box in zip(run.ids, _slid(boxes, slack), strict=True)
     }
     score = sum(_tile_score(rect, shown[i]) for i, rect in rects.items())
     return _Laid(score, rects, (run,))
@@ -618,3 +682,143 @@ def _tile_score(rect: Rect, shape: float) -> float:
 
     stretch = abs(math.log(rect.width / rect.height / shape))
     return math.log(rect.width * rect.height) - (1 - STRETCH_WORTH) * stretch
+
+
+# --- locked tiles giving a little ---
+
+# how much bigger or smaller, each way, a locked tile may be made in Mosaic to
+# close the room the others leave, its shape kept: the nearest its own size
+# first, where two close as much
+GIVES = (1.0, 0.95, 1.05, 0.9, 1.1, 0.85, 1.15)
+# the give a tile has is kept while another leaves no more than this share of
+# the area less empty: not changed to and fro as the window is resized
+GIVE_KEEP = 0.01
+# a give that leaves less than this share of the area empty is not looked
+# past: what more one could close would hardly show
+GIVE_ENOUGH = 0.01
+
+
+def arrange_giving(
+    width: float,
+    height: float,
+    walls: Mapping[str, Rect],
+    ids: Sequence[str],
+    at: Mapping[str, Rect],
+    shapes: Mapping[str, float],
+    crop_limit: int,
+    is_reordered: bool = False,
+    cache: ArrangeCache | None = None,
+    gives: Mapping[str, float] | None = None,
+    is_kept: bool = False,
+) -> tuple[dict[str, Box], dict[str, Rect], dict[str, float]] | None:
+    """As arrange_around, around walls (the locked tiles, by video), each
+    made a little bigger or smaller (see GIVES) where that leaves less of
+    the area empty, the biggest first; about its corner nearest the area's,
+    inside the area, and not over another. Its own size is kept while no
+    give leaves GIVE_KEEP of the area less empty, and so is the give it had
+    the last time (gives): then it is back as it was where it can be, and
+    not changed to and fro at each step of a resize. Kept (is_kept), each
+    gives what it had, no other looked for. Also the walls as given, and
+    how much each was. None if the walls leave no room."""
+
+    gives = gives or {}
+    given = dict(walls)
+    scales: dict[str, float] = {}
+    # what is worked out shared by all the ways tried: each piece laid out,
+    # and each set of walls arranged around, once
+    laid: dict[tuple, _Laid] = {}
+    arranged: dict[tuple, tuple[dict[str, Box] | None, ArrangeCache | None]] = {}
+
+    def arranged_around(trial: Mapping[str, Rect]):
+        key = tuple(trial.items())
+        if key not in arranged:
+            # from the plan of the last time, whichever is tried first
+            tried_cache = copy.copy(cache)
+            boxes = arrange_around(
+                width,
+                height,
+                list(trial.values()),
+                ids,
+                at,
+                shapes,
+                crop_limit,
+                is_reordered,
+                tried_cache,
+                laid,
+            )
+            arranged[key] = boxes, tried_cache
+        return arranged[key]
+
+    def is_clear(video_id: str, rect: Rect) -> bool:
+        return not any(rect.overlaps(w) for i, w in given.items() if i != video_id)
+
+    for video_id in sorted(walls, key=lambda i: -walls[i].width * walls[i].height):
+        had = gives.get(video_id, 1.0)
+        if is_kept:
+            # as it gave, where that is over none of the others (at their
+            # own size, which leaves its own clear)
+            for scale in dict.fromkeys((had, 1.0)):
+                rect = given_rect(walls[video_id], scale, width, height)
+                if is_clear(video_id, rect):
+                    given[video_id] = rect
+                    scales[video_id] = scale
+                    break
+            continue
+
+        tried: list[tuple[float, float, Rect]] = []
+        # its own size first, then the give it had
+        for scale in dict.fromkeys((1.0, had, *GIVES)):
+            rect = given_rect(walls[video_id], scale, width, height)
+            if not is_clear(video_id, rect):
+                continue
+            trial = {**given, video_id: rect}
+            boxes = arranged_around(trial)[0]
+            if boxes is None:
+                continue
+            walled = sum(r.width * r.height for r in trial.values())
+            empty = 1 - _covered(boxes.values()) - walled / (width * height)
+            tried.append((empty, scale, rect))
+            if empty < GIVE_ENOUGH:
+                break
+        if not tried:
+            continue
+        best = min(tried, key=lambda one: one[0])
+        # its own size, or else the give it had, where about as good
+        _empty, scale, rect = next(
+            (
+                one
+                for one in tried
+                if one[1] in (1.0, had) and one[0] <= best[0] + GIVE_KEEP
+            ),
+            best,
+        )
+        given[video_id] = rect
+        scales[video_id] = scale
+
+    boxes, tried_cache = arranged_around(given)
+    if boxes is None:
+        return None
+    if cache is not None:
+        cache.plan = tried_cache.plan
+    return boxes, given, scales
+
+
+def given_rect(rect: Rect, scale: float, width: float, height: float) -> Rect:
+    """A tile this much bigger or smaller, about its corner nearest the
+    area's: against the same edges; inside the area."""
+
+    if scale == 1.0:
+        return rect
+    tile_width = min(rect.width * scale, width)
+    tile_height = min(rect.height * scale, height)
+    if rect.center_x < width / 2:
+        left = rect.left
+    else:
+        left = rect.right - tile_width
+    if rect.center_y < height / 2:
+        top = rect.top
+    else:
+        top = rect.bottom - tile_height
+    left = min(max(left, 0.0), width - tile_width)
+    top = min(max(top, 0.0), height - tile_height)
+    return Rect(left, top, left + tile_width, top + tile_height)

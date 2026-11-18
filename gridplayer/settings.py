@@ -168,6 +168,9 @@ _default_settings = {
     # in Mosaic, the others slide to their places around a tile moved or
     # sized, not jump there
     "playlist/tile_animate": True,
+    # in Mosaic, a tile moved by hand is locked once let go of (one sized
+    # by hand is, whatever this says)
+    "playlist/tile_auto_lock": False,
     "playlist/save_paths_relative": False,
     # every setting written into the playlist, not only those it changes
     "playlist/save_all_settings": False,

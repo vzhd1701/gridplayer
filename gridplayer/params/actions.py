@@ -2739,6 +2739,20 @@ ACTIONS = MappingProxyType(
             "check_if": "is_tile_animate",
             "show_if": ("is_grid_mode_set_to", GridMode.MOSAIC),
         },
+        "Lock Tiles You Move": {
+            "title": translate("Lock Tiles You Move", "Lock Tiles You Move"),
+            "icon": "grid-tile-lock",
+            "func": "toggle_tile_auto_lock",
+            "check_if": "is_tile_auto_lock",
+            "show_if": ("is_grid_mode_set_to", GridMode.MOSAIC),
+        },
+        "Unlock All Tiles": {
+            "title": translate("Actions", "Unlock All Tiles"),
+            "icon": "empty",
+            "func": "unlock_all_tiles",
+            "enable_if": "has_locked_tiles",
+            "show_if": "is_grid_free",
+        },
         "Fit Tiles to Window": {
             "title": translate("Actions", "Fit Tiles to Window"),
             "icon": "grid-fit-tiles",

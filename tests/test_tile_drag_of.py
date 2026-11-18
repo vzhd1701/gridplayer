@@ -14,7 +14,7 @@ from gridplayer.utils.layout.free_tiles import MOVE, FreeTiles, Rect
 WIDTH, HEIGHT = 1000, 500
 
 
-def _drag_of(is_mosaic, overlap=TileOverlap.OFF):
+def _drag_of(is_mosaic, overlap=TileOverlap.OFF, held="A"):
     tiles = FreeTiles(
         {
             "A": Box(0.0, 0.0, 0.3, 0.4),
@@ -35,7 +35,7 @@ def _drag_of(is_mosaic, overlap=TileOverlap.OFF):
         _shape_of=lambda _video_id: 16 / 9,
     )
     return FreeTilesManager.tile_drag_of(
-        manager, tiles, "A", MOVE, WIDTH, HEIGHT, (150, 100)
+        manager, tiles, held, MOVE, WIDTH, HEIGHT, (150, 100)
     )
 
 
@@ -45,6 +45,12 @@ def test_in_mosaic_only_the_locked_tiles_are_there():
     assert drag.others == [Rect(500, 300, 800, 500)]
     # over the others, which make room for it
     assert drag.is_over
+
+
+def test_in_mosaic_a_locked_tile_held_is_not_in_its_own_way():
+    drag = _drag_of(is_mosaic=True, held="C")
+
+    assert drag.locked == []
 
 
 def test_in_free_tiles_all_the_others_are():
@@ -88,7 +94,10 @@ def test_an_edge_is_found_only_on_the_page(monkeypatch, at, is_found):
     manager = SimpleNamespace(
         _ctx=SimpleNamespace(
             is_drag_ui=False,
-            commands=SimpleNamespace(free_page=lambda: page),
+            commands=SimpleNamespace(
+                free_page=lambda: page,
+                is_grid_mode_set_to=lambda _mode: False,
+            ),
         ),
         _is_pointer_taken=lambda: False,
         is_elsewhere_at=lambda _pos: False,

@@ -161,6 +161,7 @@ class Playlist(BaseModel):
     tile_overlap: TileOverlap | None = None
     tile_pull: TilePull | None = None
     tile_animate: bool | None = None
+    tile_auto_lock: bool | None = None
     overlay_hide_on_timeout: bool | None = None
     overlay_timeout: int | None = None
     unsaved_changes: UnsavedChangesMode | None = None
@@ -476,6 +477,7 @@ class Playlist(BaseModel):
             "sizes",
             "tiles",
             "locked_tiles",
+            "locked_homes",
             "col_weights",
             "row_weights",
             "line_weights",

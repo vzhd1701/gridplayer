@@ -803,6 +803,8 @@ SECTIONS = MappingProxyType(
                     *(f"Pull to Edge {pull.name.title()}" for pull in TilePull),
                 ),
                 "Animate Tiles",
+                "Lock Tiles You Move",
+                "Unlock All Tiles",
                 "Fit Tiles to Window",
                 (
                     "On Window Resize",

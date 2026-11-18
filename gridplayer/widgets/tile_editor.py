@@ -98,7 +98,8 @@ class TileSettings(NamedTuple):
     On Window Resize, Arrange's Crop Limit and Reorder to Fit, Snap Tiles
     and Snap To, read and set; and whether it is Mosaic, whose bar has
     neither Arrange Tiles, Fit Tiles to Window, Tile Overlap nor On Window
-    Resize, and has Pull to Edge and Animate Tiles."""
+    Resize, and has Pull to Edge, Animate Tiles and Lock Tiles You
+    Move."""
 
     overlap: Callable[[], TileOverlap]
     set_overlap: Callable[[TileOverlap], None]
@@ -117,6 +118,8 @@ class TileSettings(NamedTuple):
     set_pull: Callable[[TilePull], None]
     is_animated: Callable[[], bool]
     set_animated: Callable[[bool], None]
+    is_auto_lock: Callable[[], bool]
+    set_auto_lock: Callable[[bool], None]
 
 
 class _Label(NamedTuple):
@@ -351,6 +354,11 @@ class TileEditor(LayoutEditor):
     def _is_locked(self, video_id: str) -> bool:
         return video_id in self._tiles.locked
 
+    def _is_fixed(self, video_id: str) -> bool:
+        # not moved or sized by hand: locked, but in Mosaic, where locked
+        # means only that arranging leaves it be
+        return self._is_locked(video_id) and not self._settings.is_mosaic()
+
     def _in_front_of(self, video_id: str) -> list[Rect]:
         ids = list(self._rects)
         return [self._rects[i] for i in ids[ids.index(video_id) + 1 :]]
@@ -364,11 +372,11 @@ class TileEditor(LayoutEditor):
         x, y = point.x(), point.y()
         front_first = list(reversed(self._rects.items()))
         top = self._top_at(point)
-        if top is not None and self._is_locked(top):
+        if top is not None and self._is_fixed(top):
             return top, MOVE
 
         for video_id, rect in front_first:
-            if self._is_locked(video_id) or not _contains(rect, x, y, OUTSIDE_REACH):
+            if self._is_fixed(video_id) or not _contains(rect, x, y, OUTSIDE_REACH):
                 continue
             handle = _handle_of(rect, x, y)
             if handle != MOVE:
@@ -523,7 +531,7 @@ class TileEditor(LayoutEditor):
         """The picked tile moved by an arrow key, or its right or bottom
         edge with Ctrl: one change with those pressed soon after."""
 
-        if self._is_locked(self._picked):
+        if self._is_fixed(self._picked):
             return
 
         dx, dy = ARROWS[key]
@@ -638,7 +646,7 @@ class TileEditor(LayoutEditor):
         video_id, handle = found
         self.pick(video_id)
         drag = None
-        if not self._is_locked(video_id):
+        if not self._is_fixed(video_id):
             drag = self._new_drag(video_id, handle, (pos.x(), pos.y()))
         self._pending = _Pending(video_id, handle, drag, pos)
 
@@ -691,7 +699,7 @@ class TileEditor(LayoutEditor):
             return
 
         found = self._tile_at(event.pos())
-        if found is None or found[1] == MOVE or self._is_locked(found[0]):
+        if found is None or found[1] == MOVE or self._is_fixed(found[0]):
             # as a press, the second one
             self.mousePressEvent(event)
             return
@@ -797,8 +805,8 @@ class TileEditor(LayoutEditor):
         )
 
     def _mosaic_rows(self) -> tuple[list[QWidget], Callable[[], None]]:
-        """Arrange's rows in Mosaic alone: Pull to Edge and Animate Tiles;
-        and how to show them as the settings are."""
+        """Arrange's rows in Mosaic alone: Pull to Edge, Animate Tiles and
+        Lock Tiles You Move; and how to show them as the settings are."""
 
         pull_label = QLabel(translate("Pull to Edge", "Pull to edge"))
         pull = SegmentedChoice()
@@ -809,16 +817,27 @@ class TileEditor(LayoutEditor):
             animated, translate("Animate Tiles", "Animate tiles")
         )
 
+        auto_lock = Switch()
+        auto_lock_row = _switch_row(
+            auto_lock, translate("Lock Tiles You Move", "Lock tiles you move")
+        )
+
         def refresh():
-            with QSignalBlocker(pull), QSignalBlocker(animated):
+            with (
+                QSignalBlocker(pull),
+                QSignalBlocker(animated),
+                QSignalBlocker(auto_lock),
+            ):
                 pull.setCurrentIndex(pull.findData(self._settings.pull()))
                 animated.setChecked(self._settings.is_animated())
+                auto_lock.setChecked(self._settings.is_auto_lock())
 
         pull.currentIndexChanged.connect(
             lambda _: self._settings.set_pull(pull.currentData())
         )
         animated.toggled.connect(self._settings.set_animated)
-        return [pull_label, pull, animated_row], refresh
+        auto_lock.toggled.connect(self._settings.set_auto_lock)
+        return [pull_label, pull, animated_row, auto_lock_row], refresh
 
     def _show_resize(self) -> None:
         choice = SegmentedChoice()
@@ -1001,7 +1020,7 @@ class TileEditor(LayoutEditor):
 
         if dragged is None:
             for video_id in {self._picked, self._hover and self._hover[0]}:
-                if video_id in self._rects and not self._is_locked(video_id):
+                if video_id in self._rects and not self._is_fixed(video_id):
                     self._handles(painter, _rect_f(self._rects[video_id]), 1)
 
         for guide in self._guides:

@@ -74,7 +74,9 @@ class FreeTilesManager(LayoutDragManager):
     page's edge.
 
     A locked tile is neither: a press on it is the video's, and the others
-    stop at its edges, a lock shown on it while one is moved or sized.
+    stop at its edges, a lock shown on it while one is moved or sized. In
+    Mosaic, where locked means only that arranging leaves it be, it is
+    moved and sized as any other, and stays locked.
 
     The tile's frame shows what the pointer is about to move or size, and
     what it is (see TileFrame).
@@ -235,7 +237,10 @@ class FreeTilesManager(LayoutDragManager):
             return None
 
         local = pos - page.topLeft()
-        found = free.tiles.handle_at(local.x(), local.y(), page.width(), page.height())
+        is_mosaic = self._ctx.commands.is_grid_mode_set_to(GridMode.MOSAIC)
+        found = free.tiles.handle_at(
+            local.x(), local.y(), page.width(), page.height(), is_mosaic
+        )
         if found is None:
             return None
 

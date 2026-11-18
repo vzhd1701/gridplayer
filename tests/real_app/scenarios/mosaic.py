@@ -3,7 +3,8 @@ dragged by the mouse, or sized by its edge, goes where the pointer takes
 it, the others making room around where it would land, sliding there; let
 go, it lands there, the others as they were shown, and Undo takes it all
 back. Let go of near the window's edge, it lands against it, unless Pull
-to Edge is off."""
+to Edge is off. Sized by its edge, it is locked at that size, and the window
+resized, the others are arranged around it, none over another."""
 
 from PyQt5.QtCore import QPoint, Qt
 from PyQt5.QtGui import QDrag
@@ -14,6 +15,7 @@ from tests.real_app.scenarios.free_tiles import (
     HEIGHT,
     WIDTH,
     _at,
+    _by_name,
     _drag,
     _mouse,
     _near,
@@ -44,6 +46,10 @@ def _in_place(d) -> bool:
         if not _near(found, rect, slack=1.5):
             return False
     return True
+
+
+def _is_locked(d, name) -> bool:
+    return d.ctx.commands.is_tile_locked(_by_name(d, name).video_id)
 
 
 def _landing(d):
@@ -203,6 +209,7 @@ def scenario(d):
     edge = _at(d, b.left + 1, b.center_y)
     before, sized = _held_and_let_go(d, "b.mp4", edge, edge - QPoint(120, 0), "2_sized")
     d.check("b bigger", _area(sized["b.mp4"]) > 1.2 * _area(b), (b, sized["b.mp4"]))
+    d.check("sized by its edge: locked", _is_locked(d, "b.mp4"))
 
     d.act(d.cells[0], "Undo Grid Change")
     d.pump(0.3)
@@ -212,6 +219,7 @@ def scenario(d):
         all(_near(undone[n], r, slack=1) for n, r in before.items()),
         (before, undone),
     )
+    d.check("undone: not locked", not _is_locked(d, "b.mp4"))
 
     # the window made narrower: arranged for it at once, not once done
     d.player.resize(WIDTH - 150, HEIGHT)
@@ -229,3 +237,31 @@ def scenario(d):
         (width, rects),
     )
     d.shot("3_resized")
+
+    # b sized again, so locked, and the window made narrower, then wider:
+    # the others around it, none over another, all in the window
+    d.player.resize(WIDTH, HEIGHT)
+    d.pump(0.5)
+    b = _rects(d)["b.mp4"]
+    edge = _at(d, b.left + 1, b.center_y)
+    _drag(d, edge, edge - QPoint(120, 0))
+    d.wait_until(lambda: _in_place(d), "sized again, all in their places")
+    d.check("sized again: locked", _is_locked(d, "b.mp4"))
+    for width in (WIDTH - 100, WIDTH - 200, WIDTH - 100, WIDTH):
+        d.player.resize(width, HEIGHT)
+        d.pump(0.05)
+    d.wait_until(lambda: not grid._arrange_timer.isActive(), "resize done")
+    d.wait_until(lambda: _in_place(d), "resized with a lock, all in their places")
+    rects = _rects(d)
+    page = d.ctx.commands.free_page().rect
+    d.check("resized with a lock: none over another", not _overlapping(rects), rects)
+    d.check(
+        "resized with a lock: all in the window",
+        all(
+            r.right <= page.width() + 0.5 and r.bottom <= page.height() + 0.5
+            for r in rects.values()
+        ),
+        (page, rects),
+    )
+    d.check("resized with a lock: still locked", _is_locked(d, "b.mp4"))
+    d.shot("4_locked_resized")
