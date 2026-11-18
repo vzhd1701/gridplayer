@@ -49,20 +49,24 @@ def _mouse(d, kind, point: QPoint):
         QApplication.sendEvent(
             editor,
             QMouseEvent(
-                QEvent.MouseMove,
+                QEvent.Type.MouseMove,
                 QPointF(point),
-                Qt.NoButton,
-                Qt.NoButton,
-                Qt.NoModifier,
+                Qt.MouseButton.NoButton,
+                Qt.MouseButton.NoButton,
+                Qt.KeyboardModifier.NoModifier,
             ),
         )
         return
     if kind == "move":
         QTest.mouseMove(window, point)
     elif kind == "press":
-        QTest.mousePress(window, Qt.LeftButton, Qt.NoModifier, point)
+        QTest.mousePress(
+            window, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, point
+        )
     else:
-        QTest.mouseRelease(window, Qt.LeftButton, Qt.NoModifier, point)
+        QTest.mouseRelease(
+            window, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, point
+        )
     d.pump(0.05)
 
 
@@ -207,7 +211,7 @@ def scenario(d):
     d.check("swapped", spans[b] == c_at and spans[c] == b_at, spans)
 
     # undone with its key, in the editor
-    QTest.keyClick(editor, Qt.Key_Z, Qt.ControlModifier)
+    QTest.keyClick(editor, Qt.Key.Key_Z, Qt.KeyboardModifier.ControlModifier)
     d.pump(0.3)
     d.check("swap undone", _spans(d)[b] == b_at, _spans(d))
 
@@ -229,7 +233,7 @@ def scenario(d):
     d.check("A as big as it was", _spans(d)[a] == (0, 0, 2, 2), _spans(d))
     d.shot("4_line", widget=editor)
 
-    QTest.keyClick(_editor(d), Qt.Key_Z, Qt.ControlModifier)
+    QTest.keyClick(_editor(d), Qt.Key.Key_Z, Qt.KeyboardModifier.ControlModifier)
     d.pump(0.3)
     d.check("one undo puts it back", not d.ctx.grid_state.col_weights)
 
@@ -244,9 +248,9 @@ def scenario(d):
     shown = _editor(d)._col_weights
     d.check("the editor drawing them even", len(set(shown)) <= 1, shown)
     d.check("Reset Lines off again", not _editor(d)._reset_lines.isEnabled())
-    QTest.keyClick(_editor(d), Qt.Key_Z, Qt.ControlModifier)
+    QTest.keyClick(_editor(d), Qt.Key.Key_Z, Qt.KeyboardModifier.ControlModifier)
     d.pump(0.3)
-    QTest.keyClick(_editor(d), Qt.Key_Z, Qt.ControlModifier)
+    QTest.keyClick(_editor(d), Qt.Key.Key_Z, Qt.KeyboardModifier.ControlModifier)
     d.pump(0.3)
     d.check("both undone", not d.ctx.grid_state.col_weights)
     fit = _editor(d)._fit_lines
@@ -261,7 +265,7 @@ def scenario(d):
         d.check("fitted: the lines moved", bool(weights))
         shown = _editor(d)._col_weights
         d.check("the editor drawing them there", shown == tuple(weights), shown)
-        QTest.keyClick(_editor(d), Qt.Key_Z, Qt.ControlModifier)
+        QTest.keyClick(_editor(d), Qt.Key.Key_Z, Qt.KeyboardModifier.ControlModifier)
         d.pump(0.3)
         d.check("fit undone", not d.ctx.grid_state.col_weights)
 
@@ -289,7 +293,7 @@ def scenario(d):
     d.check("no snap said", not editor._tag.isVisible())
     _mouse(d, "release", at + QPoint(3, 0))
     d.pump(0.2)
-    QTest.keyClick(_editor(d), Qt.Key_Z, Qt.ControlModifier)
+    QTest.keyClick(_editor(d), Qt.Key.Key_Z, Qt.KeyboardModifier.ControlModifier)
     d.pump(0.3)
     d.ctx.actions["Snap Lines"].trigger()
     d.pump(0.2)
@@ -318,7 +322,7 @@ def scenario(d):
     d.pump(0.2)
 
     # done
-    QTest.keyClick(editor, Qt.Key_Escape)
+    QTest.keyClick(editor, Qt.Key.Key_Escape)
     d.pump(0.3)
     d.check("editor gone", _editor(d) is None)
     d.check("overlays back", not d.ctx.is_disable_overlay)
@@ -341,7 +345,7 @@ def scenario(d):
         editor.rect_of(0, 2, 1, 1).left(), editor.rect_of(0, 2, 1, 1).center().y()
     )
     _drag(d, at, at - QPoint(80, 0), release=False)
-    QTest.keyClick(editor, Qt.Key_Return)
+    QTest.keyClick(editor, Qt.Key.Key_Return)
     d.pump(0.3)
     d.check("editor gone", _editor(d) is None)
     weights = d.ctx.grid_state.col_weights

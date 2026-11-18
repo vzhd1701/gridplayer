@@ -20,7 +20,7 @@ def dialog():
 
     dialog.close()
     dialog.deleteLater()
-    QApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+    QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
 
 def _checked(links):

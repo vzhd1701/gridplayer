@@ -768,7 +768,7 @@ class AudioControl(VideoBlockPart):
             self._block, parent=self._block.parent()
         )
 
-        dialog.exec_()
+        dialog.exec()
 
     @only_initialized
     def get_delay(self):

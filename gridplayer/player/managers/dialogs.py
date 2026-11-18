@@ -17,7 +17,7 @@ class DialogsManager(ManagerBase):
 
     def about(self):
         dialog = AboutDialog(self.parent())
-        dialog.exec_()
+        dialog.exec()
         dialog.deleteLater()
 
     @pyqtSlot(str)

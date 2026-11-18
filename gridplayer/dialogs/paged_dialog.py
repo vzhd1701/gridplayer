@@ -32,7 +32,7 @@ from gridplayer.widgets.settings_index import SettingsIndex
 from gridplayer.widgets.settings_page_scroll_area import PageScrollArea
 
 # where each entry in the section index keeps the page it opens
-SECTION_PAGE_ROLE = Qt.UserRole
+SECTION_PAGE_ROLE = Qt.ItemDataRole.UserRole
 
 # a page with this many sections or more has links to them under its title
 SECTION_LINKS_MIN = 5
@@ -86,7 +86,7 @@ class PageNote(QWidget):
         line = QHBoxLayout(self)
         line.setContentsMargins(0, 0, 0, 0)
         line.setSpacing(8)
-        line.addWidget(Icon("information", NOTE_ICON_PX), 0, Qt.AlignTop)
+        line.addWidget(Icon("information", NOTE_ICON_PX), 0, Qt.AlignmentFlag.AlignTop)
         line.addWidget(self._label, 1)
 
     def text(self) -> str:
@@ -129,7 +129,7 @@ class NoticeBubble(QFrame):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(10, 7, 10, 7)
         layout.setSpacing(8)
-        layout.addWidget(self._icon, 0, Qt.AlignTop)
+        layout.addWidget(self._icon, 0, Qt.AlignmentFlag.AlignTop)
         layout.addLayout(words, 1)
 
         self.hide()
@@ -178,7 +178,7 @@ class _PageTitle(QWidget):
         self._line.addWidget(title, 1)
 
     def take(self, button):
-        self._line.addWidget(button, 0, Qt.AlignVCenter)
+        self._line.addWidget(button, 0, Qt.AlignmentFlag.AlignVCenter)
 
 
 class _TextToolButton(QToolButton):
@@ -190,7 +190,9 @@ class _TextToolButton(QToolButton):
 
     def sizeHint(self):
         hint = super().sizeHint()
-        frame = self.style().pixelMetric(QStyle.PM_DefaultFrameWidth, None, self)
+        frame = self.style().pixelMetric(
+            QStyle.PixelMetric.PM_DefaultFrameWidth, None, self
+        )
         words = self.fontMetrics().horizontalAdvance(self.text())
         # Qt draws the icon with 2 px either side of it, and the words
         # right after: as much after them, and the frame
@@ -215,7 +217,9 @@ class PagedDialog(QDialog):
         self.setSizeGripEnabled(True)
         self.setModal(True)
 
-        self.buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.buttonBox = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
         self.buttonBox.accepted.connect(self.accept)
         self.buttonBox.rejected.connect(self.reject)
 
@@ -266,7 +270,7 @@ class PagedDialog(QDialog):
         self.resetPage = _TextToolButton(self)
         self.resetPage.setIcon(QIcon.fromTheme("reset"))
         self.resetPage.setText(translate("SettingsDialog", "Reset"))
-        self.resetPage.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.resetPage.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.resetPage.setAutoRaise(True)
         self.resetPage.setToolTip(self.reset_tooltip())
         self.resetPage.hide()
@@ -278,7 +282,9 @@ class PagedDialog(QDialog):
         self.search_box.setObjectName("settings_search")
         self.search_box.setPlaceholderText(translate("SettingsDialog", "Search"))
         self.search_box.setClearButtonEnabled(True)
-        self.search_box.addAction(QIcon.fromTheme("zoom"), QLineEdit.LeadingPosition)
+        self.search_box.addAction(
+            QIcon.fromTheme("zoom"), QLineEdit.ActionPosition.LeadingPosition
+        )
         self.search_box.setFixedWidth(self.section_index.width())
         self.search_box.installEventFilter(self)
 
@@ -288,12 +294,14 @@ class PagedDialog(QDialog):
         self._search_timer.timeout.connect(self.search_now)
         self.search_box.textChanged.connect(self._search_timer.start)
 
-        find = QShortcut(QKeySequence.Find, self)
+        find = QShortcut(QKeySequence.StandardKey.Find, self)
         find.activated.connect(self.focus_search)
 
         # where the rows would be, when nothing is found
         self._nothing_found = QLabel()
-        self._nothing_found.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
+        self._nothing_found.setAlignment(
+            Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop
+        )
         self._nothing_found.setContentsMargins(0, 80, 0, 0)
         self._nothing_found.setWordWrap(True)
         set_secondary(self._nothing_found)
@@ -465,7 +473,7 @@ class PagedDialog(QDialog):
     # searching
 
     def focus_search(self):
-        self.search_box.setFocus(Qt.ShortcutFocusReason)
+        self.search_box.setFocus(Qt.FocusReason.ShortcutFocusReason)
         self.search_box.selectAll()
 
     def search(self, text: str):
@@ -577,20 +585,20 @@ class PagedDialog(QDialog):
             form.point_to(key)
 
     def eventFilter(self, obj, event):
-        if obj is self.search_box and event.type() == QEvent.KeyPress:
+        if obj is self.search_box and event.type() == QEvent.Type.KeyPress:
             key = event.key()
             # Esc empties the box first, and closes the dialog only then
-            if key == Qt.Key_Escape and self.search_box.text():
+            if key == Qt.Key.Key_Escape and self.search_box.text():
                 self.end_search()
                 return True
             # not OK, as Enter is anywhere else in the dialog
-            if key in {Qt.Key_Return, Qt.Key_Enter}:
+            if key in {Qt.Key.Key_Return, Qt.Key.Key_Enter}:
                 self._search_waiting()
                 self._focus_found()
                 return True
-            if key == Qt.Key_Down:
+            if key == Qt.Key.Key_Down:
                 self._search_waiting()
-                self.section_index.setFocus(Qt.TabFocusReason)
+                self.section_index.setFocus(Qt.FocusReason.TabFocusReason)
                 return True
 
         return super().eventFilter(obj, event)

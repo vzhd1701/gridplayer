@@ -65,7 +65,9 @@ def wayland_with_xwayland(libs, monkeypatch):
 @pytest.fixture
 def settings(tmp_path, monkeypatch):
     store = _Settings.__new__(_Settings)
-    store.settings = QSettings(str(tmp_path / "settings.ini"), QSettings.IniFormat)
+    store.settings = QSettings(
+        str(tmp_path / "settings.ini"), QSettings.Format.IniFormat
+    )
 
     monkeypatch.setattr(settings_dialog, "Settings", lambda: store)
     monkeypatch.setattr(
@@ -90,7 +92,7 @@ def make_dialog(settings):
         dialog.close()
         dialog.deleteLater()
 
-    QApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+    QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
 
 def _note(dialog):
@@ -209,10 +211,10 @@ def test_the_arrow_keys_step_over_a_greyed_choice():
     combo = _combo_with_mpv_greyed()
     combo.setCurrentIndex(0)
 
-    QTest.keyClick(combo, Qt.Key_Down)
+    QTest.keyClick(combo, Qt.Key.Key_Down)
     assert combo.currentData() == "b"
 
-    QTest.keyClick(combo, Qt.Key_Up)
+    QTest.keyClick(combo, Qt.Key.Key_Up)
     assert combo.currentData() == "a"
 
 
@@ -225,9 +227,9 @@ def test_the_wheel_steps_over_a_greyed_choice():
         QPointF(combo.mapToGlobal(QPoint(1, 1))),
         QPoint(0, 0),
         QPoint(0, -120),
-        Qt.NoButton,
-        Qt.NoModifier,
-        Qt.NoScrollPhase,
+        Qt.MouseButton.NoButton,
+        Qt.KeyboardModifier.NoModifier,
+        Qt.ScrollPhase.NoScrollPhase,
         False,
     )
     QApplication.sendEvent(combo, down)

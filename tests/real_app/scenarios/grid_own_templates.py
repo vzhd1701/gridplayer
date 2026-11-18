@@ -52,7 +52,9 @@ def _press(role):
         from PyQt5.QtWidgets import QMessageBox
 
         next(
-            b for b in box.buttons() if box.buttonRole(b) == getattr(QMessageBox, role)
+            b
+            for b in box.buttons()
+            if box.buttonRole(b) == getattr(QMessageBox.ButtonRole, role)
         ).click()
 
     return press

@@ -29,13 +29,15 @@ class QCustomSpinboxInput(QDialog):
         self.spinbox.setRange(0, 1000)
 
         self.buttons = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel, Qt.Horizontal, self
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
+            Qt.Orientation.Horizontal,
+            self,
         )
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
 
         main_layout = QVBoxLayout(self)
-        main_layout.setSizeConstraint(QLayout.SetMinAndMaxSize)
+        main_layout.setSizeConstraint(QLayout.SizeConstraint.SetMinAndMaxSize)
         main_layout.addWidget(self.spinbox)
         main_layout.addWidget(self.buttons)
 
@@ -80,13 +82,15 @@ class QCustomTextInput(QDialog):
         self.line_edit.setMinimumWidth(TEXT_INPUT_MIN_WIDTH)
 
         self.buttons = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel, Qt.Horizontal, self
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
+            Qt.Orientation.Horizontal,
+            self,
         )
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
 
         main_layout = QVBoxLayout(self)
-        main_layout.setSizeConstraint(QLayout.SetMinAndMaxSize)
+        main_layout.setSizeConstraint(QLayout.SizeConstraint.SetMinAndMaxSize)
         main_layout.addWidget(self.line_edit)
         main_layout.addWidget(self.buttons)
 
@@ -115,7 +119,7 @@ class QCustomTextInput(QDialog):
         dialog.line_edit.setText(initial_value)
         dialog.line_edit.selectAll()
 
-        ok = dialog.buttons.button(QDialogButtonBox.Ok)
+        ok = dialog.buttons.button(QDialogButtonBox.StandardButton.Ok)
         ok.setEnabled(bool(initial_value.strip()))
         dialog.line_edit.textChanged.connect(
             lambda text: ok.setEnabled(bool(text.strip()))
@@ -144,7 +148,9 @@ class QFixedGridSizeDialog(QDialog):
         )
 
         self.buttons = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel, Qt.Horizontal, self
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
+            Qt.Orientation.Horizontal,
+            self,
         )
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
@@ -155,7 +161,7 @@ class QFixedGridSizeDialog(QDialog):
         form.addRow(self.preallocate)
 
         main_layout = QVBoxLayout(self)
-        main_layout.setSizeConstraint(QLayout.SetMinAndMaxSize)
+        main_layout.setSizeConstraint(QLayout.SizeConstraint.SetMinAndMaxSize)
         main_layout.addLayout(form)
         main_layout.addWidget(self.buttons)
 
@@ -193,13 +199,15 @@ class QCustomSpinboxTimeInput(QDialog):
         self.timebox.setDisplayFormat("hh:mm:ss.zzz")
 
         self.buttons = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel, Qt.Horizontal, self
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
+            Qt.Orientation.Horizontal,
+            self,
         )
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
 
         main_layout = QVBoxLayout(self)
-        main_layout.setSizeConstraint(QLayout.SetMinAndMaxSize)
+        main_layout.setSizeConstraint(QLayout.SizeConstraint.SetMinAndMaxSize)
         main_layout.addWidget(self.timebox)
         main_layout.addWidget(self.buttons)
 

@@ -536,11 +536,11 @@ class VideoBlock(QWidget):
 
         self.layout_main.setSpacing(0)
         self.layout_main.setContentsMargins(0, 0, 0, 0)
-        self.layout_main.setStackingMode(QStackedLayout.StackAll)
+        self.layout_main.setStackingMode(QStackedLayout.StackingMode.StackAll)
 
         self.video_status = VideoStatus(parent=self, is_framed=True)
         self.video_status.setMouseTracking(True)
-        self.video_status.setWindowFlags(Qt.WindowTransparentForInput)
+        self.video_status.setWindowFlags(Qt.WindowType.WindowTransparentForInput)
 
         self.layout_main.addWidget(self.video_status)
         self.layout_main.addWidget(self.overlay)
@@ -1221,7 +1221,7 @@ class VideoBlock(QWidget):
         # HW vout is a native child. Filling this widget on expose paints
         # QPalette.Window (white) over the whole cell.
         fill = self.is_stopped
-        self.setAttribute(Qt.WA_StyledBackground, fill)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, fill)
         self.setAutoFillBackground(fill)
 
     @property

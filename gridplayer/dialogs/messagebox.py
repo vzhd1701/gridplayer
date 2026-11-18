@@ -22,7 +22,7 @@ from PyQt5.QtWidgets import (
 )
 
 from gridplayer.params.theme import set_html_with_links
-from gridplayer.utils.qt import translate
+from gridplayer.utils.qt import flag_value, translate
 
 ICON_PX = 32
 
@@ -34,14 +34,14 @@ TEXT_MIN_WIDTH_PX = 360
 TEXT_MAX_WIDTH_PX = 520
 
 _ICONS = {
-    QMessageBox.Critical: "error",
-    QMessageBox.Information: "information",
-    QMessageBox.Question: "question",
-    QMessageBox.Warning: "warning",
+    QMessageBox.Icon.Critical: "error",
+    QMessageBox.Icon.Information: "information",
+    QMessageBox.Icon.Question: "question",
+    QMessageBox.Icon.Warning: "warning",
 }
 
 # the roles of buttons that answer yes
-_YES_ROLES = (QMessageBox.AcceptRole, QMessageBox.YesRole)
+_YES_ROLES = (QMessageBox.ButtonRole.AcceptRole, QMessageBox.ButtonRole.YesRole)
 
 
 class QCustomMessageBox(QDialog):
@@ -50,9 +50,9 @@ class QCustomMessageBox(QDialog):
         icon,
         title,
         text,
-        buttons=QMessageBox.NoButton,
+        buttons=QMessageBox.StandardButton.NoButton,
         parent=None,
-        f=Qt.Dialog | Qt.MSWindowsFixedSizeDialogHint,
+        f=Qt.WindowType.Dialog | Qt.WindowType.MSWindowsFixedSizeDialogHint,
     ):
         super().__init__(parent, f)
 
@@ -63,7 +63,7 @@ class QCustomMessageBox(QDialog):
         self._copied = ""
 
         self._icon = QLabel()
-        self._icon.setAlignment(Qt.AlignTop)
+        self._icon.setAlignment(Qt.AlignmentFlag.AlignTop)
         if icon in _ICONS:
             self._icon.setPixmap(
                 QIcon.fromTheme(_ICONS[icon]).pixmap(QSize(ICON_PX, ICON_PX))
@@ -112,7 +112,7 @@ class QCustomMessageBox(QDialog):
         root.setSpacing(16)
         root.addLayout(top)
         root.addLayout(self._bottom)
-        root.setSizeConstraint(QVBoxLayout.SetFixedSize)
+        root.setSizeConstraint(QVBoxLayout.SizeConstraint.SetFixedSize)
 
         for button in _standard_buttons(buttons):
             self.addButton(button)
@@ -145,11 +145,11 @@ class QCustomMessageBox(QDialog):
 
         if isinstance(button, str):
             added = self._button_box.addButton(
-                button, QDialogButtonBox.ButtonRole(int(role))
+                button, QDialogButtonBox.ButtonRole(flag_value(role))
             )
         else:
             added = self._button_box.addButton(
-                QDialogButtonBox.StandardButton(int(button))
+                QDialogButtonBox.StandardButton(flag_value(button))
             )
 
         # Enter only ever presses the default, never what was tabbed to
@@ -188,9 +188,9 @@ class QCustomMessageBox(QDialog):
     def clickedButton(self) -> QAbstractButton | None:
         return self._clicked
 
-    def exec_(self) -> int:
+    def exec(self) -> int:
         self._show_default()
-        return super().exec_()
+        return super().exec()
 
     def open(self) -> None:
         self._show_default()
@@ -256,13 +256,13 @@ class QCustomMessageBox(QDialog):
             super().reject()
 
     def _escape_button(self) -> QAbstractButton | None:
-        cancel = self.button(QMessageBox.Cancel)
+        cancel = self.button(QMessageBox.StandardButton.Cancel)
         if cancel is not None:
             return cancel
 
         buttons = self.buttons()
 
-        for role in (QMessageBox.RejectRole, QMessageBox.NoRole):
+        for role in (QMessageBox.ButtonRole.RejectRole, QMessageBox.ButtonRole.NoRole):
             in_role = [b for b in buttons if self.buttonRole(b) == role]
             if len(in_role) == 1:
                 return in_role[0]
@@ -288,11 +288,11 @@ class QCustomMessageBox(QDialog):
         parent,
         title,
         text,
-        buttons=QMessageBox.Ok,
-        defaultButton=QMessageBox.NoButton,
+        buttons=QMessageBox.StandardButton.Ok,
+        defaultButton=QMessageBox.StandardButton.NoButton,
         info="",
     ):
-        return cls._asked(QMessageBox.Critical, parent, title, text, buttons, info)
+        return cls._asked(QMessageBox.Icon.Critical, parent, title, text, buttons, info)
 
     @classmethod
     def information(
@@ -300,11 +300,13 @@ class QCustomMessageBox(QDialog):
         parent,
         title,
         text,
-        buttons=QMessageBox.Ok,
-        defaultButton=QMessageBox.NoButton,
+        buttons=QMessageBox.StandardButton.Ok,
+        defaultButton=QMessageBox.StandardButton.NoButton,
         info="",
     ):
-        return cls._asked(QMessageBox.Information, parent, title, text, buttons, info)
+        return cls._asked(
+            QMessageBox.Icon.Information, parent, title, text, buttons, info
+        )
 
     @classmethod
     def question(
@@ -312,11 +314,11 @@ class QCustomMessageBox(QDialog):
         parent,
         title,
         text,
-        buttons=QMessageBox.Yes | QMessageBox.No,
-        defaultButton=QMessageBox.NoButton,
+        buttons=QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        defaultButton=QMessageBox.StandardButton.NoButton,
         info="",
     ):
-        return cls._asked(QMessageBox.Question, parent, title, text, buttons, info)
+        return cls._asked(QMessageBox.Icon.Question, parent, title, text, buttons, info)
 
     @classmethod
     def cancellable_question(
@@ -324,11 +326,13 @@ class QCustomMessageBox(QDialog):
         parent,
         title,
         text,
-        buttons=QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
-        defaultButton=QMessageBox.NoButton,
+        buttons=QMessageBox.StandardButton.Yes
+        | QMessageBox.StandardButton.No
+        | QMessageBox.StandardButton.Cancel,
+        defaultButton=QMessageBox.StandardButton.NoButton,
         info="",
     ):
-        return cls._asked(QMessageBox.Question, parent, title, text, buttons, info)
+        return cls._asked(QMessageBox.Icon.Question, parent, title, text, buttons, info)
 
     @classmethod
     def warning(
@@ -336,11 +340,11 @@ class QCustomMessageBox(QDialog):
         parent,
         title,
         text,
-        buttons=QMessageBox.Ok,
-        defaultButton=QMessageBox.NoButton,
+        buttons=QMessageBox.StandardButton.Ok,
+        defaultButton=QMessageBox.StandardButton.NoButton,
         info="",
     ):
-        return cls._asked(QMessageBox.Warning, parent, title, text, buttons, info)
+        return cls._asked(QMessageBox.Icon.Warning, parent, title, text, buttons, info)
 
     @classmethod
     def confirm(
@@ -351,7 +355,7 @@ class QCustomMessageBox(QDialog):
         action: str,
         info: str = "",
         is_destructive: bool = False,
-        icon=QMessageBox.Question,
+        icon=QMessageBox.Icon.Question,
     ) -> bool:
         """Whether the button named for what is asked was pressed, rather
         than Cancel. Where it loses something, Cancel is the default."""
@@ -359,12 +363,16 @@ class QCustomMessageBox(QDialog):
         box = cls(icon, title, text, parent=parent)
         box.setInformativeText(info)
 
-        role = QMessageBox.DestructiveRole if is_destructive else QMessageBox.AcceptRole
+        role = (
+            QMessageBox.ButtonRole.DestructiveRole
+            if is_destructive
+            else QMessageBox.ButtonRole.AcceptRole
+        )
         action_button = box.addButton(action, role)
-        cancel_button = box.addButton(QMessageBox.Cancel)
+        cancel_button = box.addButton(QMessageBox.StandardButton.Cancel)
         box.setDefaultButton(cancel_button if is_destructive else action_button)
 
-        box.exec_()
+        box.exec()
 
         is_confirmed = box.clickedButton() is action_button
 
@@ -378,11 +386,13 @@ class QCustomMessageBox(QDialog):
 
         box = cls(icon, title, text, buttons, parent)
         box.setInformativeText(info)
-        box.exec_()
+        box.exec()
 
         clicked = box.clickedButton()
         answer = (
-            QMessageBox.NoButton if clicked is None else box.standardButton(clicked)
+            QMessageBox.StandardButton.NoButton
+            if clicked is None
+            else box.standardButton(clicked)
         )
 
         box.deleteLater()
@@ -393,11 +403,11 @@ class QCustomMessageBox(QDialog):
 def _standard_buttons(buttons) -> list[int]:
     """The standard buttons of a set of their flags, one by one."""
 
-    buttons = int(buttons)
+    buttons = flag_value(buttons)
     each = []
 
-    bit = int(QMessageBox.FirstButton)
-    while bit <= int(QMessageBox.LastButton):
+    bit = flag_value(QMessageBox.StandardButton.FirstButton)
+    while bit <= flag_value(QMessageBox.StandardButton.LastButton):
         if buttons & bit:
             each.append(QMessageBox.StandardButton(bit))
         bit <<= 1
@@ -410,7 +420,10 @@ def _words_label() -> QLabel:
     label.setWordWrap(True)
     label.setMinimumWidth(TEXT_MIN_WIDTH_PX)
     label.setMaximumWidth(TEXT_MAX_WIDTH_PX)
-    label.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.LinksAccessibleByMouse)
+    label.setTextInteractionFlags(
+        Qt.TextInteractionFlag.TextSelectableByMouse
+        | Qt.TextInteractionFlag.LinksAccessibleByMouse
+    )
     label.setOpenExternalLinks(True)
     return label
 
@@ -446,8 +459,8 @@ def _set_words(label: QLabel, text: str) -> None:
 
 def _list_label(text: str) -> QLabel:
     label = QLabel(text)
-    label.setTextFormat(Qt.PlainText)
+    label.setTextFormat(Qt.TextFormat.PlainText)
     label.setWordWrap(True)
     label.setMaximumWidth(TEXT_MAX_WIDTH_PX - 24)
-    label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+    label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
     return label

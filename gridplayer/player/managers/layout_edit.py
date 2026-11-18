@@ -63,8 +63,8 @@ class LayoutEditManager(ManagerBase):
     @property
     def event_map(self):
         return {
-            QEvent.Move: self._follow,
-            QEvent.Resize: self._follow,
+            QEvent.Type.Move: self._follow,
+            QEvent.Type.Resize: self._follow,
         }
 
     def _follow(self):

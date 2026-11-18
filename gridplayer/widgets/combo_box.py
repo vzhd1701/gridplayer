@@ -26,7 +26,7 @@ POPUP_ROOM_PX = 48
 POPUP_MAX_SCREEN_SHARE = 0.8
 
 # what an item keeps saying why it can't be picked
-REASON_ROLE = Qt.UserRole + 100
+REASON_ROLE = Qt.ItemDataRole.UserRole + 100
 REASON_MARGIN_PX = 8
 REASON_GAP_PX = 24
 GREYED_OPACITY = 0.47
@@ -55,7 +55,7 @@ def cap_popup_height(combo: QComboBox, item_count: int) -> None:
 
     combo.setMaxVisibleItems(MAX_VISIBLE_COMBO_ITEMS)
     combo.setStyleSheet("QComboBox { combobox-popup: 0; }")
-    combo.view().setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+    combo.view().setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
 
 class _ReasonDelegate(QStyledItemDelegate):
@@ -83,7 +83,9 @@ class _ReasonDelegate(QStyledItemDelegate):
         # disabled text has a copy under it in the Light colour, which shows as
         # a blur on a dark theme.
         no_etching = QStyleOptionViewItem(option)
-        no_etching.palette.setColor(QPalette.Light, Qt.transparent)
+        no_etching.palette.setColor(
+            QPalette.ColorRole.Light, Qt.GlobalColor.transparent
+        )
         painter.setOpacity(GREYED_OPACITY)
         self._drawn_by.paint(painter, no_etching, index)
         painter.setOpacity(1)
@@ -92,7 +94,7 @@ class _ReasonDelegate(QStyledItemDelegate):
         painter.setPen(secondary_text_color())
         painter.drawText(
             option.rect.adjusted(0, 0, -REASON_MARGIN_PX, 0),
-            Qt.AlignRight | Qt.AlignVCenter,
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
             reason,
         )
         painter.restore()
@@ -159,16 +161,19 @@ class ElidedComboBox(QComboBox):
         option = QStyleOptionComboBox()
         self.initStyleOption(option)
 
-        painter.drawComplexControl(QStyle.CC_ComboBox, option)
+        painter.drawComplexControl(QStyle.ComplexControl.CC_ComboBox, option)
 
         field = self.style().subControlRect(
-            QStyle.CC_ComboBox, option, QStyle.SC_ComboBoxEditField, self
+            QStyle.ComplexControl.CC_ComboBox,
+            option,
+            QStyle.SubControl.SC_ComboBoxEditField,
+            self,
         )
         option.currentText = self.fontMetrics().elidedText(
-            option.currentText, Qt.ElideMiddle, field.width()
+            option.currentText, Qt.TextElideMode.ElideMiddle, field.width()
         )
 
-        painter.drawControl(QStyle.CE_ComboBoxLabel, option)
+        painter.drawControl(QStyle.ControlElement.CE_ComboBoxLabel, option)
 
     def showPopup(self):
         metrics = self.view().fontMetrics()

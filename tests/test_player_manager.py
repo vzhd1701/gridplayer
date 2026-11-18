@@ -49,7 +49,7 @@ class _Listener(ManagerBase):
 
     @property
     def event_map(self):
-        return {QEvent.MouseMove: lambda: self.seen.append("move")}
+        return {QEvent.Type.MouseMove: lambda: self.seen.append("move")}
 
     def eventFilter(self, event_object, event):
         self.seen.append(event.type())
@@ -73,9 +73,9 @@ def _app_wide_listener():
 def test_a_global_filter_hears_what_it_answers_to():
     manager, listener = _app_wide_listener()
 
-    manager.eventFilter(QObject(), QEvent(QEvent.MouseMove))
+    manager.eventFilter(QObject(), QEvent(QEvent.Type.MouseMove))
 
-    assert listener.seen == [QEvent.MouseMove, "move"]
+    assert listener.seen == [QEvent.Type.MouseMove, "move"]
 
 
 def test_a_global_filter_is_not_asked_about_anything_else():
@@ -84,7 +84,7 @@ def test_a_global_filter_is_not_asked_about_anything_else():
 
     manager, listener = _app_wide_listener()
 
-    for kind in (QEvent.ChildAdded, QEvent.Polish, QEvent.LayoutRequest):
+    for kind in (QEvent.Type.ChildAdded, QEvent.Type.Polish, QEvent.Type.LayoutRequest):
         assert manager.eventFilter(QObject(), QEvent(kind)) is False
 
     assert listener.seen == []

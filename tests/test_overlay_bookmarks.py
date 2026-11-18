@@ -47,7 +47,7 @@ def _bookmark(time_ms, label):
 @pytest.fixture
 def overlay():
     overlay = OverlayBlock()
-    overlay.setAttribute(Qt.WA_DontShowOnScreen)
+    overlay.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen)
     overlay.resize(800, 200)
     overlay.set_color("#ffffff")
     # before any of the marks, so the progress is not under them
@@ -86,14 +86,18 @@ def _send(widget, event):
     return event
 
 
-def _mouse(kind, x, button=Qt.NoButton):
-    buttons = Qt.NoButton if kind == QEvent.MouseButtonRelease else button
+def _mouse(kind, x, button=Qt.MouseButton.NoButton):
+    buttons = (
+        Qt.MouseButton.NoButton if kind == QEvent.Type.MouseButtonRelease else button
+    )
 
-    return QMouseEvent(kind, QPointF(x, 5), button, buttons, Qt.NoModifier)
+    return QMouseEvent(
+        kind, QPointF(x, 5), button, buttons, Qt.KeyboardModifier.NoModifier
+    )
 
 
 def _move_over(overlay, x):
-    return _send(_strip(overlay), _mouse(QEvent.MouseMove, x))
+    return _send(_strip(overlay), _mouse(QEvent.Type.MouseMove, x))
 
 
 def _hover_bar_at(overlay, x):
@@ -332,7 +336,7 @@ class TestTheMarkers:
         x = _marker_x(overlay)
 
         _move_over(overlay, x)
-        _send(_strip(overlay), QEvent(QEvent.Leave))
+        _send(_strip(overlay), QEvent(QEvent.Type.Leave))
         image = _grab(overlay)
 
         assert _is_colour(image, x, TIP_ROW - 2, BOOKMARK_COLOR)
@@ -365,7 +369,11 @@ class TestClicks:
 
         _send(
             _strip(overlay),
-            _mouse(QEvent.MouseButtonPress, _marker_x(overlay), Qt.LeftButton),
+            _mouse(
+                QEvent.Type.MouseButtonPress,
+                _marker_x(overlay),
+                Qt.MouseButton.LeftButton,
+            ),
         )
 
         assert clicked == [(30000,)]
@@ -374,7 +382,10 @@ class TestClicks:
         overlay.set_seek_marks((GOAL,))
         x = _marker_x(overlay) - BOOKMARK_HOVER_PX
 
-        _send(_strip(overlay), _mouse(QEvent.MouseButtonPress, x, Qt.LeftButton))
+        _send(
+            _strip(overlay),
+            _mouse(QEvent.Type.MouseButtonPress, x, Qt.MouseButton.LeftButton),
+        )
 
         assert clicked == [(30000,)]
 
@@ -383,7 +394,11 @@ class TestClicks:
 
         _send(
             _strip(overlay),
-            _mouse(QEvent.MouseButtonPress, _marker_x(overlay), Qt.LeftButton),
+            _mouse(
+                QEvent.Type.MouseButtonPress,
+                _marker_x(overlay),
+                Qt.MouseButton.LeftButton,
+            ),
         )
 
         assert clicked == [(30000, 30050)]
@@ -393,9 +408,15 @@ class TestClicks:
         strip = _strip(overlay)
         x = _marker_x(overlay)
 
-        pressed = _send(strip, _mouse(QEvent.MouseButtonPress, x, Qt.LeftButton))
-        released = _send(strip, _mouse(QEvent.MouseButtonRelease, x, Qt.LeftButton))
-        double = _send(strip, _mouse(QEvent.MouseButtonDblClick, x, Qt.LeftButton))
+        pressed = _send(
+            strip, _mouse(QEvent.Type.MouseButtonPress, x, Qt.MouseButton.LeftButton)
+        )
+        released = _send(
+            strip, _mouse(QEvent.Type.MouseButtonRelease, x, Qt.MouseButton.LeftButton)
+        )
+        double = _send(
+            strip, _mouse(QEvent.Type.MouseButtonDblClick, x, Qt.MouseButton.LeftButton)
+        )
 
         assert pressed.isAccepted()
         assert released.isAccepted()
@@ -406,8 +427,12 @@ class TestClicks:
         strip = _strip(overlay)
         x = _marker_x(overlay) + BOOKMARK_HOVER_PX + 1
 
-        pressed = _send(strip, _mouse(QEvent.MouseButtonPress, x, Qt.LeftButton))
-        released = _send(strip, _mouse(QEvent.MouseButtonRelease, x, Qt.LeftButton))
+        pressed = _send(
+            strip, _mouse(QEvent.Type.MouseButtonPress, x, Qt.MouseButton.LeftButton)
+        )
+        released = _send(
+            strip, _mouse(QEvent.Type.MouseButtonRelease, x, Qt.MouseButton.LeftButton)
+        )
 
         assert not pressed.isAccepted()
         assert not released.isAccepted()
@@ -427,11 +452,15 @@ class TestClicks:
         strip = _strip(overlay)
         x = _marker_x(overlay)
 
-        _send(strip, _mouse(QEvent.MouseButtonPress, x, Qt.RightButton))
+        _send(
+            strip, _mouse(QEvent.Type.MouseButtonPress, x, Qt.MouseButton.RightButton)
+        )
         asked = _send(
             strip,
             QContextMenuEvent(
-                QContextMenuEvent.Mouse, QPoint(x, 5), strip.mapToGlobal(QPoint(x, 5))
+                QContextMenuEvent.Reason.Mouse,
+                QPoint(x, 5),
+                strip.mapToGlobal(QPoint(x, 5)),
             ),
         )
 
@@ -447,7 +476,9 @@ class TestClicks:
         _send(
             strip,
             QContextMenuEvent(
-                QContextMenuEvent.Mouse, QPoint(x, 5), strip.mapToGlobal(QPoint(x, 5))
+                QContextMenuEvent.Reason.Mouse,
+                QPoint(x, 5),
+                strip.mapToGlobal(QPoint(x, 5)),
             ),
         )
 
@@ -461,7 +492,9 @@ class TestClicks:
         asked = _send(
             strip,
             QContextMenuEvent(
-                QContextMenuEvent.Mouse, QPoint(x, 5), strip.mapToGlobal(QPoint(x, 5))
+                QContextMenuEvent.Reason.Mouse,
+                QPoint(x, 5),
+                strip.mapToGlobal(QPoint(x, 5)),
             ),
         )
 
@@ -515,7 +548,7 @@ class TestTheHoverLabel:
         overlay.set_seek_marks((GOAL,))
 
         _move_over(overlay, _marker_x(overlay))
-        _send(_strip(overlay), QEvent(QEvent.Leave))
+        _send(_strip(overlay), QEvent(QEvent.Type.Leave))
 
         assert not overlay.floating_progress.isVisible()
 
@@ -583,7 +616,7 @@ class TestTheHoverLabel:
         _move_over(overlay, x)
         over_the_marker = label.y() + label._text_box().bottom()
 
-        _send(_strip(overlay), QEvent(QEvent.Leave))
+        _send(_strip(overlay), QEvent(QEvent.Type.Leave))
         _hover_bar_at(overlay, x)
         over_the_bar = label.y() + label._text_box().bottom()
 
@@ -620,7 +653,7 @@ class TestTheHoverLabel:
         overlay.set_seek_marks((GOAL,))
 
         _move_over(overlay, _marker_x(overlay))
-        _send(_strip(overlay), QEvent(QEvent.Leave))
+        _send(_strip(overlay), QEvent(QEvent.Type.Leave))
         label = _hover_bar_at(overlay, 100)
         image = label.grab().toImage()
 
@@ -688,7 +721,7 @@ class TestOnTheOpaqueOverlay:
     @pytest.fixture
     def opaque(self):
         holder = QWidget()
-        holder.setAttribute(Qt.WA_DontShowOnScreen)
+        holder.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen)
         holder.resize(640, 360)
 
         overlay = OverlayBlockFloating(holder)
@@ -752,7 +785,7 @@ class TestOnTheOpaqueOverlay:
         assert opaque.mask().contains(grown_edge)
         assert not _strip(opaque).opaque_shape().contains(QPoint(x, TIP_ROW - 2))
 
-        _send(_strip(opaque), QEvent(QEvent.Leave))
+        _send(_strip(opaque), QEvent(QEvent.Type.Leave))
         assert not opaque.mask().contains(grown_edge)
         assert _strip(opaque).opaque_shape().contains(QPoint(x, TIP_ROW - 2))
 

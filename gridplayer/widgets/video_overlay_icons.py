@@ -13,7 +13,7 @@ def draw_volume_on(rect, painter, color_fg, color_bg):
 
 
 def draw_volume_off(rect, painter, color_fg, color_bg):
-    painter.setRenderHint(QPainter.Antialiasing, True)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
     path = QPainterPath()
 
@@ -27,12 +27,12 @@ def draw_volume_off(rect, painter, color_fg, color_bg):
 
     path.lineTo(rect.x() + 5, round(rect.height() / 2) - 3)
 
-    painter.setPen(Qt.NoPen)
+    painter.setPen(Qt.PenStyle.NoPen)
     painter.fillPath(path, QBrush(color_fg))
 
 
 def draw_play(rect, painter, color_fg, color_bg):
-    painter.setRenderHint(QPainter.Antialiasing, True)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
     path = QPainterPath()
 
@@ -41,7 +41,7 @@ def draw_play(rect, painter, color_fg, color_bg):
     path.lineTo(rect.x() + 5, rect.height() - 4)
     path.lineTo(rect.x() + 5, rect.y() + 4)
 
-    painter.setPen(Qt.NoPen)
+    painter.setPen(Qt.PenStyle.NoPen)
     painter.fillPath(path, QBrush(color_fg))
 
 
@@ -53,18 +53,18 @@ def draw_pause(rect, painter, color_fg, color_bg):
 def draw_stop(rect, painter, color_fg, color_bg):
     """A square as wide as play and pause are, as heavy as pause looks."""
 
-    painter.setRenderHint(QPainter.Antialiasing, True)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
     side = rect.width() - 10
     square = QRectF(rect.x() + 5, rect.y() + (rect.height() - side) // 2, side, side)
 
-    painter.setPen(Qt.NoPen)
+    painter.setPen(Qt.PenStyle.NoPen)
     painter.setBrush(color_fg)
     painter.drawRoundedRect(square, 1.5, 1.5)
 
 
 def draw_cross(rect, painter, color_fg, color_bg):
-    painter.setRenderHint(QPainter.Antialiasing, True)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
     painter.setPen(QPen(color_fg, 4))
 
     line_len = round(math.sqrt((rect.width() - 10) ** 2 + (rect.width() - 10) ** 2))
@@ -91,9 +91,9 @@ def _draw_arrows(rect, painter, color_fg, is_out):
     is not laid on twice; its head's sides on whole pixels, to be sharp.
     """
 
-    painter.setRenderHint(QPainter.Antialiasing, True)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
     painter.setPen(_line_pen(color_fg))
-    painter.setBrush(Qt.NoBrush)
+    painter.setBrush(Qt.BrushStyle.NoBrush)
 
     box = _icon_box(rect)
     center = box.center()
@@ -133,17 +133,17 @@ def draw_cell_size(rect, painter, color_fg, color_bg):
     """A grid of two by two, its first cell filled: a cell's size picked.
     Its lines on whole pixels, to be sharp."""
 
-    painter.setRenderHint(QPainter.Antialiasing, True)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
     box = _icon_box(rect)
     half = round(box.width() / 2)
 
-    painter.setPen(Qt.NoPen)
+    painter.setPen(Qt.PenStyle.NoPen)
     painter.setBrush(color_fg)
     painter.drawRect(QRectF(box.topLeft(), box.center()))
 
     painter.setPen(QPen(color_fg, 2))
-    painter.setBrush(Qt.NoBrush)
+    painter.setBrush(Qt.BrushStyle.NoBrush)
     painter.drawRoundedRect(box, 1.5, 1.5)
     painter.drawLine(
         QPointF(box.left() + half, box.top()), QPointF(box.left() + half, box.bottom())
@@ -158,7 +158,13 @@ def _icon_box(rect) -> QRectF:
 
 
 def _line_pen(color_fg) -> QPen:
-    return QPen(color_fg, 2, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+    return QPen(
+        color_fg,
+        2,
+        Qt.PenStyle.SolidLine,
+        Qt.PenCapStyle.RoundCap,
+        Qt.PenJoinStyle.RoundJoin,
+    )
 
 
 def _part(box: QRectF, left, top, right, bottom) -> QRectF:
@@ -186,12 +192,12 @@ def _draw_corners(painter, color_fg, box: QRectF, arm: float):
         path.lineTo(corner.x(), corner.y() + sign_y * arm)
 
     painter.setPen(_line_pen(color_fg))
-    painter.setBrush(Qt.NoBrush)
+    painter.setBrush(Qt.BrushStyle.NoBrush)
     painter.drawPath(path)
 
 
 def _fill(painter, color_fg, box: QRectF):
-    painter.setPen(Qt.NoPen)
+    painter.setPen(Qt.PenStyle.NoPen)
     painter.setBrush(color_fg)
     painter.drawRect(box)
 
@@ -200,7 +206,7 @@ def draw_fill_space(rect, painter, color_fg, color_bg):
     """A tile in the middle and the corners of the room round it: the tile
     made as big as the room. As the icon grid-fill-space."""
 
-    painter.setRenderHint(QPainter.Antialiasing, True)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
     box = _icon_box(rect)
     _draw_corners(painter, color_fg, box, box.width() * 0.26)
@@ -211,7 +217,7 @@ def draw_fit_video(rect, painter, color_fg, color_bg):
     """A picture and the corners of the tile close round it: the tile made
     the picture's shape. As the icon grid-fit-tile."""
 
-    painter.setRenderHint(QPainter.Antialiasing, True)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
     # opened up from the icon's, the button's being so small
     box = _icon_box(rect)
@@ -222,7 +228,7 @@ def draw_fit_video(rect, painter, color_fg, color_bg):
 def draw_lock(rect, painter, color_fg, color_bg):
     """A padlock: the tile locked."""
 
-    painter.setRenderHint(QPainter.Antialiasing, True)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
     box = _icon_box(rect)
     body = QRectF(box.left(), box.top() + box.height() * 0.45, box.width(), 0)
@@ -237,10 +243,10 @@ def draw_lock(rect, painter, color_fg, color_bg):
     path.lineTo(arc.right(), body.top())
 
     painter.setPen(_line_pen(color_fg))
-    painter.setBrush(Qt.NoBrush)
+    painter.setBrush(Qt.BrushStyle.NoBrush)
     painter.drawPath(path)
 
-    painter.setPen(Qt.NoPen)
+    painter.setPen(Qt.PenStyle.NoPen)
     painter.setBrush(color_fg)
     painter.drawRoundedRect(body, 1.5, 1.5)
 
@@ -258,11 +264,11 @@ def draw_list(rect, painter, color_fg, color_bg):
 def draw_spin_circle(
     rect: QRect, painter: QPainter, color_fg: QColor, color_bg: QColor, spin: int
 ):
-    painter.setRenderHint(QPainter.Antialiasing, True)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
     rect_spin = rect.adjusted(5, 5, -5, -5)
 
     # a ring with a gap going round, drawn rather than cut out of the ring:
     # the box under it may let the picture through
-    painter.setPen(QPen(color_fg, 3, Qt.SolidLine, Qt.RoundCap))
+    painter.setPen(QPen(color_fg, 3, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
     painter.drawArc(rect_spin, (-spin + 90) * 16, 16 * 270)

@@ -14,7 +14,7 @@ def editor():
     yield editor
 
     editor.deleteLater()
-    QApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+    QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
 
 def _folders_shown(editor):
@@ -46,6 +46,6 @@ def test_its_words_flip_it_too(editor):
         if label.text() == "Only changed"
     )
 
-    QTest.mouseClick(label, Qt.LeftButton)
+    QTest.mouseClick(label, Qt.MouseButton.LeftButton)
 
     assert editor.modified_only_switch.isChecked()

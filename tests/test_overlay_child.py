@@ -56,7 +56,9 @@ def _isolated_settings(tmp_path):
     settings = Settings()
     real_settings = settings.settings
 
-    settings.settings = QSettings(str(tmp_path / "test.ini"), QSettings.IniFormat)
+    settings.settings = QSettings(
+        str(tmp_path / "test.ini"), QSettings.Format.IniFormat
+    )
 
     yield
 
@@ -197,7 +199,7 @@ class _MouseMoves(QObject):
         self.seen = []
 
     def eventFilter(self, watched, event):
-        if event.type() == QEvent.MouseMove:
+        if event.type() == QEvent.Type.MouseMove:
             self.seen.append(event.pos())
 
         return False
@@ -220,7 +222,11 @@ class TestBeingAWindow:
         block.installEventFilter(moves)
 
         move = QMouseEvent(
-            QEvent.MouseMove, QPointF(5, 7), Qt.NoButton, Qt.NoButton, Qt.NoModifier
+            QEvent.Type.MouseMove,
+            QPointF(5, 7),
+            Qt.MouseButton.NoButton,
+            Qt.MouseButton.NoButton,
+            Qt.KeyboardModifier.NoModifier,
         )
         QApplication.sendEvent(block.overlay, move)
 
@@ -244,6 +250,6 @@ class TestBeingAWindow:
 
         assert button.underMouse()
 
-        QApplication.sendEvent(overlay.windowHandle(), QEvent(QEvent.Leave))
+        QApplication.sendEvent(overlay.windowHandle(), QEvent(QEvent.Type.Leave))
 
         assert not button.underMouse()

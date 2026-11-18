@@ -41,7 +41,9 @@ def _double_click(d, widget):
     local = window.mapFromGlobal(pos)
     QTest.mouseMove(window, local)
     d.pump(0.15)
-    QTest.mouseDClick(window, Qt.LeftButton, Qt.NoModifier, local)
+    QTest.mouseDClick(
+        window, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, local
+    )
     d.pump(0.3)
 
 

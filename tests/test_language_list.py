@@ -149,7 +149,7 @@ def test_authors_collapse_and_expand_with_width():
     assert "Cam" in row.authors.text()
     assert "+" not in row.authors.text()
     assert row.authors.toolTip() == ""
-    assert widget.horizontalScrollBarPolicy() == Qt.ScrollBarAlwaysOff
+    assert widget.horizontalScrollBarPolicy() == Qt.ScrollBarPolicy.ScrollBarAlwaysOff
 
 
 def test_arabic_row_stays_left_aligned():
@@ -165,11 +165,11 @@ def test_arabic_row_stays_left_aligned():
     assert arabic is not None
     assert english is not None
 
-    assert widget.layoutDirection() == Qt.LeftToRight
-    assert arabic.layoutDirection() == Qt.LeftToRight
-    assert arabic.title.layoutDirection() == Qt.LeftToRight
-    assert arabic.title.alignment() & Qt.AlignAbsolute
-    assert arabic.title.alignment() & Qt.AlignLeft
+    assert widget.layoutDirection() == Qt.LayoutDirection.LeftToRight
+    assert arabic.layoutDirection() == Qt.LayoutDirection.LeftToRight
+    assert arabic.title.layoutDirection() == Qt.LayoutDirection.LeftToRight
+    assert arabic.title.alignment() & Qt.AlignmentFlag.AlignAbsolute
+    assert arabic.title.alignment() & Qt.AlignmentFlag.AlignLeft
     assert 'dir="ltr"' in arabic.title.text()
     assert arabic.title.alignment() == english.title.alignment()
 
@@ -188,12 +188,21 @@ def test_clicking_authors_selects_row_without_text_selection():
     row = widget.itemWidget(widget.item(1))
     assert row is not None
     assert row.authors is not None
-    assert not (row.authors.textInteractionFlags() & Qt.TextSelectableByMouse)
-    assert row.authors.textInteractionFlags() & Qt.LinksAccessibleByMouse
+    assert not (
+        row.authors.textInteractionFlags()
+        & Qt.TextInteractionFlag.TextSelectableByMouse
+    )
+    assert (
+        row.authors.textInteractionFlags()
+        & Qt.TextInteractionFlag.LinksAccessibleByMouse
+    )
 
     with patch("PyQt5.QtGui.QDesktopServices.openUrl"):
-        QTest.mouseClick(row.authors, Qt.LeftButton)
+        QTest.mouseClick(row.authors, Qt.MouseButton.LeftButton)
         QApplication.processEvents()
 
     assert widget.value() == "de_DE"
-    assert not (row.authors.textInteractionFlags() & Qt.TextSelectableByMouse)
+    assert not (
+        row.authors.textInteractionFlags()
+        & Qt.TextInteractionFlag.TextSelectableByMouse
+    )

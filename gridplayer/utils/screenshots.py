@@ -448,7 +448,11 @@ def _write_frame(
         image = image.copy(rect)
 
     if shape is not None:
-        image = image.scaled(shape, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+        image = image.scaled(
+            shape,
+            Qt.AspectRatioMode.IgnoreAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
 
     extension = FORMAT_EXTENSIONS[image_format].upper()
     quality = jpg_quality if image_format == ScreenshotFormat.JPG else -1

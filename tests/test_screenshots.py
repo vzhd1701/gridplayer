@@ -58,7 +58,7 @@ def _name(template="shot", title="clip.mkv", position_ms=0) -> ScreenshotName:
 
 
 def _frame(width=32, height=16) -> QImage:
-    image = QImage(width, height, QImage.Format_RGB32)
+    image = QImage(width, height, QImage.Format.Format_RGB32)
     image.fill(QColor("red"))
     return image
 
@@ -304,7 +304,7 @@ class TestTheViewRegion:
 def _marked(width, height) -> QImage:
     """Black, with the top left corner red."""
 
-    image = QImage(width, height, QImage.Format_RGB32)
+    image = QImage(width, height, QImage.Format.Format_RGB32)
     image.fill(QColor("black"))
     for x in range(4):
         for y in range(4):
@@ -329,7 +329,7 @@ class TestTurningAnImage:
         ],
     )
     def test_every_pixel_goes_where_it_should(self, transform, size, moved):
-        image = QImage(3, 2, QImage.Format_RGB32)
+        image = QImage(3, 2, QImage.Format.Format_RGB32)
         for x in range(3):
             for y in range(2):
                 image.setPixelColor(x, y, QColor(x * 100, y * 100, 50))
@@ -617,7 +617,9 @@ def settings(tmp_path, monkeypatch):
     """An ini of our own, so no test writes the one the user has."""
 
     store = _Settings.__new__(_Settings)
-    store.settings = QSettings(str(tmp_path / "settings.ini"), QSettings.IniFormat)
+    store.settings = QSettings(
+        str(tmp_path / "settings.ini"), QSettings.Format.IniFormat
+    )
 
     monkeypatch.setattr(settings_dialog, "Settings", lambda: store)
 
@@ -636,7 +638,7 @@ def dialog(settings, tmp_path, monkeypatch):
 
     made.close()
     made.deleteLater()
-    QApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+    QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
 
 class TestTheSettings:

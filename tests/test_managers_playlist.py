@@ -728,7 +728,7 @@ def test_playlist_settings_applies_grid_via_config_not_restore(mocker):
     manager, _parent = _make_manager(ctx)
     new_state = GridState(mode=GridMode.FIXED, rows=1, cols=1, preallocate=True)
     dialog = mocker.Mock()
-    dialog.exec_.return_value = True
+    dialog.exec.return_value = True
     dialog.is_for_all_videos = False
     dialog.result_overrides.return_value = {}
     dialog.result_grid_state.return_value = new_state
@@ -751,7 +751,7 @@ def test_playlist_settings_dialog_is_disposed_of_on_cancel(mocker):
         SimpleNamespace(grid_state=GridState(), video_blocks=[])
     )
     dialog = mocker.Mock()
-    dialog.exec_.return_value = False
+    dialog.exec.return_value = False
     mocker.patch(
         "gridplayer.player.managers.playlist.PlaylistSettingsDialog",
         return_value=dialog,
@@ -778,7 +778,7 @@ def test_check_playlist_save_prompts_dirty_empty_template(mocker):
     mocker.patch.object(manager, "_is_playlist_changed", return_value=True)
     question = mocker.patch(
         "gridplayer.player.managers.playlist.QCustomMessageBox.cancellable_question",
-        return_value=QMessageBox.Discard,
+        return_value=QMessageBox.StandardButton.Discard,
     )
 
     assert manager.check_playlist_save() is True
@@ -854,7 +854,7 @@ def test_check_playlist_save_auto_save_ask_prompts_unnamed_playlist(mocker):
     save = mocker.patch.object(manager, "cmd_save_playlist")
     question = mocker.patch(
         "gridplayer.player.managers.playlist.QCustomMessageBox.cancellable_question",
-        return_value=QMessageBox.Discard,
+        return_value=QMessageBox.StandardButton.Discard,
     )
     PlaylistSettings().set("playlist/unsaved_changes", UnsavedChangesMode.AUTO_SAVE_ASK)
 
@@ -870,7 +870,7 @@ def test_check_playlist_save_auto_save_failure_falls_back_to_ask(mocker):
     save = mocker.patch.object(manager, "cmd_save_playlist", return_value=False)
     question = mocker.patch(
         "gridplayer.player.managers.playlist.QCustomMessageBox.cancellable_question",
-        return_value=QMessageBox.Discard,
+        return_value=QMessageBox.StandardButton.Discard,
     )
     PlaylistSettings().set(
         "playlist/unsaved_changes", UnsavedChangesMode.AUTO_SAVE_DISCARD
@@ -1075,7 +1075,7 @@ def test_check_playlist_save_alerts_modified_empty_playlist(mocker):
     PlaylistSettings().set("playlist/disable_overlay", True)
     question = mocker.patch(
         "gridplayer.player.managers.playlist.QCustomMessageBox.cancellable_question",
-        return_value=QMessageBox.Discard,
+        return_value=QMessageBox.StandardButton.Discard,
     )
 
     assert manager.check_playlist_save() is True

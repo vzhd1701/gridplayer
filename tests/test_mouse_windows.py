@@ -23,7 +23,9 @@ def qt_buttons(mocker):
 
     # what Qt takes to be held, from the messages before
     return mocker.patch.object(
-        mouse_windows.QGuiApplication, "mouseButtons", return_value=Qt.LeftButton
+        mouse_windows.QGuiApplication,
+        "mouseButtons",
+        return_value=Qt.MouseButton.LeftButton,
     )
 
 
@@ -59,7 +61,7 @@ def test_a_move_saying_a_button_is_held_is_left_as_it_is(user32):
 def test_no_button_held_before_the_move_is_not_asked_about(user32, qt_buttons):
     from PyQt5.QtCore import Qt
 
-    qt_buttons.return_value = Qt.NoButton
+    qt_buttons.return_value = Qt.MouseButton.NoButton
 
     assert _filtered(_move(0)) == 0
     user32.GetAsyncKeyState.assert_not_called()

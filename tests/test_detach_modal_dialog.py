@@ -62,11 +62,11 @@ def test_leaves_the_windows_children_alien(monkeypatch, window):
 
     detach_modal_dialog(dialog)
 
-    assert not cell.testAttribute(Qt.WA_NativeWindow)
-    assert not dialog.testAttribute(Qt.WA_NativeWindow)
+    assert not cell.testAttribute(Qt.WidgetAttribute.WA_NativeWindow)
+    assert not dialog.testAttribute(Qt.WidgetAttribute.WA_NativeWindow)
 
     added = QWidget(window)
-    assert not added.testAttribute(Qt.WA_NativeWindow)
+    assert not added.testAttribute(Qt.WidgetAttribute.WA_NativeWindow)
 
 
 @pytest.mark.parametrize("platform", ["wayland", "windows", "cocoa", "offscreen"])

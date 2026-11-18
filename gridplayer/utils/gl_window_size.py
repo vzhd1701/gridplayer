@@ -53,7 +53,7 @@ _FLUSH_LINUX = (
 )
 _EXCLUDE_USER_INPUT_EVENTS = 0x01
 
-_PAINTS = frozenset((QEvent.UpdateRequest, QEvent.Expose))
+_PAINTS = frozenset((QEvent.Type.UpdateRequest, QEvent.Type.Expose))
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +104,7 @@ class _GLWindowPaints(QObject):
         self._is_now = False
         self._held_paint = QTimer(self)
         self._held_paint.setSingleShot(True)
-        self._held_paint.setTimerType(Qt.PreciseTimer)
+        self._held_paint.setTimerType(Qt.TimerType.PreciseTimer)
         self._held_paint.timeout.connect(self._paint_held)
 
         widget.installEventFilter(self)
@@ -115,13 +115,13 @@ class _GLWindowPaints(QObject):
 
         # Qt's own paint when the window shrinks reaches the window, not the
         # widget; one made anew is followed
-        if watched is self._widget and kind == QEvent.WinIdChange:
+        if watched is self._widget and kind == QEvent.Type.WinIdChange:
             self._follow_window()
 
         # what Qt asks of the widget, not what the system asks of the window
         if (
             watched is self._widget
-            and kind == QEvent.UpdateRequest
+            and kind == QEvent.Type.UpdateRequest
             and not self._is_now
             and self._is_too_soon()
         ):
@@ -170,7 +170,9 @@ class _GLWindowPaints(QObject):
     def _paint_held(self) -> None:
         # Qt asks for no other until this one is done
         QCoreApplication.postEvent(
-            self._widget, QEvent(QEvent.UpdateRequest), Qt.LowEventPriority
+            self._widget,
+            QEvent(QEvent.Type.UpdateRequest),
+            Qt.EventPriority.LowEventPriority,
         )
 
 

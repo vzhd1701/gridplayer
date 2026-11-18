@@ -76,7 +76,9 @@ def _pointer(monkeypatch):
             get=lambda _key: KeymapOverrides({GESTURE_PAN: _TRIGGER["value"]})
         ),
     )
-    monkeypatch.setattr(QApplication, "queryKeyboardModifiers", lambda: Qt.NoModifier)
+    monkeypatch.setattr(
+        QApplication, "queryKeyboardModifiers", lambda: Qt.KeyboardModifier.NoModifier
+    )
     monkeypatch.setattr(QApplication, "widgetAt", lambda *_: None)
 
     yield
@@ -92,21 +94,34 @@ def _manager(block, player=None):
     return PanManager(context=context, parent=player)
 
 
-def _event(kind, button=Qt.MiddleButton, buttons=Qt.MiddleButton, keys=Qt.NoModifier):
+def _event(
+    kind,
+    button=Qt.MouseButton.MiddleButton,
+    buttons=Qt.MouseButton.MiddleButton,
+    keys=Qt.KeyboardModifier.NoModifier,
+):
     return QMouseEvent(kind, QPointF(0, 0), button, buttons, keys)
 
 
-def _press(manager, button=Qt.MiddleButton, keys=Qt.NoModifier):
-    return manager.mouse_press(_event(QEvent.MouseButtonPress, button, button, keys))
+def _press(
+    manager, button=Qt.MouseButton.MiddleButton, keys=Qt.KeyboardModifier.NoModifier
+):
+    return manager.mouse_press(
+        _event(QEvent.Type.MouseButtonPress, button, button, keys)
+    )
 
 
-def _move_to(manager, x, y, buttons=Qt.MiddleButton):
+def _move_to(manager, x, y, buttons=Qt.MouseButton.MiddleButton):
     _Cursor.at = QPoint(x, y)
-    return manager.mouse_move(_event(QEvent.MouseMove, Qt.NoButton, buttons))
+    return manager.mouse_move(
+        _event(QEvent.Type.MouseMove, Qt.MouseButton.NoButton, buttons)
+    )
 
 
-def _release(manager, button=Qt.MiddleButton):
-    return manager.mouse_release(_event(QEvent.MouseButtonRelease, button, Qt.NoButton))
+def _release(manager, button=Qt.MouseButton.MiddleButton):
+    return manager.mouse_release(
+        _event(QEvent.Type.MouseButtonRelease, button, Qt.MouseButton.NoButton)
+    )
 
 
 def test_a_drag_takes_the_picture_along():
@@ -120,7 +135,7 @@ def test_a_drag_takes_the_picture_along():
 
     # from where the button went down
     assert block.pans == [(30, -10), (10, 5)]
-    assert QApplication.overrideCursor().shape() == Qt.ClosedHandCursor
+    assert QApplication.overrideCursor().shape() == Qt.CursorShape.ClosedHandCursor
     # each move for the others to follow, where their views are synced
     assert block.synced == ["view.pan_by", "view.pan_by"]
 
@@ -166,9 +181,9 @@ def test_other_buttons_are_left_alone():
     block = _Block()
     manager = _manager(block)
 
-    _press(manager, Qt.LeftButton)
+    _press(manager, Qt.MouseButton.LeftButton)
 
-    assert _move_to(manager, 200, 100, buttons=Qt.LeftButton) is None
+    assert _move_to(manager, 200, 100, buttons=Qt.MouseButton.LeftButton) is None
     assert block.pans == []
 
 
@@ -208,7 +223,7 @@ def test_a_release_that_never_came_ends_the_drag():
     _press(manager)
     _move_to(manager, 150, 100)
 
-    assert _move_to(manager, 170, 100, buttons=Qt.NoButton) is None
+    assert _move_to(manager, 170, 100, buttons=Qt.MouseButton.NoButton) is None
     assert QApplication.overrideCursor() is None
     assert block.pans == [(50, 0)]
 
@@ -235,10 +250,10 @@ class _Recorder(QWidget):
         self.seen = []
 
     def mouseMoveEvent(self, event):
-        self.seen.append(QEvent.MouseMove)
+        self.seen.append(QEvent.Type.MouseMove)
 
     def mouseReleaseEvent(self, event):
-        self.seen.append(QEvent.MouseButtonRelease)
+        self.seen.append(QEvent.Type.MouseButtonRelease)
 
 
 def _to_window(widget, kind, x, y, button, buttons):
@@ -256,7 +271,7 @@ def _to_window(widget, kind, x, y, button, buttons):
             QPointF(_Cursor.at),
             button,
             buttons,
-            Qt.NoModifier,
+            Qt.KeyboardModifier.NoModifier,
         ),
     )
 
@@ -284,14 +299,38 @@ def test_after_a_drag_the_pointer_is_heard_where_it_is():
 
     try:
         _to_window(
-            player, QEvent.MouseButtonPress, 50, 50, Qt.MiddleButton, Qt.MiddleButton
+            player,
+            QEvent.Type.MouseButtonPress,
+            50,
+            50,
+            Qt.MouseButton.MiddleButton,
+            Qt.MouseButton.MiddleButton,
         )
-        _to_window(player, QEvent.MouseMove, 90, 50, Qt.NoButton, Qt.MiddleButton)
         _to_window(
-            player, QEvent.MouseButtonRelease, 90, 50, Qt.MiddleButton, Qt.NoButton
+            player,
+            QEvent.Type.MouseMove,
+            90,
+            50,
+            Qt.MouseButton.NoButton,
+            Qt.MouseButton.MiddleButton,
+        )
+        _to_window(
+            player,
+            QEvent.Type.MouseButtonRelease,
+            90,
+            50,
+            Qt.MouseButton.MiddleButton,
+            Qt.MouseButton.NoButton,
         )
 
-        _to_window(overlay, QEvent.MouseMove, 20, 160, Qt.NoButton, Qt.NoButton)
+        _to_window(
+            overlay,
+            QEvent.Type.MouseMove,
+            20,
+            160,
+            Qt.MouseButton.NoButton,
+            Qt.MouseButton.NoButton,
+        )
     finally:
         QApplication.instance().removeEventFilter(manager)
         player.close()
@@ -300,15 +339,15 @@ def test_after_a_drag_the_pointer_is_heard_where_it_is():
     assert block.pans == [(40, 0)]
     # the drag and its release are the picture's, never the video's
     assert video.seen == []
-    assert bar.seen == [QEvent.MouseMove]
+    assert bar.seen == [QEvent.Type.MouseMove]
 
 
 @pytest.mark.parametrize(
     ("trigger", "keys"),
     [
-        ("Ctrl+Drag", Qt.ControlModifier),
-        ("Shift+Drag", Qt.ShiftModifier),
-        ("Alt+Drag", Qt.AltModifier),
+        ("Ctrl+Drag", Qt.KeyboardModifier.ControlModifier),
+        ("Shift+Drag", Qt.KeyboardModifier.ShiftModifier),
+        ("Alt+Drag", Qt.KeyboardModifier.AltModifier),
     ],
 )
 def test_the_left_button_drags_with_the_key_it_is_set_to(trigger, keys):
@@ -316,11 +355,11 @@ def test_the_left_button_drags_with_the_key_it_is_set_to(trigger, keys):
     block = _Block()
     manager = _manager(block)
 
-    _press(manager, Qt.LeftButton, keys)
-    _move_to(manager, 150, 100, buttons=Qt.LeftButton)
+    _press(manager, Qt.MouseButton.LeftButton, keys)
+    _move_to(manager, 150, 100, buttons=Qt.MouseButton.LeftButton)
 
     assert block.pans == [(50, 0)]
-    assert _release(manager, Qt.LeftButton) is True
+    assert _release(manager, Qt.MouseButton.LeftButton) is True
 
 
 def test_without_the_key_the_left_button_is_left_to_moving_the_cell():
@@ -329,12 +368,16 @@ def test_without_the_key_the_left_button_is_left_to_moving_the_cell():
     manager = _manager(block)
 
     assert not manager.is_pan_press(
-        _event(QEvent.MouseButtonPress, Qt.LeftButton, Qt.LeftButton)
+        _event(
+            QEvent.Type.MouseButtonPress,
+            Qt.MouseButton.LeftButton,
+            Qt.MouseButton.LeftButton,
+        )
     )
 
-    _press(manager, Qt.LeftButton, Qt.ShiftModifier)
+    _press(manager, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.ShiftModifier)
 
-    assert _move_to(manager, 150, 100, buttons=Qt.LeftButton) is None
+    assert _move_to(manager, 150, 100, buttons=Qt.MouseButton.LeftButton) is None
     assert block.pans == []
 
 
@@ -343,7 +386,7 @@ def test_set_to_a_key_the_middle_button_does_nothing():
     block = _Block()
     manager = _manager(block)
 
-    _press(manager, Qt.MiddleButton, Qt.ControlModifier)
+    _press(manager, Qt.MouseButton.MiddleButton, Qt.KeyboardModifier.ControlModifier)
 
     assert _move_to(manager, 150, 100) is None
 
@@ -353,13 +396,19 @@ def test_a_key_held_down_is_seen_where_the_press_does_not_say(monkeypatch):
 
     _trigger("Ctrl+Drag")
     monkeypatch.setattr(
-        QApplication, "queryKeyboardModifiers", lambda: Qt.ControlModifier
+        QApplication,
+        "queryKeyboardModifiers",
+        lambda: Qt.KeyboardModifier.ControlModifier,
     )
     block = _Block()
     manager = _manager(block)
 
     assert manager.is_pan_press(
-        _event(QEvent.MouseButtonPress, Qt.LeftButton, Qt.LeftButton)
+        _event(
+            QEvent.Type.MouseButtonPress,
+            Qt.MouseButton.LeftButton,
+            Qt.MouseButton.LeftButton,
+        )
     )
 
 
@@ -369,13 +418,17 @@ def test_the_overlay_s_buttons_and_bars_keep_their_left_press(monkeypatch):
     monkeypatch.setattr(QApplication, "widgetAt", lambda *_: bar)
     manager = _manager(_Block())
 
-    left = _event(QEvent.MouseButtonPress, Qt.LeftButton, Qt.LeftButton)
+    left = _event(
+        QEvent.Type.MouseButtonPress,
+        Qt.MouseButton.LeftButton,
+        Qt.MouseButton.LeftButton,
+    )
     left_with_key = QMouseEvent(
-        QEvent.MouseButtonPress,
+        QEvent.Type.MouseButtonPress,
         QPointF(0, 0),
-        Qt.LeftButton,
-        Qt.LeftButton,
-        Qt.ControlModifier,
+        Qt.MouseButton.LeftButton,
+        Qt.MouseButton.LeftButton,
+        Qt.KeyboardModifier.ControlModifier,
     )
 
     assert not manager.is_pan_press(left)
@@ -388,7 +441,7 @@ def test_the_middle_button_drags_over_the_overlay_too(monkeypatch):
     monkeypatch.setattr(QApplication, "widgetAt", lambda *_: OverlayBar())
     manager = _manager(_Block())
 
-    assert manager.is_pan_press(_event(QEvent.MouseButtonPress))
+    assert manager.is_pan_press(_event(QEvent.Type.MouseButtonPress))
 
 
 def test_disabled_nothing_drags_the_picture():
@@ -397,8 +450,8 @@ def test_disabled_nothing_drags_the_picture():
     manager = _manager(block)
 
     for button, keys in (
-        (Qt.MiddleButton, Qt.NoModifier),
-        (Qt.LeftButton, Qt.ControlModifier),
+        (Qt.MouseButton.MiddleButton, Qt.KeyboardModifier.NoModifier),
+        (Qt.MouseButton.LeftButton, Qt.KeyboardModifier.ControlModifier),
     ):
         _press(manager, button, keys)
 
@@ -412,9 +465,13 @@ def test_more_keys_held_than_the_drag_has_are_another_drag():
     block = _Block()
     manager = _manager(block)
 
-    _press(manager, Qt.LeftButton, Qt.ControlModifier | Qt.ShiftModifier)
+    _press(
+        manager,
+        Qt.MouseButton.LeftButton,
+        Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier,
+    )
 
-    assert _move_to(manager, 150, 100, buttons=Qt.LeftButton) is None
+    assert _move_to(manager, 150, 100, buttons=Qt.MouseButton.LeftButton) is None
     assert block.pans == []
 
 
@@ -423,14 +480,14 @@ def test_any_of_the_drags_it_is_set_to_drags_the_picture():
     manager = _manager(_Block())
 
     for button, keys in (
-        (Qt.LeftButton, Qt.ControlModifier),
-        (Qt.BackButton, Qt.NoModifier),
+        (Qt.MouseButton.LeftButton, Qt.KeyboardModifier.ControlModifier),
+        (Qt.MouseButton.BackButton, Qt.KeyboardModifier.NoModifier),
     ):
         assert manager.is_pan_press(
-            _event(QEvent.MouseButtonPress, button, button, keys)
+            _event(QEvent.Type.MouseButtonPress, button, button, keys)
         )
 
-    assert not manager.is_pan_press(_event(QEvent.MouseButtonPress))
+    assert not manager.is_pan_press(_event(QEvent.Type.MouseButtonPress))
 
 
 def test_it_is_set_in_the_keymap_middle_by_default():
@@ -480,9 +537,11 @@ class TestAWindowOverThePlayer:
         manager = self._manager(block)
         over = QLineEdit(QDialog(self.player))
 
-        manager.eventFilter(over, _event(QEvent.MouseButtonPress))
+        manager.eventFilter(over, _event(QEvent.Type.MouseButtonPress))
         _Cursor.at = QPoint(200, 100)
-        manager.eventFilter(over, _event(QEvent.MouseMove, Qt.NoButton))
+        manager.eventFilter(
+            over, _event(QEvent.Type.MouseMove, Qt.MouseButton.NoButton)
+        )
 
         assert block.pans == []
 
@@ -491,8 +550,10 @@ class TestAWindowOverThePlayer:
         manager = self._manager(block)
         cell = QWidget(self.player)
 
-        manager.eventFilter(cell, _event(QEvent.MouseButtonPress))
+        manager.eventFilter(cell, _event(QEvent.Type.MouseButtonPress))
         _Cursor.at = QPoint(200, 100)
-        manager.eventFilter(cell, _event(QEvent.MouseMove, Qt.NoButton))
+        manager.eventFilter(
+            cell, _event(QEvent.Type.MouseMove, Qt.MouseButton.NoButton)
+        )
 
         assert block.pans == [(100, 0)]

@@ -44,7 +44,13 @@ def _at(d, x, y=HEIGHT // 2) -> QPoint:
     return d.ctx.commands.grid_area().topLeft() + QPoint(x, y)
 
 
-def _mouse(d, kind, pos, button=Qt.LeftButton, modifiers=Qt.NoModifier):
+def _mouse(
+    d,
+    kind,
+    pos,
+    button=Qt.MouseButton.LeftButton,
+    modifiers=Qt.KeyboardModifier.NoModifier,
+):
     """The pointer there, and the mouse event, as the window it is over has
     them from the system."""
 
@@ -54,10 +60,15 @@ def _mouse(d, kind, pos, button=Qt.LeftButton, modifiers=Qt.NoModifier):
     window = d.player.windowHandle()
     local = window.mapFromGlobal(pos)
 
-    if kind == "move" and modifiers != Qt.NoModifier:
+    if kind == "move" and modifiers != Qt.KeyboardModifier.NoModifier:
         # a move with keys held, which QTest has no way to make
         event = QMouseEvent(
-            QEvent.MouseMove, local, pos, Qt.NoButton, Qt.LeftButton, modifiers
+            QEvent.Type.MouseMove,
+            local,
+            pos,
+            Qt.MouseButton.NoButton,
+            Qt.MouseButton.LeftButton,
+            modifiers,
         )
         QApplication.sendEvent(window, event)
     elif kind == "move":
@@ -111,7 +122,7 @@ def scenario(d):
     d.check("no line away from it", _cursor() is None and _mark(d) is None)
 
     _mouse(d, "move", _at(d, 348))
-    d.check("resize pointer on it", _cursor() == Qt.SplitHCursor, _cursor())
+    d.check("resize pointer on it", _cursor() == Qt.CursorShape.SplitHCursor, _cursor())
     d.check("the line shown on hover", _mark(d) is not None, _mark(d))
 
     # dragged: the line shows, the cells go with it, live
@@ -139,7 +150,7 @@ def scenario(d):
     d.shot("2_snapped")
 
     # Alt held: no snapping
-    _mouse(d, "move", _at(d, 174), modifiers=Qt.AltModifier)
+    _mouse(d, "move", _at(d, 174), modifiers=Qt.KeyboardModifier.AltModifier)
     d.check("with Alt where the pointer is", _widths(d)[0] == 174, _widths(d))
     d.check("with Alt nothing said", _tag(d) is None, _tag(d))
 
@@ -167,7 +178,7 @@ def scenario(d):
     _mouse(d, "press", _at(d, 170))
     _mouse(d, "move", _at(d, 450))
     d.check("dragged again", _widths(d)[0] == 450, _widths(d))
-    QTest.keyClick(d.player, Qt.Key_Escape)
+    QTest.keyClick(d.player, Qt.Key.Key_Escape)
     d.pump(0.2)
     d.check("Esc puts it back", _widths(d)[0] == 169, _widths(d))
     _mouse(d, "release", _at(d, 450))
@@ -233,7 +244,11 @@ def scenario(d):
     d.check("fixed: moved at once", _widths(d) == [233, 367], _widths(d))
     _mouse(d, "move", _at(d, 300))
     _mouse(d, "move", _at(d, 599))
-    d.check("fixed: found where it went", _cursor() == Qt.SplitHCursor, _cursor())
+    d.check(
+        "fixed: found where it went",
+        _cursor() == Qt.CursorShape.SplitHCursor,
+        _cursor(),
+    )
     _mouse(d, "move", _at(d, 300))
 
     # Fit Shapes lays the videos out by their shapes: no lines to move
@@ -278,7 +293,9 @@ def scenario(d):
     _mouse(d, "move", _at(d, 233, bottom))
     d.check("no column line in the short row", _cursor() is None, _cursor())
     _mouse(d, "move", _at(d, 351, bottom))
-    d.check("the short row's own line", _cursor() == Qt.SplitHCursor, _cursor())
+    d.check(
+        "the short row's own line", _cursor() == Qt.CursorShape.SplitHCursor, _cursor()
+    )
     _mouse(d, "press", _at(d, 351, bottom))
     _mouse(d, "move", _at(d, 250, bottom))
     _mouse(d, "release", _at(d, 250, bottom))
@@ -294,7 +311,7 @@ def scenario(d):
     _mouse(d, "move", _at(d, 251, bottom))
     mark = _mark(d)
     d.check("shown on hover", mark is not None and mark.width() == 4, mark)
-    QApplication.sendEvent(d.player.windowHandle(), QEvent(QEvent.Leave))
+    QApplication.sendEvent(d.player.windowHandle(), QEvent(QEvent.Type.Leave))
     d.pump(0.4)
     d.check("gone once the pointer leaves", _mark(d) is None, _mark(d))
     d.check("its pointer too", _cursor() is None, _cursor())
@@ -303,7 +320,7 @@ def scenario(d):
     _mouse(d, "move", _at(d, 300, bottom))
     _mouse(d, "move", _at(d, 251, bottom))
     d.check("not shown on hover once off", _mark(d) is None, _mark(d))
-    d.check("its pointer still", _cursor() == Qt.SplitHCursor, _cursor())
+    d.check("its pointer still", _cursor() == Qt.CursorShape.SplitHCursor, _cursor())
     _mouse(d, "move", _at(d, 300, bottom))
     d.act(d.cells[0], "Show Grid Lines")
 

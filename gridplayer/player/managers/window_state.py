@@ -55,7 +55,7 @@ class WindowStateManager(ManagerBase):
 
         self._is_in_tray = False
         # maximized or full screen, to come back from the tray as it went
-        self._tray_restore_state = Qt.WindowNoState
+        self._tray_restore_state = Qt.WindowState.WindowNoState
         # the other windows that were open, gone to the tray with the player
         self._tray_hidden_windows = []
 
@@ -70,7 +70,7 @@ class WindowStateManager(ManagerBase):
 
         # Linux has window manager for this, the flag doesn't work there anyway
         if not env.IS_LINUX and Settings().get("player/stay_on_top"):
-            self.parent().setWindowFlag(Qt.WindowStaysOnTopHint)
+            self.parent().setWindowFlag(Qt.WindowType.WindowStaysOnTopHint)
 
         self._ctx.is_maximized_pre_fullscreen = all(
             (
@@ -100,9 +100,9 @@ class WindowStateManager(ManagerBase):
     @property
     def event_map(self):
         return {
-            QEvent.WindowStateChange: self.changeEvent,
-            QEvent.Close: self.closeEvent,
-            QEvent.Show: self.showEvent,
+            QEvent.Type.WindowStateChange: self.changeEvent,
+            QEvent.Type.Close: self.closeEvent,
+            QEvent.Type.Show: self.showEvent,
         }
 
     @property
@@ -188,7 +188,7 @@ class WindowStateManager(ManagerBase):
             self._ctx.is_maximized_pre_fullscreen = False
         else:
             self._ctx.is_maximized_pre_fullscreen = (
-                self.parent().windowState() == Qt.WindowMaximized
+                self.parent().windowState() == Qt.WindowState.WindowMaximized
             )
 
             self.parent().showFullScreen()
@@ -217,7 +217,9 @@ class WindowStateManager(ManagerBase):
         if self._is_in_tray:
             self._show_from_tray()
         elif window.isMinimized():
-            window.setWindowState(window.windowState() & ~Qt.WindowMinimized)
+            window.setWindowState(
+                window.windowState() & ~Qt.WindowState.WindowMinimized
+            )
 
         window.raise_()
         window.activateWindow()
@@ -251,7 +253,7 @@ class WindowStateManager(ManagerBase):
         if restore_state is None:
             restore_state = window.windowState()
 
-        self._tray_restore_state = restore_state & ~Qt.WindowMinimized
+        self._tray_restore_state = restore_state & ~Qt.WindowState.WindowMinimized
 
         self._is_in_tray = True
 
@@ -295,7 +297,7 @@ class WindowStateManager(ManagerBase):
             for w in QApplication.topLevelWidgets()
             if w is not player
             and w.isVisible()
-            and w.windowType() in {Qt.Window, Qt.Dialog}
+            and w.windowType() in {Qt.WindowType.Window, Qt.WindowType.Dialog}
             and not isinstance(w, OverlayBlock)
         ]
 
@@ -329,7 +331,7 @@ class WindowStateManager(ManagerBase):
         self.away_changed.emit(is_away)
 
     def _on_application_state(self, state):
-        if state == Qt.ApplicationActive and self._is_in_tray:
+        if state == Qt.ApplicationState.ApplicationActive and self._is_in_tray:
             self.activate_window()
 
     def _is_minimize_to_tray(self) -> bool:
@@ -364,9 +366,11 @@ class WindowStateManager(ManagerBase):
 
         if self._is_in_tray:
             is_maximized = is_maximized or bool(
-                self._tray_restore_state & Qt.WindowMaximized
+                self._tray_restore_state & Qt.WindowState.WindowMaximized
             )
-            is_fullscreen = bool(self._tray_restore_state & Qt.WindowFullScreen)
+            is_fullscreen = bool(
+                self._tray_restore_state & Qt.WindowState.WindowFullScreen
+            )
         else:
             is_fullscreen = self.parent().isFullScreen()
 
@@ -386,11 +390,11 @@ class WindowStateManager(ManagerBase):
         if self._is_in_tray:
             if window_state.is_fullscreen and window_state.is_maximized:
                 self._ctx.is_maximized_pre_fullscreen = True
-                self._tray_restore_state = Qt.WindowFullScreen
+                self._tray_restore_state = Qt.WindowState.WindowFullScreen
             elif window_state.is_maximized and not window_state.is_fullscreen:
-                self._tray_restore_state = Qt.WindowMaximized
+                self._tray_restore_state = Qt.WindowState.WindowMaximized
             else:
-                self._tray_restore_state = Qt.WindowNoState
+                self._tray_restore_state = Qt.WindowState.WindowNoState
             return
 
         if window_state.is_fullscreen:

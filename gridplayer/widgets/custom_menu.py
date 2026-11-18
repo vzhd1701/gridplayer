@@ -57,7 +57,7 @@ class CustomMenu(QMenu):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        # Do not pass qApp.style() into QProxyStyle — that transfers ownership of the
+        # Do not pass QApplication.style() into QProxyStyle — that transfers ownership of the
         # *application* style to the proxy. When the menu is destroyed, Qt deletes the
         # app style and the process later dies with ACCESS_VIOLATION (0xC0000005).
         # Default-constructed QProxyStyle uses the app style without taking ownership.
@@ -67,7 +67,9 @@ class CustomMenu(QMenu):
         self.setStyleSheet(_get_theme_style())
 
         self.setWindowFlags(
-            self.windowFlags() | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint
+            self.windowFlags()
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.NoDropShadowWindowHint
         )
 
     def setActiveAction(self, act):
@@ -87,12 +89,12 @@ class CustomMenu(QMenu):
 
 class BigMenuIcons(QProxyStyle):
     def pixelMetric(self, metric, option=None, widget=None):
-        if metric == QStyle.PM_SmallIconSize:
+        if metric == QStyle.PixelMetric.PM_SmallIconSize:
             return ICON_SIZE
         return super().pixelMetric(metric, option, widget)
 
     def styleHint(self, hint, option=None, widget=None, returnData=None):
-        if hint == QStyle.SH_Menu_AllowActiveAndDisabled:
+        if hint == QStyle.StyleHint.SH_Menu_AllowActiveAndDisabled:
             return 0
         return super().styleHint(hint, option, widget, returnData)
 
@@ -138,20 +140,22 @@ class _CheckedIconEngine(QIconEngine):
 
     def pixmap(self, size, mode, state):
         pixmap = QPixmap(size)
-        pixmap.fill(Qt.transparent)
+        pixmap.fill(Qt.GlobalColor.transparent)
 
         rect = QRect(QPoint(0, 0), size)
 
         painter = QPainter(pixmap)
-        painter.setRenderHint(QPainter.Antialiasing, True)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
         if not self._is_blank:
-            self._icon.paint(painter, rect, Qt.AlignCenter, mode, QIcon.Off)
+            self._icon.paint(
+                painter, rect, Qt.AlignmentFlag.AlignCenter, mode, QIcon.State.Off
+            )
 
-        if state == QIcon.On:
+        if state == QIcon.State.On:
             colors = current_colors()
             color = QColor(
-                colors["text_disabled" if mode == QIcon.Disabled else "text"]
+                colors["text_disabled" if mode == QIcon.Mode.Disabled else "text"]
             )
 
             scale = size.height() / ICON_SIZE
@@ -177,7 +181,7 @@ def _draw_mark_on_icon(painter, rect, scale, color, is_choice):
 
     _cut_circle(painter, center, radius + MARK_GAP * scale)
 
-    painter.setPen(Qt.NoPen)
+    painter.setPen(Qt.PenStyle.NoPen)
     painter.setBrush(color)
     painter.drawEllipse(center, radius, radius)
 
@@ -185,11 +189,15 @@ def _draw_mark_on_icon(painter, rect, scale, color, is_choice):
         _cut_circle(painter, center, MARK_HOLE / 2 * scale)
         return
 
-    painter.setCompositionMode(QPainter.CompositionMode_DestinationOut)
+    painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_DestinationOut)
     _draw_tick(
-        painter, center, MARK_TICK_ON_DISC * scale, _TICK_STROKE_ON_DISC, Qt.black
+        painter,
+        center,
+        MARK_TICK_ON_DISC * scale,
+        _TICK_STROKE_ON_DISC,
+        Qt.GlobalColor.black,
     )
-    painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
+    painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
 
 
 def _draw_mark_alone(painter, rect, scale, color, is_choice):
@@ -198,7 +206,7 @@ def _draw_mark_alone(painter, rect, scale, color, is_choice):
     if is_choice:
         radius = MARK_DOT / 2 * scale
 
-        painter.setPen(Qt.NoPen)
+        painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(color)
         painter.drawEllipse(center, radius, radius)
         return
@@ -207,11 +215,11 @@ def _draw_mark_alone(painter, rect, scale, color, is_choice):
 
 
 def _cut_circle(painter, center, radius):
-    painter.setCompositionMode(QPainter.CompositionMode_DestinationOut)
-    painter.setPen(Qt.NoPen)
-    painter.setBrush(Qt.black)
+    painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_DestinationOut)
+    painter.setPen(Qt.PenStyle.NoPen)
+    painter.setBrush(Qt.GlobalColor.black)
     painter.drawEllipse(center, radius, radius)
-    painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
+    painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
 
 
 def _draw_tick(painter, center, box, stroke, color):
@@ -227,10 +235,16 @@ def _draw_tick(painter, center, box, stroke, color):
         else:
             path.lineTo(point)
 
-    pen = QPen(color, stroke * unit, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
+    pen = QPen(
+        color,
+        stroke * unit,
+        Qt.PenStyle.SolidLine,
+        Qt.PenCapStyle.RoundCap,
+        Qt.PenJoinStyle.RoundJoin,
+    )
 
     painter.setPen(pen)
-    painter.setBrush(Qt.NoBrush)
+    painter.setBrush(Qt.BrushStyle.NoBrush)
     painter.drawPath(path)
 
 

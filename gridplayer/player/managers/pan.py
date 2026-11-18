@@ -26,7 +26,7 @@ class PanManager(ManagerBase):
         super().__init__(**kwargs)
 
         self._block = None
-        self._button = Qt.MiddleButton
+        self._button = Qt.MouseButton.MiddleButton
         self._press_pos: QPoint | None = None
         self._last_pos: QPoint | None = None
         self._left_over = (0.0, 0.0)
@@ -39,9 +39,9 @@ class PanManager(ManagerBase):
     @property
     def event_map(self):
         return {
-            QEvent.MouseButtonPress: self.mouse_press,
-            QEvent.MouseMove: self.mouse_move,
-            QEvent.MouseButtonRelease: self.mouse_release,
+            QEvent.Type.MouseButtonPress: self.mouse_press,
+            QEvent.Type.MouseMove: self.mouse_move,
+            QEvent.Type.MouseButtonRelease: self.mouse_release,
         }
 
     def eventFilter(self, event_object, event) -> bool:
@@ -99,7 +99,7 @@ class PanManager(ManagerBase):
                 return None
 
             self._is_panning = True
-            QApplication.setOverrideCursor(Qt.ClosedHandCursor)
+            QApplication.setOverrideCursor(Qt.CursorShape.ClosedHandCursor)
 
         moved = pos - self._last_pos
         self._last_pos = pos
@@ -159,7 +159,7 @@ def _is_trigger(event) -> bool:
     if not is_gesture_press(GESTURE_PAN, event):
         return False
 
-    if event.button() != Qt.LeftButton:
+    if event.button() != Qt.MouseButton.LeftButton:
         return True
 
     # the overlay's buttons and bars act on a left press themselves

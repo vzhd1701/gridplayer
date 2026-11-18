@@ -20,7 +20,13 @@ class _Clicked(QWidget):
 def _send(widget, kind):
     QApplication.sendEvent(
         widget,
-        QMouseEvent(kind, QPointF(1, 1), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier),
+        QMouseEvent(
+            kind,
+            QPointF(1, 1),
+            Qt.MouseButton.LeftButton,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
+        ),
     )
 
 
@@ -28,12 +34,12 @@ def test_the_click_that_closed_the_picker_does_nothing_else():
     widget = _Clicked()
 
     EatenClick()
-    _send(widget, QEvent.MouseButtonPress)
-    _send(widget, QEvent.MouseButtonRelease)
+    _send(widget, QEvent.Type.MouseButtonPress)
+    _send(widget, QEvent.Type.MouseButtonRelease)
     QApplication.processEvents()
 
     assert widget.events == []
 
     # the next one goes through
-    _send(widget, QEvent.MouseButtonPress)
+    _send(widget, QEvent.Type.MouseButtonPress)
     assert widget.events == ["press"]

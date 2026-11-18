@@ -36,7 +36,9 @@ def _isolated_settings(tmp_path):
     settings = Settings()
     real_settings = settings.settings
 
-    settings.settings = QSettings(str(tmp_path / "test.ini"), QSettings.IniFormat)
+    settings.settings = QSettings(
+        str(tmp_path / "test.ini"), QSettings.Format.IniFormat
+    )
 
     yield
 
@@ -238,7 +240,7 @@ def dialog():
     # spot rather than left for the garbage collector to drop mid-test
     dialog.close()
     dialog.deleteLater()
-    QApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+    QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
 
 class TestThePageItIsSetOn:

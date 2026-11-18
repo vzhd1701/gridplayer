@@ -176,7 +176,7 @@ def test_ok_says_where_the_picture_ended_up():
     dialog.accept()
 
     assert block.shifts[-1] == (VideoShift(0, -30), False)
-    assert dialog.result() == QDialog.Accepted
+    assert dialog.result() == QDialog.DialogCode.Accepted
     # once, for the others to follow where their views are synced
     assert block.synced == ["view.set_shift"]
 

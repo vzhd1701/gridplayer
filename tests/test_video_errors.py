@@ -648,7 +648,9 @@ class _Frame(VideoFrameDummy):
 def _isolated_settings(tmp_path):
     settings = Settings()
     real_settings = settings.settings
-    settings.settings = QSettings(str(tmp_path / "test.ini"), QSettings.IniFormat)
+    settings.settings = QSettings(
+        str(tmp_path / "test.ini"), QSettings.Format.IniFormat
+    )
 
     yield
 
@@ -835,7 +837,7 @@ class TestOnTheCell:
 
         shown = []
         mocker.patch(
-            "gridplayer.widgets.video_block_status.ErrorDetailsDialog.exec_",
+            "gridplayer.widgets.video_block_status.ErrorDetailsDialog.exec",
             lambda dialog: shown.append(dialog),
         )
 
@@ -869,7 +871,7 @@ class TestOnTheCell:
         block, _ = _failed_list_item(make_cell, tmp_path)
         while_read = []
         mocker.patch(
-            "gridplayer.widgets.video_block_status.ErrorDetailsDialog.exec_",
+            "gridplayer.widgets.video_block_status.ErrorDetailsDialog.exec",
             side_effect=lambda: while_read.append(block.recovery.is_skip_counting),
         )
 
@@ -885,7 +887,7 @@ class TestOnTheCell:
     def test_its_try_again_for_the_item_that_failed(self, make_cell, tmp_path, mocker):
         block, files = _failed_list_item(make_cell, tmp_path)
         mocker.patch(
-            "gridplayer.widgets.video_block_status.ErrorDetailsDialog.exec_",
+            "gridplayer.widgets.video_block_status.ErrorDetailsDialog.exec",
             lambda dialog: dialog.try_again.emit(),
         )
 

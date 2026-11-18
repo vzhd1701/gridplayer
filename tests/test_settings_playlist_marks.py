@@ -25,7 +25,9 @@ def make_settings(tmp_path, monkeypatch):
     from gridplayer.utils import cache
 
     store = _Settings.__new__(_Settings)
-    store.settings = QSettings(str(tmp_path / "settings.ini"), QSettings.IniFormat)
+    store.settings = QSettings(
+        str(tmp_path / "settings.ini"), QSettings.Format.IniFormat
+    )
     monkeypatch.setattr(settings_dialog, "Settings", lambda: store)
     monkeypatch.setattr(cache, "cache_root", lambda: tmp_path / "cache")
     monkeypatch.setattr(
@@ -48,7 +50,7 @@ def make_settings(tmp_path, monkeypatch):
         dialog.close()
         dialog.deleteLater()
 
-    QApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+    QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
 
 def _marks(dialog, key):

@@ -412,7 +412,7 @@ class _TextEditor(Editor):
 
     def _make_widget(self):
         widget = QLineEdit()
-        widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         widget.setMinimumWidth(TEXT_MIN_WIDTH)
         if self.spec.placeholder:
             widget.setPlaceholderText(self.spec.placeholder)
@@ -556,7 +556,7 @@ class _ColorEditor(Editor):
         self.widget.color = QColor(str(value)).getRgb()[:3]
 
     def value(self):
-        return self.widget.color.name(QColor.HexRgb)
+        return self.widget.color.name(QColor.NameFormat.HexRgb)
 
 
 class _LanguageEditor(Editor):

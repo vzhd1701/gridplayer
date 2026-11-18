@@ -69,6 +69,6 @@ def _tell_and_quit(exception_txt: str):
     QApplication.restoreOverrideCursor()
 
     exc_dialog = ExceptionDialog(exception_txt)
-    exc_dialog.exec_()
+    exc_dialog.exec()
 
     force_terminate()

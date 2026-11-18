@@ -18,9 +18,9 @@ def _wheel_down(widget):
         QPointF(widget.mapToGlobal(pos.toPoint())),
         QPoint(),
         QPoint(0, -120),
-        Qt.NoButton,
-        Qt.NoModifier,
-        Qt.NoScrollPhase,
+        Qt.MouseButton.NoButton,
+        Qt.KeyboardModifier.NoModifier,
+        Qt.ScrollPhase.NoScrollPhase,
         False,
     )
     QApplication.sendEvent(widget, event)
@@ -40,7 +40,7 @@ def page():
 
     scroll = PageScrollArea()
     scroll.setWidget(form)
-    scroll.setAttribute(Qt.WA_DontShowOnScreen)
+    scroll.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen)
     scroll.resize(200, 150)
     scroll.show()
     QApplication.processEvents()
@@ -68,8 +68,8 @@ def test_wheel_over_unfocused_field_scrolls_the_page(page):
 def test_wheel_does_not_give_fields_focus(page):
     _, combo, spin = page
 
-    assert combo.focusPolicy() == Qt.StrongFocus
-    assert spin.focusPolicy() == Qt.StrongFocus
+    assert combo.focusPolicy() == Qt.FocusPolicy.StrongFocus
+    assert spin.focusPolicy() == Qt.FocusPolicy.StrongFocus
 
 
 def test_wheel_at_the_end_of_the_page_is_dropped(page):

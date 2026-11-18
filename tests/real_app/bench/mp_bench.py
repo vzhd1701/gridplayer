@@ -112,7 +112,9 @@ def run_renderers(clip, jobs, hwdec):
         player.set_render_size(size)
         video = SharedVideo(player, shm, size)
         starter = Starter(player, size)
-        player.render_context_ready.connect(starter.go, Qt.QueuedConnection)
+        player.render_context_ready.connect(
+            starter.go, Qt.ConnectionType.QueuedConnection
+        )
         keep += [shm, player, video, starter]
         renderer.add(video)
 
@@ -127,7 +129,7 @@ def worker(config):
     keep = run_renderers(
         config["clip"], [tuple(j) for j in config["jobs"]], config["hwdec"]
     )
-    app.exec_()
+    app.exec()
     del keep
 
 
@@ -198,7 +200,7 @@ def main():
     class Surface(QWidget):
         def __init__(self, shm):
             super().__init__()
-            self.setAttribute(Qt.WA_OpaquePaintEvent)
+            self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent)
             self.shm = shm
             self.seq = 0
             self.index = 0
@@ -208,7 +210,7 @@ def main():
                     size[0],
                     size[1],
                     size[0] * 4,
-                    QImage.Format_RGB32,
+                    QImage.Format.Format_RGB32,
                 )
                 for i in range(SLOTS)
             ]
@@ -223,8 +225,8 @@ def main():
 
         def paintEvent(self, event):
             painter = QPainter(self)
-            painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
-            painter.fillRect(self.rect(), Qt.black)
+            painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
+            painter.fillRect(self.rect(), Qt.GlobalColor.black)
             painter.drawImage(
                 QRectF(0, 0, self.width(), self.height()),
                 self.images[self.index],
@@ -245,7 +247,7 @@ def main():
     window.show()
 
     timer = QTimer()
-    timer.setTimerType(Qt.PreciseTimer)
+    timer.setTimerType(Qt.TimerType.PreciseTimer)
     timer.setInterval(16)
     timer.timeout.connect(lambda: [s.poll() for s in surfaces])
     timer.start()
@@ -269,7 +271,7 @@ def main():
     def nested(seconds):
         loop = QEventLoop()
         QTimer.singleShot(int(seconds * 1000), loop.quit)
-        loop.exec_()
+        loop.exec()
 
     nested(settle)
 
@@ -283,7 +285,7 @@ def main():
         last[0] = now
 
     probe = QTimer()
-    probe.setTimerType(Qt.PreciseTimer)
+    probe.setTimerType(Qt.TimerType.PreciseTimer)
     probe.setInterval(10)
     probe.timeout.connect(tick)
     probe.start()

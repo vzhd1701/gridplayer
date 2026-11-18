@@ -106,7 +106,7 @@ class FolderRevealer(QObject):
         )
         # a plain list goes over as variants, which no file manager takes
         uris = QDBusArgument(
-            [QUrl.fromLocalFile(str(place)).toString()], QMetaType.QStringList
+            [QUrl.fromLocalFile(str(place)).toString()], QMetaType.Type.QStringList
         )
         message.setArguments([uris, ""])
 

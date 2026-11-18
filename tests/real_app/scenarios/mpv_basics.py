@@ -174,7 +174,9 @@ def _difference(one: QImage, other: QImage) -> float:
 
 def _expected_zoom(whole: QImage, part: QRect) -> QImage:
     return whole.copy(part).scaled(
-        whole.size(), Qt.IgnoreAspectRatio, Qt.SmoothTransformation
+        whole.size(),
+        Qt.AspectRatioMode.IgnoreAspectRatio,
+        Qt.TransformationMode.SmoothTransformation,
     )
 
 

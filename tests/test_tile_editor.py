@@ -64,7 +64,7 @@ class _Tiles:
                 is_auto_lock=lambda: False,
                 set_auto_lock=lambda _: None,
             ),
-            swap_key=lambda: Qt.ShiftModifier,
+            swap_key=lambda: Qt.KeyboardModifier.ShiftModifier,
             can_undo=lambda: False,
             can_redo=lambda: False,
             can_reopen=lambda: False,
@@ -158,8 +158,8 @@ class TestKeys:
         two.editor.pick("a")
 
         for _ in range(3):
-            QTest.keyClick(two.editor, Qt.Key_Right)
-        QTest.keyClick(two.editor, Qt.Key_Down, Qt.ShiftModifier)
+            QTest.keyClick(two.editor, Qt.Key.Key_Right)
+        QTest.keyClick(two.editor, Qt.Key.Key_Down, Qt.KeyboardModifier.ShiftModifier)
 
         assert two.rect("a") == (23, 30, 223, 130)
         assert two.changes == [("change_started",)]
@@ -170,16 +170,16 @@ class TestKeys:
     def test_ctrl_moves_the_right_or_bottom_edge(self, two):
         two.editor.pick("a")
 
-        QTest.keyClick(two.editor, Qt.Key_Left, Qt.ControlModifier)
-        QTest.keyClick(two.editor, Qt.Key_Down, Qt.ControlModifier)
+        QTest.keyClick(two.editor, Qt.Key.Key_Left, Qt.KeyboardModifier.ControlModifier)
+        QTest.keyClick(two.editor, Qt.Key.Key_Down, Qt.KeyboardModifier.ControlModifier)
 
         assert two.rect("a") == (20, 20, 219, 121)
 
     def test_each_change_says_the_tile_held(self, two):
         two.editor.pick("a")
 
-        QTest.keyClick(two.editor, Qt.Key_Right)
-        QTest.keyClick(two.editor, Qt.Key_Left, Qt.ControlModifier)
+        QTest.keyClick(two.editor, Qt.Key.Key_Right)
+        QTest.keyClick(two.editor, Qt.Key.Key_Left, Qt.KeyboardModifier.ControlModifier)
 
         # by the keys: no pointer
         assert two.held == ["a", "a"]
@@ -191,7 +191,9 @@ class TestKeys:
         two.editor.pick("a")
 
         for _ in range(10):
-            QTest.keyClick(two.editor, Qt.Key_Right, Qt.ShiftModifier)
+            QTest.keyClick(
+                two.editor, Qt.Key.Key_Right, Qt.KeyboardModifier.ShiftModifier
+            )
 
         assert two.rect("a") == (100, 20, 300, 120)
 
@@ -199,7 +201,7 @@ class TestKeys:
         tiles = _Tiles({"a": _box(20, 20, 220, 120)}, locked={"a"})
         tiles.editor.pick("a")
 
-        QTest.keyClick(tiles.editor, Qt.Key_Right)
+        QTest.keyClick(tiles.editor, Qt.Key.Key_Right)
 
         assert tiles.rect("a") == (20, 20, 220, 120)
         assert tiles.changes == []
@@ -208,7 +210,7 @@ class TestKeys:
         tiles = _Tiles({"a": _box(20, 20, 220, 120)}, locked={"a"}, is_mosaic=True)
         tiles.editor.pick("a")
 
-        QTest.keyClick(tiles.editor, Qt.Key_Right)
+        QTest.keyClick(tiles.editor, Qt.Key.Key_Right)
 
         assert tiles.rect("a") != (20, 20, 220, 120)
         assert tiles.tiles.locked == {"a"}
@@ -216,17 +218,17 @@ class TestKeys:
     def test_tab_picks_the_next_as_they_are_read(self, two):
         two.editor.pick("a")
 
-        QTest.keyClick(two.editor, Qt.Key_Tab)
+        QTest.keyClick(two.editor, Qt.Key.Key_Tab)
         assert two.editor.picked() == "b"
-        QTest.keyClick(two.editor, Qt.Key_Tab)
+        QTest.keyClick(two.editor, Qt.Key.Key_Tab)
         assert two.editor.picked() == "a"
-        QTest.keyClick(two.editor, Qt.Key_Backtab)
+        QTest.keyClick(two.editor, Qt.Key.Key_Backtab)
         assert two.editor.picked() == "b"
 
     def test_delete_closes_the_picked_video(self, two):
         two.editor.pick("b")
 
-        QTest.keyClick(two.editor, Qt.Key_Delete)
+        QTest.keyClick(two.editor, Qt.Key.Key_Delete)
 
         assert two.changes == [("close_requested", "b")]
 
@@ -234,7 +236,7 @@ class TestKeys:
         pressed = []
         two.editor.key_pressed.connect(pressed.append)
 
-        QTest.keyClick(two.editor, Qt.Key_Right)
+        QTest.keyClick(two.editor, Qt.Key.Key_Right)
 
         assert len(pressed) == 1
         assert two.changes == []
@@ -243,14 +245,16 @@ class TestKeys:
     def test_undo_right_after_the_arrows_ends_their_change_first(self, two, how):
         # the grid takes no undo while a change is going on
         two.editor.pick("a")
-        QTest.keyClick(two.editor, Qt.Key_Right)
+        QTest.keyClick(two.editor, Qt.Key.Key_Right)
         two.editor.key_pressed.connect(
-            lambda e: e.key() == Qt.Key_Z and two.changes.append(("key",))
+            lambda e: e.key() == Qt.Key.Key_Z and two.changes.append(("key",))
         )
         two.editor.undo_requested.connect(lambda: two.changes.append(("undo",)))
 
         if how == "key":
-            QTest.keyClick(two.editor, Qt.Key_Z, Qt.ControlModifier)
+            QTest.keyClick(
+                two.editor, Qt.Key.Key_Z, Qt.KeyboardModifier.ControlModifier
+            )
         else:
             two.editor._action_buttons["undo"].setEnabled(True)
             two.editor._action_buttons["undo"].click()
@@ -262,21 +266,30 @@ class TestKeys:
         ]
 
 
-def _drag(editor, start, end, modifiers=Qt.NoModifier):
-    QTest.mousePress(editor, Qt.LeftButton, modifiers, start)
+def _drag(editor, start, end, modifiers=Qt.KeyboardModifier.NoModifier):
+    QTest.mousePress(editor, Qt.MouseButton.LeftButton, modifiers, start)
     for at in (start + QPoint(10, 0), end):
         QApplication.sendEvent(
             editor,
             QMouseEvent(
-                QEvent.MouseMove, QPointF(at), Qt.NoButton, Qt.LeftButton, modifiers
+                QEvent.Type.MouseMove,
+                QPointF(at),
+                Qt.MouseButton.NoButton,
+                Qt.MouseButton.LeftButton,
+                modifiers,
             ),
         )
-    QTest.mouseRelease(editor, Qt.LeftButton, modifiers, end)
+    QTest.mouseRelease(editor, Qt.MouseButton.LeftButton, modifiers, end)
 
 
 class TestSwap:
     def test_a_tile_dragged_with_shift_onto_another_swaps(self, two):
-        _drag(two.editor, QPoint(120, 70), QPoint(400, 70), Qt.ShiftModifier)
+        _drag(
+            two.editor,
+            QPoint(120, 70),
+            QPoint(400, 70),
+            Qt.KeyboardModifier.ShiftModifier,
+        )
 
         assert two.changes == [("swap_requested", "a", "b")]
         # left where it was, for the swap
@@ -288,12 +301,22 @@ class TestSwap:
             locked={"a"},
         )
 
-        _drag(tiles.editor, QPoint(120, 70), QPoint(400, 70), Qt.ShiftModifier)
+        _drag(
+            tiles.editor,
+            QPoint(120, 70),
+            QPoint(400, 70),
+            Qt.KeyboardModifier.ShiftModifier,
+        )
 
         assert tiles.changes == [("swap_requested", "a", "b")]
 
     def test_dropped_on_no_tile_nothing(self, two):
-        _drag(two.editor, QPoint(120, 70), QPoint(120, 300), Qt.ShiftModifier)
+        _drag(
+            two.editor,
+            QPoint(120, 70),
+            QPoint(120, 300),
+            Qt.KeyboardModifier.ShiftModifier,
+        )
 
         assert two.changes == []
         assert not two.editor.is_dragging()
@@ -307,7 +330,7 @@ class TestSwap:
         assert two.pulled
         assert all(two.pulled)
 
-    @pytest.mark.parametrize("modifiers", [Qt.AltModifier, None])
+    @pytest.mark.parametrize("modifiers", [Qt.KeyboardModifier.AltModifier, None])
     def test_sized_or_with_alt_it_is_not_pulled(self, two, modifiers):
         if modifiers is None:
             # by its right edge
@@ -320,25 +343,29 @@ class TestSwap:
 
     def test_alt_pressed_or_let_go_of_held_still_counts_at_once(self, two):
         start = QPoint(120, 70)
-        QTest.mousePress(two.editor, Qt.LeftButton, Qt.NoModifier, start)
+        QTest.mousePress(
+            two.editor, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, start
+        )
         QApplication.sendEvent(
             two.editor,
             QMouseEvent(
-                QEvent.MouseMove,
+                QEvent.Type.MouseMove,
                 QPointF(start + QPoint(0, 40)),
-                Qt.NoButton,
-                Qt.LeftButton,
-                Qt.NoModifier,
+                Qt.MouseButton.NoButton,
+                Qt.MouseButton.LeftButton,
+                Qt.KeyboardModifier.NoModifier,
             ),
         )
         assert two.pulled[-1]
 
-        QTest.keyPress(two.editor, Qt.Key_Alt)
+        QTest.keyPress(two.editor, Qt.Key.Key_Alt)
         assert not two.pulled[-1]
-        QTest.keyRelease(two.editor, Qt.Key_Alt, Qt.AltModifier)
+        QTest.keyRelease(two.editor, Qt.Key.Key_Alt, Qt.KeyboardModifier.AltModifier)
         assert two.pulled[-1]
 
-        QTest.mouseRelease(two.editor, Qt.LeftButton, Qt.NoModifier, start)
+        QTest.mouseRelease(
+            two.editor, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, start
+        )
 
 
 class TestName:
@@ -562,9 +589,9 @@ class TestPopups:
         editor.key_pressed.connect(lambda e: pressed.append(e.key()))
         editor._snap.click()
 
-        QTest.keyClick(editor._popup, Qt.Key_S, Qt.ControlModifier)
+        QTest.keyClick(editor._popup, Qt.Key.Key_S, Qt.KeyboardModifier.ControlModifier)
 
-        assert Qt.Key_S in pressed
+        assert Qt.Key.Key_S in pressed
         assert editor._popup is not None
 
 

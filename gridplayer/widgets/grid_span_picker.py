@@ -44,15 +44,17 @@ class GridSpanPicker(QWidget):
     closed = pyqtSignal()
 
     def __init__(self, rows, cols, span, can_set, parent=None):
-        super().__init__(parent, Qt.Popup | Qt.FramelessWindowHint)
+        super().__init__(
+            parent, Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint
+        )
 
-        self.setAttribute(Qt.WA_DeleteOnClose)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         # a click outside closes it, as a menu, and does nothing else: on
         # its own button too, which so closes it
-        self.setAttribute(Qt.WA_NoMouseReplay)
+        self.setAttribute(Qt.WidgetAttribute.WA_NoMouseReplay)
         self._is_translucent = is_compositor_running()
         if self._is_translucent:
-            self.setAttribute(Qt.WA_TranslucentBackground)
+            self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setMouseTracking(True)
 
         self._rows = min(rows, MAX_PICK)
@@ -118,7 +120,9 @@ class GridSpanPicker(QWidget):
             self.update()
 
     def mouseReleaseEvent(self, event) -> None:
-        if event.button() != Qt.LeftButton or not self.rect().contains(event.pos()):
+        if event.button() != Qt.MouseButton.LeftButton or not self.rect().contains(
+            event.pos()
+        ):
             return
 
         if self._is_pick_ok:
@@ -128,15 +132,15 @@ class GridSpanPicker(QWidget):
 
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         back = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
         if self._is_translucent:
-            painter.setCompositionMode(QPainter.CompositionMode_Source)
+            painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Source)
         painter.setPen(QPen(BORDER_COLOR, 1))
         painter.setBrush(BACK_COLOR)
         painter.drawRoundedRect(back, 6, 6)
-        painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
+        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
 
         rows, cols = self._pick
         fill = PICK_COLOR if self._is_pick_ok else NO_ROOM_COLOR
@@ -145,7 +149,9 @@ class GridSpanPicker(QWidget):
                 rect = self._cell_rect(row, col)
                 is_current = row < self._span[0] and col < self._span[1]
                 painter.setPen(QPen(CURRENT_COLOR if is_current else CELL_COLOR, 1))
-                painter.setBrush(fill if row < rows and col < cols else Qt.transparent)
+                painter.setBrush(
+                    fill if row < rows and col < cols else Qt.GlobalColor.transparent
+                )
                 painter.drawRoundedRect(rect.adjusted(0.5, 0.5, -0.5, -0.5), 2, 2)
 
         if self._is_pick_ok:
@@ -157,4 +163,4 @@ class GridSpanPicker(QWidget):
             0, self.height() - PADDING - LABEL_HEIGHT, self.width(), LABEL_HEIGHT
         )
         painter.setPen(TEXT_COLOR)
-        painter.drawText(label, Qt.AlignCenter, text)
+        painter.drawText(label, Qt.AlignmentFlag.AlignCenter, text)

@@ -22,7 +22,9 @@ class RowDropIndicatorStyle(QtWidgets.QProxyStyle):
     """
 
     def drawPrimitive(self, element, option, painter, widget=None):
-        is_indicator = element == QtWidgets.QStyle.PE_IndicatorItemViewItemDrop
+        is_indicator = (
+            element == QtWidgets.QStyle.PrimitiveElement.PE_IndicatorItemViewItemDrop
+        )
 
         if is_indicator and not option.rect.isNull():
             option.rect.setLeft(0)
@@ -65,9 +67,13 @@ class TableWidgetDragRows(QtWidgets.QTableWidget):
         self.setDragDropOverwriteMode(False)
         self.setDropIndicatorShown(True)
 
-        self.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
-        self.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        self.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
+        self.setSelectionMode(
+            QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection
+        )
+        self.setSelectionBehavior(
+            QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
+        )
+        self.setDragDropMode(QtWidgets.QAbstractItemView.DragDropMode.InternalMove)
 
         self.verticalHeader().hide()
 
@@ -213,7 +219,7 @@ class TableWidgetDragRows(QtWidgets.QTableWidget):
 
         return (
             rect.contains(pos, True)
-            and not (int(self.model().flags(index)) & Qt.ItemIsDropEnabled)
+            and not (int(self.model().flags(index)) & Qt.ItemFlag.ItemIsDropEnabled)
             and pos.y() >= rect.center().y()
         )
 
@@ -248,10 +254,14 @@ class ResolverPatternsList(QtWidgets.QWidget):
             ]
         )
 
-        table.header_view.setDefaultAlignment(Qt.AlignLeft)
-        table.header_view.setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
+        table.header_view.setDefaultAlignment(Qt.AlignmentFlag.AlignLeft)
+        table.header_view.setSectionResizeMode(
+            0, QtWidgets.QHeaderView.ResizeMode.Stretch
+        )
         for col_idx in range(1, table.columnCount()):
-            table.header_view.setSectionResizeMode(col_idx, QtWidgets.QHeaderView.Fixed)
+            table.header_view.setSectionResizeMode(
+                col_idx, QtWidgets.QHeaderView.ResizeMode.Fixed
+            )
             table.header_view.resizeSection(col_idx, 100)
 
         return table
@@ -385,10 +395,10 @@ class ResolverPatternsList(QtWidgets.QWidget):
 
         for col_idx, col in enumerate(columns):
             if col_idx > 0:
-                col.setFlags(col.flags() ^ Qt.ItemIsEditable)
+                col.setFlags(col.flags() ^ Qt.ItemFlag.ItemIsEditable)
 
             # allow drop only in between rows
-            col.setFlags(col.flags() ^ Qt.ItemIsDropEnabled)
+            col.setFlags(col.flags() ^ Qt.ItemFlag.ItemIsDropEnabled)
 
             self.table.setItem(row_idx, col_idx, col)
 

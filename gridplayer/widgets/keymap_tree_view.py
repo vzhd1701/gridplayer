@@ -73,18 +73,18 @@ _WORDS = re.compile(r"[\w\s]+")
 # Model roles
 # ---------------------------------------------------------------------------
 
-DATA_ACTION_ID = Qt.UserRole + 10
-DATA_SHORTCUTS = Qt.UserRole + 11  # list[str]
-DATA_DEFAULT_SHORTCUTS = Qt.UserRole + 12  # list[str]
-DATA_IS_MODIFIED = Qt.UserRole + 13
-DATA_IS_ACTION = Qt.UserRole + 14
-DATA_PATH = Qt.UserRole + 15  # list[str] breadcrumb titles
-DATA_EXPANDED = Qt.UserRole + 16
-DATA_SEARCH_TEXT = Qt.UserRole + 17
-DATA_HAS_MODIFIED_CHILD = Qt.UserRole + 18
+DATA_ACTION_ID = Qt.ItemDataRole.UserRole + 10
+DATA_SHORTCUTS = Qt.ItemDataRole.UserRole + 11  # list[str]
+DATA_DEFAULT_SHORTCUTS = Qt.ItemDataRole.UserRole + 12  # list[str]
+DATA_IS_MODIFIED = Qt.ItemDataRole.UserRole + 13
+DATA_IS_ACTION = Qt.ItemDataRole.UserRole + 14
+DATA_PATH = Qt.ItemDataRole.UserRole + 15  # list[str] breadcrumb titles
+DATA_EXPANDED = Qt.ItemDataRole.UserRole + 16
+DATA_SEARCH_TEXT = Qt.ItemDataRole.UserRole + 17
+DATA_HAS_MODIFIED_CHILD = Qt.ItemDataRole.UserRole + 18
 # what a row is set to: an action's shortcuts, a gesture's drags, or the key
 # held through a drop, see GestureKind; None for an action
-DATA_KIND = Qt.UserRole + 19
+DATA_KIND = Qt.ItemDataRole.UserRole + 19
 
 SECTION_TITLES = {
     "video_active": translate("Keymap", "Single video"),
@@ -195,11 +195,11 @@ class KeySequenceCapture(QLineEdit):
         self._sequence = ""
 
         self.setReadOnly(True)
-        self.setFocusPolicy(Qt.StrongFocus)
-        self.setContextMenuPolicy(Qt.NoContextMenu)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
         self.setClearButtonEnabled(False)
         self.setPlaceholderText(translate("Keymap", "Press a shortcut…"))
-        self.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
     def sequence_text(self) -> str:
         return self._sequence
@@ -230,12 +230,12 @@ class KeySequenceCapture(QLineEdit):
 
 class NoFrameFocus(QProxyStyle):
     def drawPrimitive(self, element, option, painter, widget=None):
-        if element == QStyle.PE_FrameFocusRect:
+        if element == QStyle.PrimitiveElement.PE_FrameFocusRect:
             return
         super().drawPrimitive(element, option, painter, widget)
 
     def pixelMetric(self, metric, option=None, widget=None):
-        if metric == QStyle.PM_SmallIconSize:
+        if metric == QStyle.PixelMetric.PM_SmallIconSize:
             return ICON_SIZE
         return super().pixelMetric(metric, option, widget)
 
@@ -342,7 +342,7 @@ class TreeItemDelegate(QStyledItemDelegate):
         if is_action and not view.isPersistentEditorOpen(index):
             view.openPersistentEditor(index)
 
-        is_selected = bool(option.state & QStyle.State_Selected)
+        is_selected = bool(option.state & QStyle.StateFlag.State_Selected)
 
         edit_widget = view.indexWidget(index)
         if edit_widget and isinstance(edit_widget, HotkeysWidget):
@@ -386,7 +386,7 @@ class FilterProxyModel(QSortFilterProxyModel):
         self._modified_only = False
         self._matches: Callable[[str], bool] | None = None
         self._scope = FILTER_SCOPE_ALL
-        self.setFilterCaseSensitivity(Qt.CaseInsensitive)
+        self.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
 
     def set_filter_text(self, text: str):
         self._matches = _matcher(text)
@@ -464,14 +464,16 @@ class FilterProxyModel(QSortFilterProxyModel):
             return " ".join(parts).casefold()
 
         if self._scope == FILTER_SCOPE_NAME:
-            title = idx.data(Qt.DisplayRole) or ""
+            title = idx.data(Qt.ItemDataRole.DisplayRole) or ""
             path = idx.data(DATA_PATH) or []
             action_id = idx.data(DATA_ACTION_ID) or ""
             parts = [str(title), action_id, *([str(p) for p in path] if path else [])]
             return " ".join(parts).casefold()
 
         # All: full search blob (title, path, id, shortcuts, defaults)
-        search = idx.data(DATA_SEARCH_TEXT) or idx.data(Qt.DisplayRole) or ""
+        search = (
+            idx.data(DATA_SEARCH_TEXT) or idx.data(Qt.ItemDataRole.DisplayRole) or ""
+        )
         return str(search).casefold()
 
     def _row_matches_modified(self, idx: QModelIndex) -> bool:
@@ -498,9 +500,9 @@ class MouseShortcutField(QFrame):
         self._sequence = ""
 
         self.setObjectName("MouseShortcutField")
-        self.setFocusPolicy(Qt.StrongFocus)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setMinimumHeight(72)
-        self.setCursor(Qt.PointingHandCursor)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setToolTip(self.placeholder)
 
         self.setStyleSheet(
@@ -526,7 +528,7 @@ class MouseShortcutField(QFrame):
 
         self._label = QLabel(self.placeholder, self)
         self._label.setWordWrap(True)
-        self._label.setAlignment(Qt.AlignCenter)
+        self._label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._label.setStyleSheet("color: #ccc; font-style: italic;")
         layout.addWidget(self._label)
 
@@ -708,7 +710,9 @@ class _AddShortcutDialogBase(QDialog):
         layout.addWidget(self._note_label)
 
         self._warning_frame = QFrame(self)
-        self._warning_frame.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
+        self._warning_frame.setSizePolicy(
+            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed
+        )
         warning_layout = QVBoxLayout(self._warning_frame)
         warning_layout.setContentsMargins(0, 4, 0, 0)
         warning_layout.setSpacing(2)
@@ -722,7 +726,9 @@ class _AddShortcutDialogBase(QDialog):
 
         self._conflict_label = QLabel(self._warning_frame)
         self._conflict_label.setWordWrap(True)
-        self._conflict_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self._conflict_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
         self._conflict_label.setStyleSheet("color: #c44;")
         warning_layout.addWidget(self._conflict_label)
 
@@ -733,12 +739,14 @@ class _AddShortcutDialogBase(QDialog):
         layout.addStretch()
 
         self._buttons = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel, Qt.Horizontal, self
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
+            Qt.Orientation.Horizontal,
+            self,
         )
         self._buttons.accepted.connect(self._on_accept)
         self._buttons.rejected.connect(self.reject)
 
-        self._ok_button = self._buttons.button(QDialogButtonBox.Ok)
+        self._ok_button = self._buttons.button(QDialogButtonBox.StandardButton.Ok)
         self._ok_button.setEnabled(False)
         layout.addWidget(self._buttons)
 
@@ -901,7 +909,7 @@ class _AddShortcutDialogBase(QDialog):
             info=translate(
                 "Keymap", "It's used by “{action}”. It will be removed from there."
             ).format(action=display),
-            icon=QMessageBox.Warning,
+            icon=QMessageBox.Icon.Warning,
         )
 
     def result_sequence(self) -> str:
@@ -935,7 +943,7 @@ class AddKeyboardShortcutDialog(_AddShortcutDialogBase):
         self._special_btn.setToolTip(
             translate("Keymap", "Insert special key (Enter, Esc, Tab, …)")
         )
-        self._special_btn.setPopupMode(QToolButton.InstantPopup)
+        self._special_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         menu = QMenu(self._special_btn)
         for key in SPECIAL_KEYS:
             menu.addAction(key, lambda k=key: self._set_special(k))
@@ -1009,7 +1017,7 @@ class AddDragShortcutDialog(AddMouseShortcutDialog):
 
         is_hold_key_drag = (
             hold_key is not None
-            and drag.drag_button == Qt.LeftButton
+            and drag.drag_button == Qt.MouseButton.LeftButton
             and drag.modifiers == [self._hold_key.removeprefix("Hold ")]
         )
 
@@ -1195,7 +1203,7 @@ def _apply_modified_font(item: QStandardItem, modified: bool):
     font = item.font()
     font.setBold(modified)
     item.setFont(font)
-    item.setData(None, Qt.ForegroundRole)
+    item.setData(None, Qt.ItemDataRole.ForegroundRole)
 
 
 def fill_keymap_model(
@@ -1371,13 +1379,13 @@ class KeymapTreeView(QTreeView):
         self.setUniformRowHeights(True)
         self.setHeaderHidden(True)
         self.setIndentation(24)
-        self.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.setSelectionMode(QAbstractItemView.SingleSelection)
-        self.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.setExpandsOnDoubleClick(False)
-        self.setDragDropMode(QAbstractItemView.NoDragDrop)
+        self.setDragDropMode(QAbstractItemView.DragDropMode.NoDragDrop)
         self.setAnimated(False)
-        self.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
+        self.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
 
         self.setStyleSheet(
             """
@@ -1399,7 +1407,7 @@ class KeymapTreeView(QTreeView):
         self._is_filter_set = False
         self._filter_text = ""
 
-        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._on_context_menu)
 
         fill_keymap_model(self._source_model)
@@ -1594,7 +1602,7 @@ class KeymapTreeView(QTreeView):
     # -- events / menus -----------------------------------------------------
 
     def mouseDoubleClickEvent(self, event):
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             index = self.indexAt(event.pos())
             if index.isValid() and index.data(DATA_IS_ACTION):
                 self._emit_menu_for_index(index, event.globalPos())
@@ -1829,7 +1837,7 @@ class KeymapEditor(QWidget):
             if kind is GestureKind.HOLD:
                 reset.setIcon(QIcon.fromTheme("empty"))
 
-        menu.exec_(global_pos)
+        menu.exec(global_pos)
 
     def _add_keyboard(
         self, action_id: str, title: str, path: list[str], existing: list[str]
@@ -1842,7 +1850,7 @@ class KeymapEditor(QWidget):
             shared_map=self.tree.build_shared_map(action_id),
             parent=self,
         )
-        if dialog.exec_() != QDialog.Accepted:
+        if dialog.exec() != QDialog.DialogCode.Accepted:
             return
         self._apply_new_shortcut(
             action_id,
@@ -1862,7 +1870,7 @@ class KeymapEditor(QWidget):
             shared_map=self.tree.build_shared_map(action_id),
             parent=self,
         )
-        if dialog.exec_() != QDialog.Accepted:
+        if dialog.exec() != QDialog.DialogCode.Accepted:
             return
         self._apply_new_shortcut(
             action_id,
@@ -1886,7 +1894,7 @@ class KeymapEditor(QWidget):
             hold_key=hold_keys[0] if hold_keys else None,
             parent=self,
         )
-        if dialog.exec_() != QDialog.Accepted:
+        if dialog.exec() != QDialog.DialogCode.Accepted:
             return
         self._apply_new_shortcut(
             action_id,

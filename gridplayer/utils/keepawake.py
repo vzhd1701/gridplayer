@@ -76,7 +76,7 @@ elif env.IS_LINUX:
 
     def _uint(value):
         argument = QDBusArgument()
-        argument.add(value, QMetaType.UInt)
+        argument.add(value, QMetaType.Type.UInt)
         return argument
 
     def _dbus_call(interface, *args):

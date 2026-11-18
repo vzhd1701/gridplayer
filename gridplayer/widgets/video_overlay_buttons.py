@@ -104,13 +104,13 @@ class OverlayButton(OverlayWidget, metaclass=QABC):
     def mouseReleaseEvent(self, event):
         """Consume to avoid parent event"""
 
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             event.accept()
         else:
             event.ignore()
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton and self._is_available:
+        if event.button() == Qt.MouseButton.LeftButton and self._is_available:
             self.clicked.emit()
 
         event.ignore()
@@ -302,7 +302,7 @@ class OverlayTextButton(OverlayButton):
         self.update()
 
     def changeEvent(self, event):
-        if event.type() == QEvent.FontChange:
+        if event.type() == QEvent.Type.FontChange:
             self._fit()
 
         super().changeEvent(event)
@@ -338,7 +338,7 @@ class OverlayTextButton(OverlayButton):
         painter.setPen(color_fg)
         painter.drawText(
             self.rect().adjusted(self._text_left(), 0, 0, 0),
-            Qt.AlignVCenter | Qt.AlignLeft,
+            Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
             self._text,
         )
 

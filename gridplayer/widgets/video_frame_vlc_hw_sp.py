@@ -140,7 +140,7 @@ class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
         self._instance_ready_event.set()
 
         # until cleanup() quits it
-        self.exec_()
+        self.exec()
 
         # Release from this thread, not from whoever asked for the cleanup:
         # releasing on the GUI thread put every pane's hardware vout teardown
@@ -292,7 +292,9 @@ class VideoDriverVLCHWSP(VLCVideoDriver):
             (self.cmd_set_log_level_vlc, self.player.set_log_level_vlc),
         )
         # at once, on this thread, not queued behind a wait for VLC
-        self.cmd_cleanup.connect(self.player.cleanup, Qt.DirectConnection)
+        self.cmd_cleanup.connect(
+            self.player.cleanup, Qt.ConnectionType.DirectConnection
+        )
 
         self.player.start()
         self.player.wait_for_init()
@@ -390,8 +392,8 @@ class VideoFrameVLCHWSP(VideoFrameVLC):
             video_surface = QWidget(self.video_clip)
 
         video_surface.setMouseTracking(True)
-        video_surface.setWindowFlags(Qt.WindowTransparentForInput)
-        video_surface.setAttribute(Qt.WA_TransparentForMouseEvents)
+        video_surface.setWindowFlags(Qt.WindowType.WindowTransparentForInput)
+        video_surface.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
         return video_surface
 

@@ -76,13 +76,13 @@ class ErrorDetailsDialog(QDialog):
 
         icon = QLabel()
         icon.setPixmap(QIcon.fromTheme(error.icon).pixmap(QSize(ICON_PX, ICON_PX)))
-        icon.setAlignment(Qt.AlignTop)
+        icon.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         title = QLabel(error.title)
         font = title.font()
         font.setBold(True)
         title.setFont(font)
-        title.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        title.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
 
         # its own from the start: shown with no parent, it is a window
         self.tag = ErrorTag(parent=self)
@@ -91,7 +91,7 @@ class ErrorDetailsDialog(QDialog):
         title_row = QHBoxLayout()
         title_row.setSpacing(8)
         title_row.addWidget(title)
-        title_row.addWidget(self.tag, 0, Qt.AlignVCenter)
+        title_row.addWidget(self.tag, 0, Qt.AlignmentFlag.AlignVCenter)
         title_row.addStretch(1)
 
         words = QVBoxLayout()
@@ -112,14 +112,14 @@ class ErrorDetailsDialog(QDialog):
         form = QFormLayout()
         form.setHorizontalSpacing(14)
         form.setVerticalSpacing(6)
-        form.setLabelAlignment(Qt.AlignLeft)
+        form.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
 
         for label, value in rows:
             name = QLabel(label)
             set_secondary(name)
 
             shown = QLabel(value)
-            shown.setTextInteractionFlags(Qt.TextSelectableByMouse)
+            shown.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
             shown.setWordWrap(True)
 
             form.addRow(name, shown)
@@ -135,7 +135,7 @@ class ErrorDetailsDialog(QDialog):
 
             self.raw = QPlainTextEdit(error.raw)
             self.raw.setReadOnly(True)
-            self.raw.setLineWrapMode(QPlainTextEdit.NoWrap)
+            self.raw.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
             self.raw.setMinimumHeight(140)
 
             layout.addWidget(raw_title)

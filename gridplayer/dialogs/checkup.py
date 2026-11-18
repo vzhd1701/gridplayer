@@ -137,7 +137,7 @@ class CheckRow(QtWidgets.QWidget):
         layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(ICON_GUTTER)
-        layout.addWidget(self.icon, alignment=Qt.AlignTop)
+        layout.addWidget(self.icon, alignment=Qt.AlignmentFlag.AlignTop)
         layout.addLayout(lines, stretch=1)
 
         self.set_pending()
@@ -193,9 +193,9 @@ class CheckRow(QtWidgets.QWidget):
         font.setItalic(True)
         hint.setFont(font)
 
-        hint.setTextFormat(Qt.RichText)
+        hint.setTextFormat(Qt.TextFormat.RichText)
         hint.setOpenExternalLinks(True)
-        hint.setTextInteractionFlags(Qt.TextBrowserInteraction)
+        hint.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
 
         return hint
 
@@ -334,16 +334,16 @@ class CheckupDialog(QDialog):
         buttons = QDialogButtonBox(parent=self)
 
         self.copy_button = buttons.addButton(
-            translate("Checkup", "Copy report"), QDialogButtonBox.ActionRole
+            translate("Checkup", "Copy report"), QDialogButtonBox.ButtonRole.ActionRole
         )
         # the same role the Close button has, because they are the same
         # slot: one of them is on screen at a time and the other takes
         # its place. As a destructive button macOS puts it in the group
         # to the left of that slot and leaves the slot standing empty.
         self.abort_button = buttons.addButton(
-            translate("Checkup", "Stop"), QDialogButtonBox.RejectRole
+            translate("Checkup", "Stop"), QDialogButtonBox.ButtonRole.RejectRole
         )
-        self.close_button = buttons.addButton(QDialogButtonBox.Close)
+        self.close_button = buttons.addButton(QDialogButtonBox.StandardButton.Close)
 
         self.close_button.setVisible(False)
 
@@ -370,11 +370,11 @@ class CheckupDialog(QDialog):
 
         scroll = QtWidgets.QScrollArea(parent=self)
         scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QtWidgets.QFrame.StyledPanel)
-        scroll.setBackgroundRole(QPalette.Base)
+        scroll.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
+        scroll.setBackgroundRole(QPalette.ColorRole.Base)
         scroll.setWidget(checks)
 
-        checks.setBackgroundRole(QPalette.Base)
+        checks.setBackgroundRole(QPalette.ColorRole.Base)
         checks.setAutoFillBackground(True)
 
         return scroll
@@ -402,7 +402,7 @@ class CheckupDialog(QDialog):
 def _wrapping_label(text: str):
     label = QtWidgets.QLabel(text)
     label.setWordWrap(True)
-    label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+    label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
 
     return label
 

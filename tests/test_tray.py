@@ -37,7 +37,9 @@ def settings(tmp_path, monkeypatch):
     """An ini of our own, so no test writes the one the user has."""
 
     store = _Settings.__new__(_Settings)
-    store.settings = QSettings(str(tmp_path / "settings.ini"), QSettings.IniFormat)
+    store.settings = QSettings(
+        str(tmp_path / "settings.ini"), QSettings.Format.IniFormat
+    )
 
     for module in (window_state_module, tray_module, screensaver_module):
         monkeypatch.setattr(module, "Settings", lambda: store)
@@ -139,7 +141,7 @@ def player(settings, monkeypatch):
     made.window.removeEventFilter(made.manager)
     made.window.hide()
     made.window.deleteLater()
-    QApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+    QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
     QApplication.instance().setQuitOnLastWindowClosed(True)
 
@@ -600,8 +602,8 @@ class TestTrayIcon:
         settings.set("player/tray_icon", True)
         tray.apply_settings()
 
-        tray._on_activated(QSystemTrayIcon.Trigger)
-        tray._on_activated(QSystemTrayIcon.Context)
+        tray._on_activated(QSystemTrayIcon.ActivationReason.Trigger)
+        tray._on_activated(QSystemTrayIcon.ActivationReason.Context)
 
         assert tray.calls == ["toggle"]
 
@@ -699,7 +701,7 @@ class TestTrayIcon:
             # kept while Explorer starts, to be put up once it has
             assert tray._icon is own
             assert tray._icon.isVisible() is (state == "up")
-            own.activated.emit(QSystemTrayIcon.Trigger)
+            own.activated.emit(QSystemTrayIcon.ActivationReason.Trigger)
             own.messageClicked.emit()
             assert tray.calls == ["toggle", "activate"]
 
@@ -818,7 +820,7 @@ def make_dialog(settings, _no_real_cache, monkeypatch):
         dialog.close()
         dialog.deleteLater()
 
-    QApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+    QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
 
 class TestSettings:
@@ -969,6 +971,6 @@ def test_asked_to_quit_as_macos_asks_on_cmd_q():
     watcher = window_state_module._QuitWatcher(lambda: said.append(True))
 
     watcher.eventFilter(None, QEvent(QEvent.Type(window_state_module.QUIT_EVENT)))
-    watcher.eventFilter(None, QEvent(QEvent.Close))
+    watcher.eventFilter(None, QEvent(QEvent.Type.Close))
 
     assert said == [True]

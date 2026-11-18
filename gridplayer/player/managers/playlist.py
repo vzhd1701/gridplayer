@@ -181,7 +181,7 @@ class PlaylistManager(ManagerBase):
             has_videos=len(self._ctx.video_blocks) > 0,
         )
         try:
-            if not dialog.exec_():
+            if not dialog.exec():
                 return
             PlaylistSettings().replace(
                 self._with_bookmarks_sharing_confirmed(dialog.result_overrides())
@@ -230,7 +230,7 @@ class PlaylistManager(ManagerBase):
             parent=self.parent(),
             caption=translate("Dialog - Open Playlist", "Open Playlist", "Header"),
         )
-        dialog.setFileMode(QFileDialog.ExistingFile)
+        dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
 
         dialog.setNameFilter(
             "{} (*.gpls)".format(
@@ -433,17 +433,19 @@ class PlaylistManager(ManagerBase):
             self.parent(),
             translate("Dialog - Playlist close", "Playlist", "Header"),
             question,
-            buttons=QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
+            buttons=QMessageBox.StandardButton.Save
+            | QMessageBox.StandardButton.Discard
+            | QMessageBox.StandardButton.Cancel,
             info=translate(
                 "Dialog - Playlist close",
                 "Your changes will be lost if you don't save them.",
             ),
         )
 
-        if ret == QMessageBox.Save:
+        if ret == QMessageBox.StandardButton.Save:
             return self.cmd_save_playlist()
 
-        return ret != QMessageBox.Cancel
+        return ret != QMessageBox.StandardButton.Cancel
 
     def _is_playlist_changed(self):
         if self._saved_playlist_state is None:
@@ -630,7 +632,7 @@ class PlaylistManager(ManagerBase):
                     "A playlist with this name already exists.",
                 ),
                 is_destructive=True,
-                icon=QMessageBox.Warning,
+                icon=QMessageBox.Icon.Warning,
             )
 
             if not is_replaced:

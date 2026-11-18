@@ -21,7 +21,7 @@ def nested(seconds: float) -> None:
 
     loop = QEventLoop()
     QTimer.singleShot(int(seconds * 1000), loop.quit)
-    loop.exec_()
+    loop.exec()
 
 
 def media_path(name: str) -> Path:

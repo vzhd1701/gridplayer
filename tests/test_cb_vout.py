@@ -627,7 +627,9 @@ def test_vlc_counts_the_pictures_it_shows(tmp_path):
 
     settings = Settings()
     real_settings = settings.settings
-    settings.settings = QSettings(str(tmp_path / "test.ini"), QSettings.IniFormat)
+    settings.settings = QSettings(
+        str(tmp_path / "test.ini"), QSettings.Format.IniFormat
+    )
     try:
         instance = InstanceVLC(0, [])
         instance._logger = Mock()

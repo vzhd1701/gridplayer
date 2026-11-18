@@ -62,21 +62,21 @@ class AboutDialog(QDialog):
 
         self.name = QLabel(self)
         self.name.setFont(self._name_font())
-        self.name.setAlignment(Qt.AlignCenter)
+        self.name.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.version = QLabel(self)
-        self.version.setAlignment(Qt.AlignCenter)
+        self.version.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.info = QLabel(self)
-        self.info.setTextFormat(Qt.RichText)
-        self.info.setAlignment(Qt.AlignCenter)
+        self.info.setTextFormat(Qt.TextFormat.RichText)
+        self.info.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.info.setWordWrap(True)
         self.info.setOpenExternalLinks(True)
 
         self.attributions_title = QLabel(
             self.tr("This software was built using:"), self
         )
-        self.attributions_title.setAlignment(Qt.AlignCenter)
+        self.attributions_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.attributions_title.setWordWrap(True)
 
         self.attributions_box = QTextBrowser(self)
@@ -274,7 +274,7 @@ class AboutDialog(QDialog):
         logo_row.addStretch()
 
         layout = QVBoxLayout(self)
-        layout.setSizeConstraint(QLayout.SetFixedSize)
+        layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(12)
 

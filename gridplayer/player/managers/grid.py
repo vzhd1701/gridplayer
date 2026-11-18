@@ -2471,7 +2471,7 @@ class GridManager(ManagerBase):
                 "Dialog - Set grid size", "This grid holds {CAPACITY} videos."
             ).format(CAPACITY=count_txt(capacity)),
             is_destructive=True,
-            icon=QMessageBox.Warning,
+            icon=QMessageBox.Icon.Warning,
         )
 
     def _reconcile_layout(self):

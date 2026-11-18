@@ -159,12 +159,16 @@ class TestWhatIsBeingAdded:
 
 class TestAsked:
     def test_the_pick(self, mocker):
-        mocker.patch.object(AddChoiceDialog, "exec_", return_value=QDialog.Accepted)
+        mocker.patch.object(
+            AddChoiceDialog, "exec", return_value=QDialog.DialogCode.Accepted
+        )
 
         assert AddChoiceDialog.ask("How?", [], OPTIONS) == "each"
 
     def test_none_the_viewer_thinking_better_of_it(self, mocker):
-        mocker.patch.object(AddChoiceDialog, "exec_", return_value=QDialog.Rejected)
+        mocker.patch.object(
+            AddChoiceDialog, "exec", return_value=QDialog.DialogCode.Rejected
+        )
 
         assert AddChoiceDialog.ask("How?", [], OPTIONS) is None
 
@@ -294,12 +298,16 @@ class TestManyCellsWarning:
         assert not dialog.is_warned_again
 
     def test_asked_whether_added_and_whether_again(self, mocker):
-        mocker.patch.object(ManyCellsDialog, "exec_", return_value=QDialog.Accepted)
+        mocker.patch.object(
+            ManyCellsDialog, "exec", return_value=QDialog.DialogCode.Accepted
+        )
 
         assert ManyCellsDialog.ask(30) == (True, True)
 
     def test_cancelled_nothing_added(self, mocker):
-        mocker.patch.object(ManyCellsDialog, "exec_", return_value=QDialog.Rejected)
+        mocker.patch.object(
+            ManyCellsDialog, "exec", return_value=QDialog.DialogCode.Rejected
+        )
 
         assert ManyCellsDialog.ask(30)[0] is False
 

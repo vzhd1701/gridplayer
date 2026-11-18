@@ -51,25 +51,25 @@ class LayoutDragManager(ManagerBase):
     @property
     def event_map(self):
         return {
-            QEvent.ApplicationDeactivate: self.app_deactivate,
-            QEvent.MouseMove: self.mouse_move,
-            QEvent.MouseButtonPress: self.mouse_press,
-            QEvent.MouseButtonRelease: self.mouse_release,
-            QEvent.MouseButtonDblClick: self.mouse_double_click,
-            QEvent.ShortcutOverride: self.shortcut_override,
-            QEvent.KeyPress: self.key_press,
-            QEvent.KeyRelease: self.key_release,
+            QEvent.Type.ApplicationDeactivate: self.app_deactivate,
+            QEvent.Type.MouseMove: self.mouse_move,
+            QEvent.Type.MouseButtonPress: self.mouse_press,
+            QEvent.Type.MouseButtonRelease: self.mouse_release,
+            QEvent.Type.MouseButtonDblClick: self.mouse_double_click,
+            QEvent.Type.ShortcutOverride: self.shortcut_override,
+            QEvent.Type.KeyPress: self.key_press,
+            QEvent.Type.KeyRelease: self.key_release,
         }
 
     def eventFilter(self, event_object, event) -> bool:
-        if event.type() == QEvent.ApplicationDeactivate:
+        if event.type() == QEvent.Type.ApplicationDeactivate:
             # the application's, at no window
             return super().eventFilter(event_object, event)
 
         is_key = event.type() in {
-            QEvent.ShortcutOverride,
-            QEvent.KeyPress,
-            QEvent.KeyRelease,
+            QEvent.Type.ShortcutOverride,
+            QEvent.Type.KeyPress,
+            QEvent.Type.KeyRelease,
         }
 
         # the mouse at the window it comes to, the keys at the widget
@@ -93,7 +93,7 @@ class LayoutDragManager(ManagerBase):
     def mouse_press(self, event):
         if self._drag is not None:
             # another button lets go of it, put back
-            if event.button() != Qt.LeftButton:
+            if event.button() != Qt.MouseButton.LeftButton:
                 self._swallowed_buttons.add(event.button())
                 self._cancel()
             return True
@@ -103,7 +103,7 @@ class LayoutDragManager(ManagerBase):
         return self._press(event)
 
     def mouse_release(self, event):
-        if self._drag is not None and event.button() == Qt.LeftButton:
+        if self._drag is not None and event.button() == Qt.MouseButton.LeftButton:
             self._finish()
 
         if event.button() in self._swallowed_buttons:
@@ -113,7 +113,7 @@ class LayoutDragManager(ManagerBase):
         return None
 
     def shortcut_override(self, event):
-        if self._drag is None or event.key() != Qt.Key_Escape:
+        if self._drag is None or event.key() != Qt.Key.Key_Escape:
             return None
 
         # not what Esc is bound to: the key comes as a press, see key_press
@@ -124,7 +124,7 @@ class LayoutDragManager(ManagerBase):
         if self._drag is None:
             return None
 
-        if event.key() == Qt.Key_Escape:
+        if event.key() == Qt.Key.Key_Escape:
             self._cancel()
             return True
 
@@ -212,7 +212,7 @@ class LayoutDragManager(ManagerBase):
 
     def _check_pointer(self):
         if self._drag is not None:
-            if not QApplication.mouseButtons() & Qt.LeftButton:
+            if not QApplication.mouseButtons() & Qt.MouseButton.LeftButton:
                 # let go of somewhere the release never came from
                 self._finish()
             return

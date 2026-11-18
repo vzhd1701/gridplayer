@@ -57,7 +57,9 @@ def _isolated_settings(tmp_path):
     settings = Settings()
     real_settings = settings.settings
 
-    settings.settings = QSettings(str(tmp_path / "test.ini"), QSettings.IniFormat)
+    settings.settings = QSettings(
+        str(tmp_path / "test.ini"), QSettings.Format.IniFormat
+    )
 
     yield
 
@@ -267,7 +269,7 @@ class TestShowing:
         dialog = make_dialog(channels)
         model = dialog._model
 
-        tip = model.data(model.index(0, Column.TITLE), Qt.ToolTipRole)
+        tip = model.data(model.index(0, Column.TITLE), Qt.ItemDataRole.ToolTipRole)
 
         assert tip.index("<b>One</b>") < tip.index("http://tv/1")
 
@@ -281,7 +283,7 @@ class TestShowing:
         dialog = make_dialog(media_list)
         model = dialog._model
 
-        tip = model.data(model.index(0, Column.TITLE), Qt.ToolTipRole)
+        tip = model.data(model.index(0, Column.TITLE), Qt.ItemDataRole.ToolTipRole)
 
         assert "&lt;Tom &amp; Jerry&gt;" in tip
         assert "http://tv/1?a=1&amp;b=2" in tip
@@ -336,8 +338,10 @@ class TestShowing:
     def test_the_cells_item_marked(self, make_dialog, season):
         model = make_dialog(season, cell_at=1)._model
 
-        assert model.data(model.index(1, Column.TITLE), Qt.FontRole).bold()
-        assert model.data(model.index(0, Column.TITLE), Qt.FontRole) is None
+        assert model.data(model.index(1, Column.TITLE), Qt.ItemDataRole.FontRole).bold()
+        assert (
+            model.data(model.index(0, Column.TITLE), Qt.ItemDataRole.FontRole) is None
+        )
 
     def test_named_after_the_list(self, make_dialog, season):
         assert make_dialog(season).windowTitle() == "List — Season"
@@ -551,7 +555,7 @@ class TestEditing:
         model = dialog._model
         data = model.mimeData([model.index(0, 0)])
 
-        model.dropMimeData(data, Qt.MoveAction, 3, 0, model.index(-1, -1))
+        model.dropMimeData(data, Qt.DropAction.MoveAction, 3, 0, model.index(-1, -1))
         QTest.qWait(0)
 
         assert _titles(registry, season) == ["Crossing", "03.mkv", "01.mkv"]
@@ -563,7 +567,9 @@ class TestEditing:
 
         dialog._filter_edit.setText("0")
 
-        assert not model.canDropMimeData(data, Qt.MoveAction, 0, 0, model.index(-1, -1))
+        assert not model.canDropMimeData(
+            data, Qt.DropAction.MoveAction, 0, 0, model.index(-1, -1)
+        )
 
     @pytest.mark.parametrize(
         ("how", "expected"),
@@ -606,7 +612,7 @@ class TestEditing:
 
         dialog.cell.closing.emit()
 
-        assert dialog.result() == dialog.Accepted
+        assert dialog.result() == dialog.DialogCode.Accepted
         assert len(registry.get(season.id).items) == 2
 
     def test_closed_with_the_list_taken_away(self, make_dialog, registry, season):
@@ -633,27 +639,34 @@ def _over_row(dialog, row, part):
     return QPoint(view.viewport().width() // 2, top + int(view.rowHeight(row) * part))
 
 
-def _dragged(dialog, kind, pos, data, actions=Qt.MoveAction, keys=Qt.NoModifier):
+def _dragged(
+    dialog,
+    kind,
+    pos,
+    data,
+    actions=Qt.DropAction.MoveAction,
+    keys=Qt.KeyboardModifier.NoModifier,
+):
     """A drag over the list as Qt hands it on, to the rows' viewport."""
 
-    if kind == QEvent.Drop:
-        event = QDropEvent(QPointF(pos), actions, data, Qt.LeftButton, keys)
-    elif kind == QEvent.DragEnter:
-        event = QDragEnterEvent(pos, actions, data, Qt.LeftButton, keys)
+    if kind == QEvent.Type.Drop:
+        event = QDropEvent(QPointF(pos), actions, data, Qt.MouseButton.LeftButton, keys)
+    elif kind == QEvent.Type.DragEnter:
+        event = QDragEnterEvent(pos, actions, data, Qt.MouseButton.LeftButton, keys)
     else:
-        event = QDragMoveEvent(pos, actions, data, Qt.LeftButton, keys)
+        event = QDragMoveEvent(pos, actions, data, Qt.MouseButton.LeftButton, keys)
 
     QApplication.sendEvent(dialog._list.viewport(), event)
     return event
 
 
 def _dragged_over(dialog, pos, data, **kwargs):
-    _dragged(dialog, QEvent.DragEnter, pos, data, **kwargs)
-    return _dragged(dialog, QEvent.DragMove, pos, data, **kwargs)
+    _dragged(dialog, QEvent.Type.DragEnter, pos, data, **kwargs)
+    return _dragged(dialog, QEvent.Type.DragMove, pos, data, **kwargs)
 
 
 class _Drag:
-    """QDrag, its exec_ dropping where it is told to: Windows' own drag
+    """QDrag, its exec dropping where it is told to: Windows' own drag
     needs a hand on the mouse."""
 
     view = None
@@ -673,10 +686,10 @@ class _Drag:
     def setHotSpot(self, hot_spot):
         self.hot_spot = hot_spot
 
-    def exec_(self, actions, default_action):
+    def exec(self, actions, default_action):
         dialog = self.view.window()
         _dragged_over(dialog, self.drop_at, self.data)
-        drop = _dragged(dialog, QEvent.Drop, self.drop_at, self.data)
+        drop = _dragged(dialog, QEvent.Type.Drop, self.drop_at, self.data)
         return drop.dropAction()
 
 
@@ -696,7 +709,7 @@ class TestDraggingRows:
     def _drag_rows(self, dialog, *rows, to):
         _pick(dialog, *rows)
         _Drag.drop_at = to
-        dialog._list.startDrag(Qt.MoveAction)
+        dialog._list.startDrag(Qt.DropAction.MoveAction)
         QTest.qWait(0)
 
     def test_put_before_a_row_let_go_of_in_its_top_half(self, dialog, registry, season):
@@ -741,7 +754,7 @@ class TestDraggingRows:
         y = view.rowViewportPosition(1)
         assert view._drop_line_y() == y
         shot = view.viewport().grab().toImage()
-        text = view.palette().color(QPalette.Text).rgb()
+        text = view.palette().color(QPalette.ColorRole.Text).rgb()
         assert shot.pixel(40, y) == text
         assert shot.pixel(view.viewport().width() - 6, y) == text
 
@@ -751,7 +764,7 @@ class TestDraggingRows:
         view._is_dragging_rows = True
         _dragged_over(dialog, _over_row(dialog, 1, 0.3), data)
 
-        QApplication.sendEvent(view.viewport(), QEvent(QEvent.DragLeave))
+        QApplication.sendEvent(view.viewport(), QEvent(QEvent.Type.DragLeave))
 
         assert view._drop_pos is None
 
@@ -772,14 +785,23 @@ class TestDraggingRows:
 
         data = QMimeData()
         data.setText("http://tv/1")
-        actions = Qt.CopyAction | Qt.MoveAction
+        actions = Qt.DropAction.CopyAction | Qt.DropAction.MoveAction
         at = _over_row(dialog, 1, 0.3)
 
-        moved = _dragged_over(dialog, at, data, actions=actions, keys=Qt.ShiftModifier)
-        drop = _dragged(dialog, QEvent.Drop, at, data, actions, Qt.ShiftModifier)
+        moved = _dragged_over(
+            dialog, at, data, actions=actions, keys=Qt.KeyboardModifier.ShiftModifier
+        )
+        drop = _dragged(
+            dialog,
+            QEvent.Type.Drop,
+            at,
+            data,
+            actions,
+            Qt.KeyboardModifier.ShiftModifier,
+        )
 
-        assert moved.dropAction() == Qt.CopyAction
-        assert drop.dropAction() == Qt.CopyAction
+        assert moved.dropAction() == Qt.DropAction.CopyAction
+        assert drop.dropAction() == Qt.DropAction.CopyAction
         assert _wait_until(lambda: len(registry.get(season.id).items) == 4)
         assert registry.get(season.id).items[1].uri == "http://tv/1"
 
@@ -1051,7 +1073,7 @@ class TestReadingAgain:
         dialog = make_dialog(season)
         shown = []
         mocker.patch(
-            "gridplayer.dialogs.media_list.ErrorDetailsDialog.exec_",
+            "gridplayer.dialogs.media_list.ErrorDetailsDialog.exec",
             lambda details_dialog: shown.append(details_dialog),
         )
 
@@ -1122,7 +1144,7 @@ class TestReadingAgain:
             asked.append((box.text(), box.defaultButton().text()))
             return 0
 
-        mocker.patch.object(dialog_module.QCustomMessageBox, "exec_", answered)
+        mocker.patch.object(dialog_module.QCustomMessageBox, "exec", answered)
 
         assert dialog._is_reload_confirmed() is False
         assert asked[0][0].startswith("Reload the list and discard your changes")
@@ -1133,7 +1155,7 @@ class TestReadingAgain:
         shown = []
         mocker.patch.object(
             dialog_module.CustomMenu,
-            "exec_",
+            "exec",
             lambda menu, *_: shown.extend(a.text() for a in menu.actions()),
         )
 
@@ -1198,7 +1220,7 @@ def _menu_actions(mocker):
     shown = {}
     mocker.patch.object(
         dialog_module.CustomMenu,
-        "exec_",
+        "exec",
         lambda menu, *_: shown.update(
             {action.text(): action for action in menu.actions() if action.text()}
         ),
@@ -1210,7 +1232,7 @@ def _menu_names(mocker):
     names = []
     mocker.patch.object(
         dialog_module.CustomMenu,
-        "exec_",
+        "exec",
         lambda menu, *_: names.extend(action.text() for action in menu.actions()),
     )
     return names
@@ -1423,7 +1445,7 @@ class TestPlaying:
         dialog.cell.key = season.items[2].key
         dialog.cell.list_place_change.emit("3/3")
 
-        assert model.data(model.index(2, Column.TITLE), Qt.FontRole).bold()
+        assert model.data(model.index(2, Column.TITLE), Qt.ItemDataRole.FontRole).bold()
 
 
 class TestCopyingAndSaving:
@@ -1660,7 +1682,7 @@ class TestWhileReading:
         assert not dialog._add_files_button.isEnabled()
         assert not dialog._name_edit.isEnabled()
         assert not dialog._model.flags(dialog._model.index(0, Column.TITLE)) & (
-            Qt.ItemIsEditable | Qt.ItemIsDragEnabled
+            Qt.ItemFlag.ItemIsEditable | Qt.ItemFlag.ItemIsDragEnabled
         )
 
     def test_nothing_done_to_it_before_it_is_shown_either(
@@ -1885,7 +1907,7 @@ class TestView:
 
         index = model.index(1, Column.TITLE)
         assert model.data(index) == str(season.items[1].uri)
-        assert model.data(index, Qt.EditRole) == "Crossing"
+        assert model.data(index, Qt.ItemDataRole.EditRole) == "Crossing"
 
     def test_found_by_where_it_is_once_that_is_shown(self, make_dialog, channels):
         dialog = make_dialog(channels)
@@ -2069,7 +2091,7 @@ class TestBesideThePlayer:
         dialog.cell.list_place_change.emit("")
 
         assert dialog.isHidden()
-        assert dialog.result() == dialog.Accepted
+        assert dialog.result() == dialog.DialogCode.Accepted
 
     def test_closed_with_the_playlist(self, make_dialog, registry, season):
         dialog = make_dialog(season, cell_at=0)
@@ -2121,12 +2143,12 @@ def _jpeg() -> bytes:
     from PyQt5.QtCore import QBuffer, QByteArray, QIODevice
     from PyQt5.QtGui import QImage
 
-    image = QImage(320, 180, QImage.Format_RGB32)
-    image.fill(Qt.darkCyan)
+    image = QImage(320, 180, QImage.Format.Format_RGB32)
+    image.fill(Qt.GlobalColor.darkCyan)
 
     data = QByteArray()
     buffer = QBuffer(data)
-    buffer.open(QIODevice.WriteOnly)
+    buffer.open(QIODevice.OpenModeFlag.WriteOnly)
     image.save(buffer, "JPG")
 
     return bytes(data)
@@ -2383,7 +2405,9 @@ class TestWhatASiteSays:
         from PyQt5.QtCore import QLocale
 
         kept = QLocale()
-        QLocale.setDefault(QLocale(QLocale.English, QLocale.UnitedStates))
+        QLocale.setDefault(
+            QLocale(QLocale.Language.English, QLocale.Country.UnitedStates)
+        )
         yield
         QLocale.setDefault(kept)
 
@@ -2478,7 +2502,8 @@ def _near(dialog) -> list:
 
 def _scrolled_to(dialog, row):
     dialog._list.scrollTo(
-        dialog._model.index(row, Column.TITLE), QAbstractItemView.PositionAtTop
+        dialog._model.index(row, Column.TITLE),
+        QAbstractItemView.ScrollHint.PositionAtTop,
     )
 
 

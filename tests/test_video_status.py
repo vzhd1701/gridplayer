@@ -53,7 +53,7 @@ def _painted(status, width, height):
         else status._loading_rows()
     )
 
-    image = QImage(width, height, QImage.Format_ARGB32)
+    image = QImage(width, height, QImage.Format.Format_ARGB32)
     painter = QPainter(image)
     status._paint_rows(painter, rows)
     painter.end()
@@ -143,7 +143,7 @@ def _chain_at(monkeypatch, seconds) -> QImage:
     status.show_loading(LoadStage.LINK, "Resolving the link…")
     monkeypatch.setattr(status_module.time, "monotonic", lambda: seconds)
 
-    image = QImage(80, 80, QImage.Format_ARGB32)
+    image = QImage(80, 80, QImage.Format.Format_ARGB32)
     image.fill(0)
     painter = QPainter(image)
     status._row_glyph(painter, QRectF(0, 0, 80, 80))

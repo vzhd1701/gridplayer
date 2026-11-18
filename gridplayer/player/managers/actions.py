@@ -51,7 +51,7 @@ class QDynamicAction(QAction):
 
     def event(self, event):
         if (
-            event.type() == QEvent.Shortcut
+            event.type() == QEvent.Type.Shortcut
             and self.is_key_taken is not None
             and self.is_key_taken(event.key())
         ):
@@ -136,7 +136,7 @@ class QDynamicAction(QAction):
         proxy = QAction(self.icon(), self.text(), parent)
         proxy.setShortcuts(self.shortcuts())
         # Display the chord in the menu without registering a second window shortcut.
-        proxy.setShortcutContext(Qt.WidgetShortcut)
+        proxy.setShortcutContext(Qt.ShortcutContext.WidgetShortcut)
         proxy.setShortcutVisibleInContextMenu(True)
         proxy.setEnabled(self.is_enabled)
 
@@ -203,9 +203,9 @@ class ActionsManager(ManagerBase):
         so video-area binds are not double-fired.
         """
         return {
-            QEvent.MouseButtonRelease: self.handle_mouse_event,
-            QEvent.MouseButtonDblClick: self.handle_mouse_event,
-            QEvent.Wheel: self.handle_mouse_event,
+            QEvent.Type.MouseButtonRelease: self.handle_mouse_event,
+            QEvent.Type.MouseButtonDblClick: self.handle_mouse_event,
+            QEvent.Type.Wheel: self.handle_mouse_event,
         }
 
     def apply_bindings(self, overrides: KeymapOverrides | None = None):

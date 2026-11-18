@@ -64,7 +64,7 @@ from gridplayer.utils.bookmarks import (
     parse_bookmarks_txt,
     with_bookmark,
 )
-from gridplayer.utils.qt import detach_modal_dialog, translate
+from gridplayer.utils.qt import detach_modal_dialog, flag_value, translate
 from gridplayer.utils.time_txt import (
     get_time_txt,
     ms_time_txt,
@@ -129,15 +129,15 @@ DIALOG_MIN_SIZE = QSize(460, 360)
 
 # the name a bookmark goes by without one of its own, shown in the editor
 # for a name to be typed over
-DEFAULT_NAME_ROLE = Qt.UserRole
+DEFAULT_NAME_ROLE = Qt.ItemDataRole.UserRole
 
 # The list's keys, said in its menus; Enter goes to the current bookmark,
 # and Copy and Paste are the system's.
-RENAME_KEY = Qt.Key_F2
-EDIT_TIME_KEY = int(Qt.SHIFT) | Qt.Key_F2
-MOVE_HERE_KEY = int(Qt.CTRL) | Qt.Key_M
-REMOVE_KEY = Qt.Key_Delete
-ADD_KEY = Qt.Key_Insert
+RENAME_KEY = Qt.Key.Key_F2
+EDIT_TIME_KEY = flag_value(Qt.Modifier.SHIFT) | Qt.Key.Key_F2
+MOVE_HERE_KEY = flag_value(Qt.Modifier.CTRL) | Qt.Key.Key_M
+REMOVE_KEY = Qt.Key.Key_Delete
+ADD_KEY = Qt.Key.Key_Insert
 
 
 class Column(IntEnum):
@@ -149,11 +149,11 @@ def here_icon(color: QColor) -> QIcon:
     """A small play mark: the bookmark the video is at."""
 
     pixmap = QPixmap(24, 24)
-    pixmap.fill(Qt.transparent)
+    pixmap.fill(Qt.GlobalColor.transparent)
 
     painter = QPainter(pixmap)
-    painter.setRenderHint(QPainter.Antialiasing)
-    painter.setPen(Qt.NoPen)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    painter.setPen(Qt.PenStyle.NoPen)
     painter.setBrush(color)
     painter.drawPolygon(QPolygonF([QPointF(6, 3), QPointF(20, 12), QPointF(6, 21)]))
     painter.end()
@@ -165,7 +165,7 @@ def blank_icon() -> QIcon:
     """The room the play mark takes, kept in every row to line the times up."""
 
     pixmap = QPixmap(24, 24)
-    pixmap.fill(Qt.transparent)
+    pixmap.fill(Qt.GlobalColor.transparent)
 
     return QIcon(pixmap)
 
@@ -189,7 +189,7 @@ def held_end_action_txt(end_action: VideoEndAction) -> str:
 def with_key_txt(item_txt: str, key) -> str:
     """A menu item's text, the key for it to the right."""
 
-    key_txt = QKeySequence(key).toString(QKeySequence.NativeText)
+    key_txt = QKeySequence(key).toString(QKeySequence.SequenceFormat.NativeText)
 
     return f"{item_txt}\t{key_txt}"
 
@@ -220,8 +220,12 @@ def paint_empty_txt(view, painter, line_txt, hint_txt):
     line_rect.setBottom(rect.center().y() - 2)
 
     painter.setFont(line_font)
-    painter.setPen(view.palette().color(QPalette.Text))
-    painter.drawText(line_rect, Qt.AlignHCenter | Qt.AlignBottom, line_txt)
+    painter.setPen(view.palette().color(QPalette.ColorRole.Text))
+    painter.drawText(
+        line_rect,
+        Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom,
+        line_txt,
+    )
 
     hint_rect = rect.adjusted(40, 0, -40, 0)
     hint_rect.setTop(rect.center().y() + 4)
@@ -229,7 +233,11 @@ def paint_empty_txt(view, painter, line_txt, hint_txt):
     painter.setFont(view.font())
     painter.setPen(secondary_text_color())
     painter.drawText(
-        hint_rect, Qt.AlignHCenter | Qt.AlignTop | Qt.TextWordWrap, hint_txt
+        hint_rect,
+        Qt.AlignmentFlag.AlignHCenter
+        | Qt.AlignmentFlag.AlignTop
+        | Qt.TextFlag.TextWordWrap,
+        hint_txt,
     )
 
 
@@ -263,12 +271,16 @@ class BookmarksModel(QAbstractTableModel):
         self._marker_rim = QColor()
 
     def set_look(self, palette: QPalette, font: QFont):
-        text = palette.color(QPalette.Text)
+        text = palette.color(QPalette.ColorRole.Text)
 
         self._colors = {
-            "time": mixed_color(text, palette.color(QPalette.Base), TIME_FADE),
-            "unnamed": palette.color(QPalette.PlaceholderText),
-            "out_of_reach": palette.color(QPalette.Disabled, QPalette.Text),
+            "time": mixed_color(
+                text, palette.color(QPalette.ColorRole.Base), TIME_FADE
+            ),
+            "unnamed": palette.color(QPalette.ColorRole.PlaceholderText),
+            "out_of_reach": palette.color(
+                QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text
+            ),
         }
 
         self._here_icon = here_icon(text)
@@ -302,7 +314,7 @@ class BookmarksModel(QAbstractTableModel):
         for row in rows:
             if row < self.rowCount():
                 index = self.index(row, Column.TIME)
-                self.dataChanged.emit(index, index, [Qt.DecorationRole])
+                self.dataChanged.emit(index, index, [Qt.ItemDataRole.DecorationRole])
 
     def rowCount(self, parent=QModelIndex()):  # noqa: B008
         if parent.isValid():
@@ -317,9 +329,13 @@ class BookmarksModel(QAbstractTableModel):
         return len(Column)
 
     def flags(self, index):
-        return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable
+        return (
+            Qt.ItemFlag.ItemIsEnabled
+            | Qt.ItemFlag.ItemIsSelectable
+            | Qt.ItemFlag.ItemIsEditable
+        )
 
-    def data(self, index, role=Qt.DisplayRole):
+    def data(self, index, role=Qt.ItemDataRole.DisplayRole):
         bookmarks = self._block.bookmarks
 
         if not index.isValid() or index.row() >= len(bookmarks):
@@ -329,31 +345,31 @@ class BookmarksModel(QAbstractTableModel):
         bookmark = bookmarks[row]
         is_time = index.column() == Column.TIME
 
-        if role in {Qt.DisplayRole, Qt.EditRole} and is_time:
+        if role in {Qt.ItemDataRole.DisplayRole, Qt.ItemDataRole.EditRole} and is_time:
             return ms_time_txt(bookmark.time_ms, self.length)
 
-        if role == Qt.DisplayRole:
+        if role == Qt.ItemDataRole.DisplayRole:
             return bookmark.name or default_bookmark_name(row)
 
-        if role == Qt.EditRole:
+        if role == Qt.ItemDataRole.EditRole:
             return bookmark.name or ""
 
         if role == DEFAULT_NAME_ROLE:
             return default_bookmark_name(row)
 
-        if role == Qt.DecorationRole and is_time:
+        if role == Qt.ItemDataRole.DecorationRole and is_time:
             return self._here_icon if row == self._here else self._blank_icon
 
-        if role == Qt.DecorationRole:
+        if role == Qt.ItemDataRole.DecorationRole:
             return self._marker_icon(bookmark.color)
 
-        if role == Qt.ForegroundRole:
+        if role == Qt.ItemDataRole.ForegroundRole:
             return self._foreground(row, bookmark, is_time)
 
-        if role == Qt.FontRole and not is_time and not bookmark.name:
+        if role == Qt.ItemDataRole.FontRole and not is_time and not bookmark.name:
             return self._unnamed_font
 
-        if role == Qt.ToolTipRole:
+        if role == Qt.ItemDataRole.ToolTipRole:
             return self._out_of_reach_txt(row, bookmark)
 
         return None
@@ -368,8 +384,8 @@ class BookmarksModel(QAbstractTableModel):
 
         return self._marker_icons[color]
 
-    def setData(self, index, value, role=Qt.EditRole):
-        if role != Qt.EditRole or not index.isValid():
+    def setData(self, index, value, role=Qt.ItemDataRole.EditRole):
+        if role != Qt.ItemDataRole.EditRole or not index.isValid():
             return False
 
         if index.column() == Column.NAME:
@@ -454,11 +470,11 @@ class BookmarkList(QTreeView):
         self.setUniformRowHeights(True)
         self.setHeaderHidden(True)
         self.setAllColumnsShowFocus(True)
-        self.setSelectionMode(QAbstractItemView.ExtendedSelection)
-        self.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.setEditTriggers(QAbstractItemView.SelectedClicked)
+        self.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.setEditTriggers(QAbstractItemView.EditTrigger.SelectedClicked)
         self.setIconSize(QSize(HERE_ICON_PX, HERE_ICON_PX))
-        self.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
+        self.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
         self.setItemDelegate(_EditDelegate(self))
 
         self.setStyleSheet(
@@ -479,7 +495,7 @@ class BookmarkList(QTreeView):
         self.edges = ()
 
     def keyPressEvent(self, event):
-        if self.state() == QAbstractItemView.EditingState:
+        if self.state() == QAbstractItemView.State.EditingState:
             super().keyPressEvent(event)
             return
 
@@ -494,15 +510,15 @@ class BookmarkList(QTreeView):
 
     def _signal_for_key(self, event):
         # (the view's own copies the current cell's text)
-        if event.matches(QKeySequence.Copy):
+        if event.matches(QKeySequence.StandardKey.Copy):
             return self.copy_requested
 
-        if event.matches(QKeySequence.Paste):
+        if event.matches(QKeySequence.StandardKey.Paste):
             return self.paste_requested
 
-        modifiers = int(event.modifiers() & ~Qt.KeypadModifier)
+        modifiers = flag_value(event.modifiers() & ~Qt.KeyboardModifier.KeypadModifier)
 
-        if event.key() in {Qt.Key_Return, Qt.Key_Enter} and not modifiers:
+        if event.key() in {Qt.Key.Key_Return, Qt.Key.Key_Enter} and not modifiers:
             return self.jump_requested
 
         return {
@@ -511,12 +527,12 @@ class BookmarkList(QTreeView):
             MOVE_HERE_KEY: self.move_here_requested,
             REMOVE_KEY: self.remove_requested,
             ADD_KEY: self.add_requested,
-            Qt.Key_Space: self.play_pause_requested,
+            Qt.Key.Key_Space: self.play_pause_requested,
         }.get(modifiers | event.key())
 
     def contextMenuEvent(self, event):
         # from the keyboard, for the current row, under it
-        if event.reason() == QContextMenuEvent.Keyboard:
+        if event.reason() == QContextMenuEvent.Reason.Keyboard:
             index = self.currentIndex()
             pos = self.visualRect(index).bottomLeft() if index.isValid() else QPoint()
         else:
@@ -572,9 +588,9 @@ class BookmarkList(QTreeView):
             tag = QRectF(width - tag_width - 6, tag_top, tag_width, metrics.height())
 
             painter.fillRect(QRectF(0, y - 0.5, width, 1), color)
-            painter.fillRect(tag, self.palette().color(QPalette.Base))
+            painter.fillRect(tag, self.palette().color(QPalette.ColorRole.Base))
             painter.setPen(color)
-            painter.drawText(tag, Qt.AlignCenter, edge_txt)
+            painter.drawText(tag, Qt.AlignmentFlag.AlignCenter, edge_txt)
 
 
 class _Markers(OverlayBookmarkMarkers):
@@ -592,7 +608,7 @@ class _Markers(OverlayBookmarkMarkers):
         self.update()
 
     def _paint_markers(self, painter):
-        painter.setRenderHint(QPainter.Antialiasing, True)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
         picked = []
 
@@ -740,7 +756,7 @@ class BookmarksDialog(QDialog):
 
         self._glide_timer = QTimer(self)
         self._glide_timer.setInterval(GLIDE_INTERVAL_MS)
-        self._glide_timer.setTimerType(Qt.PreciseTimer)
+        self._glide_timer.setTimerType(Qt.TimerType.PreciseTimer)
         self._glide_timer.timeout.connect(self._glide)
 
         self._ui_setup()
@@ -781,7 +797,7 @@ class BookmarksDialog(QDialog):
 
         header = self._list.header()
         header.setStretchLastSection(True)
-        header.setSectionResizeMode(Column.TIME, QHeaderView.Fixed)
+        header.setSectionResizeMode(Column.TIME, QHeaderView.ResizeMode.Fixed)
 
         # the count, or what was just done, wrapped onto a line more if long
         self._hint = QLabel()
@@ -815,7 +831,9 @@ class BookmarksDialog(QDialog):
             "bookmark-remove-all", translate("Dialog - Bookmarks", "Remove All")
         )
 
-        self._buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self._buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
 
         tools = QHBoxLayout()
         tools.setSpacing(6)
@@ -874,8 +892,8 @@ class BookmarksDialog(QDialog):
 
         # edits are made once the editor they came from is closed: made at
         # once, they would take the rows from under it
-        self._model.renamed.connect(self._rename, Qt.QueuedConnection)
-        self._model.retimed.connect(self._retime, Qt.QueuedConnection)
+        self._model.renamed.connect(self._rename, Qt.ConnectionType.QueuedConnection)
+        self._model.retimed.connect(self._retime, Qt.ConnectionType.QueuedConnection)
 
         self._list.selectionModel().selectionChanged.connect(self._on_pick)
         self._list.selectionModel().currentChanged.connect(self._on_pick)
@@ -926,8 +944,8 @@ class BookmarksDialog(QDialog):
 
         # (one may come while the dialog is still being put together)
         if self._is_set_up and event.type() in {
-            QEvent.PaletteChange,
-            QEvent.FontChange,
+            QEvent.Type.PaletteChange,
+            QEvent.Type.FontChange,
         }:
             self._update_look()
 
@@ -1067,8 +1085,8 @@ class BookmarksDialog(QDialog):
 
         self._player.set_color(
             mixed_color(
-                palette.color(QPalette.Window),
-                palette.color(QPalette.WindowText),
+                palette.color(QPalette.ColorRole.Window),
+                palette.color(QPalette.ColorRole.WindowText),
                 BAR_TINT,
             )
         )
@@ -1152,10 +1170,12 @@ class BookmarksDialog(QDialog):
 
         loop_color = QColor(
             LOOP_EDGE_COLOR_DARK
-            if self.palette().color(QPalette.Base).lightness() < 128
+            if self.palette().color(QPalette.ColorRole.Base).lightness() < 128
             else LOOP_EDGE_COLOR_LIGHT
         )
-        end_color = self.palette().color(QPalette.Disabled, QPalette.Text)
+        end_color = self.palette().color(
+            QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text
+        )
 
         def time_txt(time_ms):
             return get_time_txt(time_ms // 1000, length // 1000)
@@ -1240,13 +1260,13 @@ class BookmarksDialog(QDialog):
             current = rows[0]
 
         selection.setCurrentIndex(
-            self._model.index(current, Column.NAME), selection.NoUpdate
+            self._model.index(current, Column.NAME), selection.SelectionFlag.NoUpdate
         )
 
         for row in rows:
             selection.select(
                 self._model.index(row, Column.TIME),
-                selection.Select | selection.Rows,
+                selection.SelectionFlag.Select | selection.SelectionFlag.Rows,
             )
 
         self._list.scrollTo(self._model.index(current, Column.TIME))
@@ -1395,7 +1415,7 @@ class BookmarksDialog(QDialog):
 
         return text_marker_html(
             color,
-            tip.palette().color(QPalette.ToolTipText),
+            tip.palette().color(QPalette.ColorRole.ToolTipText),
             math.ceil(tip.devicePixelRatioF()),
         )
 
@@ -1522,7 +1542,7 @@ class BookmarksDialog(QDialog):
             return
 
         # left as it was shown, it stays where it is
-        shown_txt = self._model.index(row, Column.TIME).data(Qt.EditRole)
+        shown_txt = self._model.index(row, Column.TIME).data(Qt.ItemDataRole.EditRole)
         if time_txt.strip() == shown_txt:
             return
 
@@ -1695,7 +1715,7 @@ class BookmarksDialog(QDialog):
 
         jump = menu.addAction(
             QIcon.fromTheme("jump-to"),
-            with_key_txt(translate("Actions", "Jump to Bookmark"), Qt.Key_Enter),
+            with_key_txt(translate("Actions", "Jump to Bookmark"), Qt.Key.Key_Enter),
         )
         jump.setEnabled(self._block.bookmarker.is_reachable_at(row))
         jump.triggered.connect(lambda _=False: self._jump())
@@ -1739,7 +1759,9 @@ class BookmarksDialog(QDialog):
 
         copy = menu.addAction(
             QIcon.fromTheme("copy"),
-            with_key_txt(translate("Dialog - Bookmarks", "Copy"), QKeySequence.Copy),
+            with_key_txt(
+                translate("Dialog - Bookmarks", "Copy"), QKeySequence.StandardKey.Copy
+            ),
         )
         copy.setEnabled(bool(self._picked_rows()))
         copy.triggered.connect(lambda _=False: self._copy())
@@ -1759,7 +1781,7 @@ class BookmarksDialog(QDialog):
         )
         remove.triggered.connect(lambda _=False: self._remove())
 
-        menu.exec_(global_pos)
+        menu.exec(global_pos)
         menu.deleteLater()
 
     def _show_list_menu(self, global_pos):
@@ -1795,7 +1817,9 @@ class BookmarksDialog(QDialog):
 
         paste = menu.addAction(
             QIcon.fromTheme("paste"),
-            with_key_txt(translate("Dialog - Bookmarks", "Paste"), QKeySequence.Paste),
+            with_key_txt(
+                translate("Dialog - Bookmarks", "Paste"), QKeySequence.StandardKey.Paste
+            ),
         )
         paste.setEnabled(bool(self._pasted()))
         paste.triggered.connect(lambda _=False: self._paste())
@@ -1809,7 +1833,7 @@ class BookmarksDialog(QDialog):
         remove_all.setEnabled(has_any)
         remove_all.triggered.connect(lambda _=False: self._remove_all())
 
-        menu.exec_(global_pos)
+        menu.exec(global_pos)
         menu.deleteLater()
 
 

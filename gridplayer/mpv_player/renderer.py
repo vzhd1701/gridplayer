@@ -949,8 +949,10 @@ class MpvRenderService(QObject):
             is_software=is_software,
             parent=self,
         )
-        renderer.frames_ready.connect(self._on_frames_ready, Qt.QueuedConnection)
-        renderer.failed.connect(self._on_failed, Qt.QueuedConnection)
+        renderer.frames_ready.connect(
+            self._on_frames_ready, Qt.ConnectionType.QueuedConnection
+        )
+        renderer.failed.connect(self._on_failed, Qt.ConnectionType.QueuedConnection)
         renderer.start()
 
         return renderer
@@ -1006,7 +1008,9 @@ class MpvRenderService(QObject):
         self._keep_alive(player)
         self._own_window_players.add(player)
 
-        player.output_due.connect(self._queue_output, Qt.QueuedConnection)
+        player.output_due.connect(
+            self._queue_output, Qt.ConnectionType.QueuedConnection
+        )
 
     def _queue_output(self, player) -> None:
         # closed as it came
@@ -1063,7 +1067,10 @@ class MpvRenderService(QObject):
                 ]
             for signal in signals:
                 self._turn_signals.append(
-                    (signal, signal.connect(on_started, Qt.QueuedConnection))
+                    (
+                        signal,
+                        signal.connect(on_started, Qt.ConnectionType.QueuedConnection),
+                    )
                 )
 
             if player.let_output_start():
@@ -1124,7 +1131,9 @@ class MpvRenderService(QObject):
 
     def _keep_alive(self, player) -> None:
         self._players_alive[player] = None
-        player.terminated.connect(self._forget_player, Qt.QueuedConnection)
+        player.terminated.connect(
+            self._forget_player, Qt.ConnectionType.QueuedConnection
+        )
 
     def _forget_player(self, player) -> None:
         window = self._players_alive.pop(player, None)
@@ -1210,7 +1219,7 @@ class MpvRenderService(QObject):
 
         QTimer.singleShot(
             int(max(0.0, self._frame_interval_ms() - elapsed_ms)),
-            Qt.PreciseTimer,
+            Qt.TimerType.PreciseTimer,
             self._present,
         )
 

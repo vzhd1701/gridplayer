@@ -54,7 +54,7 @@ class SetAudioDelayDialog(QDialog):
         self.spinbox.setRange(MIN_AUDIO_DELAY_MS, MAX_AUDIO_DELAY_MS)
         self.spinbox.setSingleStep(AUDIO_DELAY_STEP_MS)
         self.spinbox.setSuffix(" {}".format(translate("Audio Delay", "ms")))
-        self.spinbox.setAlignment(Qt.AlignRight)
+        self.spinbox.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.spinbox.setValue(delay_ms)
         self.spinbox.valueChanged.connect(self._on_value_changed)
 
@@ -66,7 +66,9 @@ class SetAudioDelayDialog(QDialog):
         reset.clicked.connect(self._on_reset)
 
         buttons = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel, Qt.Horizontal, self
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
+            Qt.Orientation.Horizontal,
+            self,
         )
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
@@ -99,7 +101,7 @@ class SetAudioDelayDialog(QDialog):
 
         dialog = cls(delay_ms=delay_ms, parent=parent)
 
-        return dialog.spinbox.value() if dialog.exec_() else None
+        return dialog.spinbox.value() if dialog.exec() else None
 
     def accept(self):
         if self._block is not None:

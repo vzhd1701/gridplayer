@@ -33,7 +33,7 @@ class _CropPreview(QWidget):
         super().__init__(parent)
 
         self.setMinimumHeight(150)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
         self._frame_w = 0
         self._frame_h = 0
@@ -47,7 +47,7 @@ class _CropPreview(QWidget):
 
     def paintEvent(self, _event):
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         if self._frame_w and self._frame_h:
             self._paint_frame(painter)
@@ -79,7 +79,7 @@ class _CropPreview(QWidget):
         top_px = min(self._top * scale, frame_h)
         bottom_px = min(self._bottom * scale, frame_h)
 
-        painter.setPen(Qt.NoPen)
+        painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(QColor(0, 0, 0, 130))
         if left_px > 0:
             painter.drawRect(QRectF(x0, y0, left_px, frame_h))
@@ -98,7 +98,7 @@ class _CropPreview(QWidget):
 
         if active_w > 0 and active_h > 0:
             painter.setPen(QPen(self.palette().highlight(), 2))
-            painter.setBrush(Qt.NoBrush)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.drawRect(QRectF(active_x, active_y, active_w, active_h))
 
 
@@ -165,7 +165,7 @@ class SetCropDialog(QDialog):
             spin = QSpinBox()
             spin.setRange(0, dimension or _DIMENSION_FALLBACK)
             spin.setValue(getattr(crop, name.capitalize()))
-            spin.setAlignment(Qt.AlignRight)
+            spin.setAlignment(Qt.AlignmentFlag.AlignRight)
             spin.valueChanged.connect(self._on_value_changed)
 
             grid.addWidget(label, row, col * 2)
@@ -177,18 +177,20 @@ class SetCropDialog(QDialog):
         grid.setColumnStretch(3, 1)
 
         self._size_label = QLabel()
-        self._size_label.setAlignment(Qt.AlignCenter)
+        self._size_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         size_font = self._size_label.font()
         size_font.setBold(True)
         self._size_label.setFont(size_font)
 
         self._area_label = QLabel()
-        self._area_label.setAlignment(Qt.AlignCenter)
+        self._area_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         reset = QPushButton(translate("Dialog - Set Crop", "Reset"))
         reset.clicked.connect(self._on_reset)
 
-        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
 
@@ -241,7 +243,7 @@ class SetCropDialog(QDialog):
     def get_crop(cls, crop=_ZERO_CROP, parent=None):
         """Value mode: returns the edited crop, or None on cancel."""
         dialog = cls(crop=crop, parent=parent)
-        return dialog._spin_crop() if dialog.exec_() else None
+        return dialog._spin_crop() if dialog.exec() else None
 
     def accept(self):
         if self._block is not None:
@@ -404,7 +406,7 @@ class QCompactCropPicker(QWidget):
 
     def changeEvent(self, event):
         super().changeEvent(event)
-        if event.type() == QEvent.PaletteChange:
+        if event.type() == QEvent.Type.PaletteChange:
             self._update_arrow_icons()
 
     def _update_arrow_icons(self):
@@ -415,12 +417,12 @@ class QCompactCropPicker(QWidget):
         color = QColor(self.palette().color(self.foregroundRole()))
 
         pixmap = QPixmap(size, size)
-        pixmap.fill(Qt.transparent)
+        pixmap.fill(Qt.GlobalColor.transparent)
 
         painter = QPainter(pixmap)
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setBrush(color)
-        painter.setPen(Qt.NoPen)
+        painter.setPen(Qt.PenStyle.NoPen)
 
         if direction == "left":
             points = [

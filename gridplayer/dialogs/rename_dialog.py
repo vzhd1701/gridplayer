@@ -27,8 +27,9 @@ class QVideoRenameDialog(QtWidgets.QDialog):
 
     def init_buttons(self):
         buttons = QtWidgets.QDialogButtonBox(
-            QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel,
-            Qt.Horizontal,
+            QtWidgets.QDialogButtonBox.StandardButton.Ok
+            | QtWidgets.QDialogButtonBox.StandardButton.Cancel,
+            Qt.Orientation.Horizontal,
             self,
         )
         buttons.accepted.connect(self.accept)
@@ -38,7 +39,7 @@ class QVideoRenameDialog(QtWidgets.QDialog):
 
     def ui_setup(self):
         main_layout = QtWidgets.QVBoxLayout(self)
-        main_layout.setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
+        main_layout.setSizeConstraint(QtWidgets.QLayout.SizeConstraint.SetFixedSize)
 
         input_line = QtWidgets.QHBoxLayout()
         input_line.addWidget(self.title)
@@ -69,7 +70,7 @@ class QVideoRenameDialog(QtWidgets.QDialog):
 
         if dialog.exec():
             new_title = dialog.title.text().strip() or cur_title
-            new_color = dialog.palette.color.name(QColor.HexRgb)
+            new_color = dialog.palette.color.name(QColor.NameFormat.HexRgb)
             return new_title, new_color
 
         return None

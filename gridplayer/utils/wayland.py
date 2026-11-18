@@ -61,7 +61,7 @@ def refresh_window_frames() -> None:
             continue
 
         flags = window.flags()
-        window.setFlags(flags | Qt.FramelessWindowHint)
+        window.setFlags(flags | Qt.WindowType.FramelessWindowHint)
         window.setFlags(flags)
 
 
@@ -69,7 +69,7 @@ def _has_client_frame(window) -> bool:
     if not window.isVisible():
         return False
 
-    if window.flags() & Qt.FramelessWindowHint:
+    if window.flags() & Qt.WindowType.FramelessWindowHint:
         return False
 
     # a frame the compositor draws (KDE), or none at all (fullscreen),

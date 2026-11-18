@@ -56,19 +56,23 @@ def _mouse(d, kind, point: QPoint):
         QApplication.sendEvent(
             editor,
             QMouseEvent(
-                QEvent.MouseMove,
+                QEvent.Type.MouseMove,
                 QPointF(point),
-                Qt.NoButton,
-                Qt.NoButton,
-                Qt.NoModifier,
+                Qt.MouseButton.NoButton,
+                Qt.MouseButton.NoButton,
+                Qt.KeyboardModifier.NoModifier,
             ),
         )
     elif kind == "move":
         QTest.mouseMove(window, point)
     elif kind == "press":
-        QTest.mousePress(window, Qt.LeftButton, Qt.NoModifier, point)
+        QTest.mousePress(
+            window, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, point
+        )
     else:
-        QTest.mouseRelease(window, Qt.LeftButton, Qt.NoModifier, point)
+        QTest.mouseRelease(
+            window, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, point
+        )
     d.pump(0.05)
 
 
@@ -86,20 +90,24 @@ def _shift_drag(d, start: QPoint, end: QPoint):
     """A drag with Shift held, the key that switches a drop."""
 
     editor = _editor(d)
-    QTest.mousePress(editor, Qt.LeftButton, Qt.ShiftModifier, start)
+    QTest.mousePress(
+        editor, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.ShiftModifier, start
+    )
     for step in range(1, 9):
         QApplication.sendEvent(
             editor,
             QMouseEvent(
-                QEvent.MouseMove,
+                QEvent.Type.MouseMove,
                 QPointF(start + (end - start) * step / 8),
-                Qt.NoButton,
-                Qt.LeftButton,
-                Qt.ShiftModifier,
+                Qt.MouseButton.NoButton,
+                Qt.MouseButton.LeftButton,
+                Qt.KeyboardModifier.ShiftModifier,
             ),
         )
         d.pump(0.02)
-    QTest.mouseRelease(editor, Qt.LeftButton, Qt.ShiftModifier, end)
+    QTest.mouseRelease(
+        editor, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.ShiftModifier, end
+    )
     d.pump(0.3)
 
 
@@ -110,7 +118,7 @@ def _click(d, point: QPoint):
     d.pump(0.2)
 
 
-def _key(d, key, modifiers=Qt.NoModifier):
+def _key(d, key, modifiers=Qt.KeyboardModifier.NoModifier):
     QTest.keyClick(_editor(d), key, modifiers)
     d.pump(0.05)
 
@@ -177,10 +185,10 @@ def scenario(d):
     _click(d, QPoint(120, 70))
     d.check("a picked by a click", editor.picked() == a, editor.picked())
     for _ in range(3):
-        _key(d, Qt.Key_Right)
-    _key(d, Qt.Key_Down, Qt.ShiftModifier)
+        _key(d, Qt.Key.Key_Right)
+    _key(d, Qt.Key.Key_Down, Qt.KeyboardModifier.ShiftModifier)
     d.check("a nudged", _near(_rects(d)["a.mp4"], (23, 30, 223, 130)), _rects(d))
-    _key(d, Qt.Key_Right, Qt.ControlModifier)
+    _key(d, Qt.Key.Key_Right, Qt.KeyboardModifier.ControlModifier)
     d.check("its right edge, with Ctrl", _near(_rects(d)["a.mp4"], (23, 30, 224, 130)))
     d.pump(NUDGE_MS / 1000 + 0.3)
     editor._action_buttons["undo"].click()
@@ -189,7 +197,7 @@ def scenario(d):
 
     # Tab: b, the next as they are read
     _click(d, QPoint(120, 70))
-    _key(d, Qt.Key_Tab)
+    _key(d, Qt.Key.Key_Tab)
     d.check("Tab picks b", editor.picked() == b, editor.picked())
 
     # b's lock, under its name
@@ -240,7 +248,11 @@ def scenario(d):
     d.shot("3c_window_resize_popup", widget=editor._popup)
     choice.setCurrentIndex(choice.findData(TileResize.KEEP))
     d.check("set to Keep Tile Sizes", d.ctx.commands.tile_resize() == TileResize.KEEP)
-    QTest.keyClick(editor._popup, Qt.Key_R, Qt.ControlModifier | Qt.AltModifier)
+    QTest.keyClick(
+        editor._popup,
+        Qt.Key.Key_R,
+        Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.AltModifier,
+    )
     d.pump(0.3)
     d.check("its key set it back", d.ctx.commands.tile_resize() == TileResize.FIT)
     d.check(
@@ -272,14 +284,22 @@ def scenario(d):
     switch = editor._popup.findChild(Switch)
     is_on = d.ctx.commands.is_grid_line_snap()
     d.check("Snap Tiles as it is", switch.isChecked() == is_on)
-    QTest.keyClick(editor._popup, Qt.Key_S, Qt.ControlModifier | Qt.AltModifier)
+    QTest.keyClick(
+        editor._popup,
+        Qt.Key.Key_S,
+        Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.AltModifier,
+    )
     d.pump(0.3)
     d.check("its key turned it", d.ctx.commands.is_grid_line_snap() != is_on)
     d.check("the switch with it", switch.isChecked() != is_on)
     d.check("Snap To still up", editor._popup is not None)
     editor._popup.close()
     d.pump(0.5)
-    _key(d, Qt.Key_S, Qt.ControlModifier | Qt.AltModifier)
+    _key(
+        d,
+        Qt.Key.Key_S,
+        Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.AltModifier,
+    )
     d.check("and in the editor", d.ctx.commands.is_grid_line_snap() == is_on)
     d.ctx.actions["Snap Lines"].setShortcuts([])
 
@@ -298,7 +318,7 @@ def scenario(d):
     # Delete closes the picked one, Reopen opens it again
     _click(d, QPoint(380, 70))
     d.check("b picked", editor.picked() == b, editor.picked())
-    _key(d, Qt.Key_Delete)
+    _key(d, Qt.Key.Key_Delete)
     d.wait_until(lambda: len(d.cells) == 2, "b closed")
     d.check("reopen on", editor._action_buttons["reopen"].isEnabled())
     editor._action_buttons["reopen"].click()
@@ -316,7 +336,7 @@ def scenario(d):
 
     # a player's own key: Space plays and pauses
     paused = [cell.video_params.is_paused for cell in d.cells]
-    _key(d, Qt.Key_Space)
+    _key(d, Qt.Key.Key_Space)
     d.pump(0.5)
     d.note(
         {"paused before": paused, "after": [c.video_params.is_paused for c in d.cells]}
@@ -325,11 +345,11 @@ def scenario(d):
         "Space still the player's",
         [c.video_params.is_paused for c in d.cells] != paused,
     )
-    _key(d, Qt.Key_Space)
+    _key(d, Qt.Key.Key_Space)
     d.pump(0.3)
 
     # Esc: done
-    _key(d, Qt.Key_Escape)
+    _key(d, Qt.Key.Key_Escape)
     d.pump(0.3)
     d.check("the editor gone", _editor(d) is None)
     d.check("overlays back", not d.ctx.is_disable_overlay)
@@ -404,7 +424,7 @@ def scenario(d):
     d.pump(0.3)
     d.check("Fit Shapes: Free Tiles", d.ctx.commands.is_grid_free())
     d.check("its tiles edited", _editor(d) is not None)
-    _key(d, Qt.Key_Escape)
+    _key(d, Qt.Key.Key_Escape)
     d.ctx.commands.set_grid_mode(GridMode.AUTO_ROWS)
     d.pump(0.3)
     d.act(d.cells[0], "Edit Grid")

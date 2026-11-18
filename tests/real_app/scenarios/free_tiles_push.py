@@ -42,7 +42,7 @@ def _shape(rect) -> float:
 
 
 def scenario(d):
-    QDrag.exec = lambda _drag, *_args: Qt.IgnoreAction
+    QDrag.exec = lambda _drag, *_args: Qt.DropAction.IgnoreAction
 
     d.player.resize(WIDTH, HEIGHT)
     d.pump(0.3)
@@ -92,7 +92,7 @@ def scenario(d):
     undo = d.player._managers_inst["grid"]._undo
     undone = len(undo)
     _mouse(d, "move", _at(d, 220, 70))
-    QTest.keyClick(d.player.windowHandle(), Qt.Key_Escape)
+    QTest.keyClick(d.player.windowHandle(), Qt.Key.Key_Escape)
     d.pump(0.2)
     _mouse(d, "release", _at(d, 220, 70))
     d.pump(0.2)

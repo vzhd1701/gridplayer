@@ -106,7 +106,11 @@ def test_mouse_sequence_rejects_bad_input():
         MouseButtonSequence("Ctrl+NotAButton")
 
 
-def _mouse_event(event_type, button=Qt.LeftButton, modifiers=Qt.NoModifier):
+def _mouse_event(
+    event_type,
+    button=Qt.MouseButton.LeftButton,
+    modifiers=Qt.KeyboardModifier.NoModifier,
+):
     return QMouseEvent(
         event_type,
         QPoint(0, 0),
@@ -116,7 +120,7 @@ def _mouse_event(event_type, button=Qt.LeftButton, modifiers=Qt.NoModifier):
     )
 
 
-def _wheel_event(dx=0, dy=0, modifiers=Qt.NoModifier):
+def _wheel_event(dx=0, dy=0, modifiers=Qt.KeyboardModifier.NoModifier):
     # PyQt5 QWheelEvent constructor variants differ; use the common form
     return QWheelEvent(
         QPoint(0, 0),
@@ -124,20 +128,28 @@ def _wheel_event(dx=0, dy=0, modifiers=Qt.NoModifier):
         QPoint(0, 0),
         QPoint(dx, dy),
         0,
-        Qt.Vertical if dy else Qt.Horizontal,
-        Qt.NoButton,
+        Qt.Orientation.Vertical if dy else Qt.Orientation.Horizontal,
+        Qt.MouseButton.NoButton,
         modifiers,
     )
 
 
 def test_mouse_sequence_from_press_release_and_double():
-    press = _mouse_event(QEvent.MouseButtonPress, Qt.LeftButton)
+    press = _mouse_event(QEvent.Type.MouseButtonPress, Qt.MouseButton.LeftButton)
     assert str(MouseButtonSequence.from_event(press)) == "Click"
 
-    release = _mouse_event(QEvent.MouseButtonRelease, Qt.MiddleButton, Qt.ShiftModifier)
+    release = _mouse_event(
+        QEvent.Type.MouseButtonRelease,
+        Qt.MouseButton.MiddleButton,
+        Qt.KeyboardModifier.ShiftModifier,
+    )
     assert str(MouseButtonSequence.from_event(release)) == "Shift+Middle-Click"
 
-    dbl = _mouse_event(QEvent.MouseButtonDblClick, Qt.LeftButton, Qt.ControlModifier)
+    dbl = _mouse_event(
+        QEvent.Type.MouseButtonDblClick,
+        Qt.MouseButton.LeftButton,
+        Qt.KeyboardModifier.ControlModifier,
+    )
     assert str(MouseButtonSequence.from_event(dbl)) == "Ctrl+Double Click"
 
 
@@ -147,10 +159,10 @@ def test_mouse_sequence_from_wheel_directions():
     assert str(MouseButtonSequence.from_event(_wheel_event(dx=120))) == "Wheel-Left"
     assert str(MouseButtonSequence.from_event(_wheel_event(dx=-120))) == "Wheel-Right"
 
-    shift_up = _wheel_event(dy=120, modifiers=Qt.ShiftModifier)
+    shift_up = _wheel_event(dy=120, modifiers=Qt.KeyboardModifier.ShiftModifier)
     assert str(MouseButtonSequence.from_event(shift_up)) == "Shift+Wheel-Up"
 
-    ctrl_down = _wheel_event(dy=-120, modifiers=Qt.ControlModifier)
+    ctrl_down = _wheel_event(dy=-120, modifiers=Qt.KeyboardModifier.ControlModifier)
     assert str(MouseButtonSequence.from_event(ctrl_down)) == "Ctrl+Wheel-Down"
 
 
@@ -159,12 +171,14 @@ def test_mouse_sequence_from_event_errors():
     with pytest.raises(ValueError, match="Empty wheel"):
         MouseButtonSequence.from_event(empty_wheel)
 
-    key_ev = QKeyEvent(QEvent.KeyPress, Qt.Key_A, Qt.NoModifier)
+    key_ev = QKeyEvent(
+        QEvent.Type.KeyPress, Qt.Key.Key_A, Qt.KeyboardModifier.NoModifier
+    )
     with pytest.raises(ValueError, match="Unsupported"):
         MouseButtonSequence.from_event(key_ev)
 
     # Unknown mouse button not in click_map
-    bad = _mouse_event(QEvent.MouseButtonPress, Qt.MouseButton(0))
+    bad = _mouse_event(QEvent.Type.MouseButtonPress, Qt.MouseButton(0))
     with pytest.raises(ValueError, match="Bad mouse"):
         MouseButtonSequence.from_event(bad)
 
@@ -218,8 +232,8 @@ def test_enter_and_return_are_one_logical_shortcut():
     seqs = qkeysequences_for_shortcut("Enter")
     codes = {int(s[0]) for s in seqs}
     assert codes == {
-        int(QKeySequence("Return", QKeySequence.PortableText)[0]),
-        int(QKeySequence("Enter", QKeySequence.PortableText)[0]),
+        int(QKeySequence("Return", QKeySequence.SequenceFormat.PortableText)[0]),
+        int(QKeySequence("Enter", QKeySequence.SequenceFormat.PortableText)[0]),
     }
 
     assert len(qkeysequences_for_shortcut("Ctrl+Enter")) == 2
@@ -254,7 +268,7 @@ def test_qkeysequences_skips_empty_count_and_duplicate_codes(monkeypatch):
     real_qks = keymap_mod.QKeySequence
 
     class _FakeQKeySequence:
-        PortableText = real_qks.PortableText
+        SequenceFormat = real_qks.SequenceFormat
 
         def __new__(cls, *args, **kwargs):
             return cls._queue.pop(0)
@@ -286,7 +300,7 @@ def test_convert_button_requires_button_or_wheel():
             button=None,
             is_double=False,
             wheel_direction=None,
-            modifiers=Qt.NoModifier,
+            modifiers=Qt.KeyboardModifier.NoModifier,
         )
 
 
@@ -297,21 +311,25 @@ def test_normalize_key_sequence_and_from_event():
 
     # Modifier-only → incomplete
     for key in (
-        Qt.Key_Control,
-        Qt.Key_Shift,
-        Qt.Key_Alt,
-        Qt.Key_Meta,
-        Qt.Key_AltGr,
-        Qt.Key_unknown,
+        Qt.Key.Key_Control,
+        Qt.Key.Key_Shift,
+        Qt.Key.Key_Alt,
+        Qt.Key.Key_Meta,
+        Qt.Key.Key_AltGr,
+        Qt.Key.Key_unknown,
     ):
-        ev = QKeyEvent(QEvent.KeyPress, key, Qt.NoModifier)
+        ev = QKeyEvent(QEvent.Type.KeyPress, key, Qt.KeyboardModifier.NoModifier)
         assert key_sequence_from_event(ev) is None
 
-    letter = QKeyEvent(QEvent.KeyPress, Qt.Key_A, Qt.ControlModifier)
+    letter = QKeyEvent(
+        QEvent.Type.KeyPress, Qt.Key.Key_A, Qt.KeyboardModifier.ControlModifier
+    )
     assert key_sequence_from_event(letter) == "Ctrl+A"
 
     # Shift+Tab often arrives as Backtab
-    backtab = QKeyEvent(QEvent.KeyPress, Qt.Key_Backtab, Qt.ShiftModifier)
+    backtab = QKeyEvent(
+        QEvent.Type.KeyPress, Qt.Key.Key_Backtab, Qt.KeyboardModifier.ShiftModifier
+    )
     assert key_sequence_from_event(backtab) in ("Shift+Tab", "Tab")
     # At least produces a sequence
     assert key_sequence_from_event(backtab)

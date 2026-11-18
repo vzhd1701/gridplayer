@@ -558,7 +558,7 @@ def macos_gl_format():
 
     surface_format = QSurfaceFormat()
     surface_format.setVersion(3, 2)
-    surface_format.setProfile(QSurfaceFormat.CoreProfile)
+    surface_format.setProfile(QSurfaceFormat.OpenGLContextProfile.CoreProfile)
     return surface_format
 
 
@@ -566,8 +566,8 @@ def _format_name(surface_format) -> str:
     from PyQt5.QtGui import QSurfaceFormat
 
     profile = {
-        QSurfaceFormat.CoreProfile: "Core",
-        QSurfaceFormat.CompatibilityProfile: "Compatibility",
+        QSurfaceFormat.OpenGLContextProfile.CoreProfile: "Core",
+        QSurfaceFormat.OpenGLContextProfile.CompatibilityProfile: "Compatibility",
     }.get(surface_format.profile(), "")
     version = f"{surface_format.majorVersion()}.{surface_format.minorVersion()}"
     return f"{version} {profile}".strip()

@@ -93,4 +93,4 @@ def reading_txt(what: str, count: int, of: int | None = None) -> tuple[str, int]
 
 
 def _size_txt(size: int) -> str:
-    return QLocale().formattedDataSize(size, 1, QLocale.DataSizeSIFormat)
+    return QLocale().formattedDataSize(size, 1, QLocale.DataSizeFormat.DataSizeSIFormat)

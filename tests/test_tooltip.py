@@ -331,7 +331,7 @@ def _no_fades(monkeypatch):
 
 def _hover(widget, local=None):
     local = widget.rect().center() if local is None else local
-    event = QHelpEvent(QEvent.ToolTip, local, widget.mapToGlobal(local))
+    event = QHelpEvent(QEvent.Type.ToolTip, local, widget.mapToGlobal(local))
     return QApplication.sendEvent(widget, event)
 
 
@@ -379,7 +379,10 @@ class TestInPlaceOfQts:
         _hover(form.first)
 
         QApplication.sendEvent(
-            form.first, QKeyEvent(QEvent.KeyPress, Qt.Key_A, Qt.NoModifier)
+            form.first,
+            QKeyEvent(
+                QEvent.Type.KeyPress, Qt.Key.Key_A, Qt.KeyboardModifier.NoModifier
+            ),
         )
 
         assert not manager.is_shown
@@ -450,7 +453,10 @@ class TestBetweenRows:
         self, shown, form, mouse, clock
     ):
         QApplication.sendEvent(
-            form.first, QKeyEvent(QEvent.KeyPress, Qt.Key_A, Qt.NoModifier)
+            form.first,
+            QKeyEvent(
+                QEvent.Type.KeyPress, Qt.Key.Key_A, Qt.KeyboardModifier.NoModifier
+            ),
         )
         _hover(form.first)
         clock(COLD_SETTLE_MS + 1)

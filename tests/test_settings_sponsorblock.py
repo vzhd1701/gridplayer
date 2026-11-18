@@ -23,7 +23,9 @@ def settings(tmp_path, monkeypatch):
     """An ini of our own, so no test writes the one the user has."""
 
     store = _Settings.__new__(_Settings)
-    store.settings = QSettings(str(tmp_path / "settings.ini"), QSettings.IniFormat)
+    store.settings = QSettings(
+        str(tmp_path / "settings.ini"), QSettings.Format.IniFormat
+    )
 
     monkeypatch.setattr(settings_dialog, "Settings", lambda: store)
 
@@ -53,7 +55,7 @@ def make_dialog(settings, tmp_path, monkeypatch):
         dialog.close()
         dialog.deleteLater()
 
-    QApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+    QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
 
 @pytest.fixture
@@ -79,7 +81,9 @@ class TestThePageIsWiredUp:
         assert dialog.form_of(key) is dialog.forms["sponsorblock"]
 
     def test_the_section_opens_the_page(self, dialog):
-        entry = dialog.section_index.findItems("SponsorBlock", Qt.MatchExactly)[0]
+        entry = dialog.section_index.findItems(
+            "SponsorBlock", Qt.MatchFlag.MatchExactly
+        )[0]
 
         assert entry.data(SECTION_PAGE_ROLE) is dialog.pages["sponsorblock"]
 

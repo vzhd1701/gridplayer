@@ -69,7 +69,9 @@ def _isolated_settings(tmp_path):
     settings = Settings()
     real_settings = settings.settings
 
-    settings.settings = QSettings(str(tmp_path / "test.ini"), QSettings.IniFormat)
+    settings.settings = QSettings(
+        str(tmp_path / "test.ini"), QSettings.Format.IniFormat
+    )
 
     yield
 
@@ -511,7 +513,7 @@ class TestManaging:
         block.bookmarker.manage()
 
         assert dialog.call_args.kwargs["selected"] == (1,)
-        dialog.return_value.exec_.assert_called_once()
+        dialog.return_value.exec.assert_called_once()
 
     def test_away_from_any_none_is(self, block, dialog):
         block.seek(20000)
@@ -947,7 +949,7 @@ class TestAMarkersMenu:
         assert block.video_params.uri == tmp_path / "other.mkv"
 
     def test_the_overlay_opens_it_where_it_was_asked_for(self, block, mocker):
-        shown = mocker.patch.object(bookmarker_module.CustomMenu, "exec_")
+        shown = mocker.patch.object(bookmarker_module.CustomMenu, "exec")
 
         block.overlay.bookmark_menu_requested.emit(QPoint(40, 50), (30000,))
 

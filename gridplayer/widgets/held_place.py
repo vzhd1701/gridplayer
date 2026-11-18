@@ -21,9 +21,9 @@ class HeldPlace(QWidget):
 
         self.video_block = None
 
-        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setAutoFillBackground(True)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
     def set_video(self, video_block):
         if video_block is self.video_block:
@@ -53,8 +53,8 @@ class HeldPlace(QWidget):
         painter.setPen(chrome_color(self, TEXT_ALPHA))
         painter.drawText(
             text_rect,
-            Qt.AlignCenter,
+            Qt.AlignmentFlag.AlignCenter,
             painter.fontMetrics().elidedText(
-                text, Qt.ElideRight, int(text_rect.width())
+                text, Qt.TextElideMode.ElideRight, int(text_rect.width())
             ),
         )

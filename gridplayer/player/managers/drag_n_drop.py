@@ -79,17 +79,17 @@ class DragNDropManager(ManagerBase):
     @property
     def event_map(self):
         return {
-            QEvent.MouseMove: self.mouseMoveEvent,
-            QEvent.MouseButtonPress: self.mousePressEvent,
-            QEvent.MouseButtonRelease: self.mouseReleaseEvent,
-            QEvent.KeyPress: self.keyPressEvent,
-            QEvent.KeyRelease: self.keyReleaseEvent,
-            QEvent.ShortcutOverride: self.shortcutOverrideEvent,
-            QEvent.ApplicationDeactivate: self.applicationDeactivateEvent,
-            QEvent.DragEnter: self.dragEnterEvent,
-            QEvent.Drop: self.dropEvent,
-            QEvent.DragMove: self.dragMoveEvent,
-            QEvent.DragLeave: self.dragLeaveEvent,
+            QEvent.Type.MouseMove: self.mouseMoveEvent,
+            QEvent.Type.MouseButtonPress: self.mousePressEvent,
+            QEvent.Type.MouseButtonRelease: self.mouseReleaseEvent,
+            QEvent.Type.KeyPress: self.keyPressEvent,
+            QEvent.Type.KeyRelease: self.keyReleaseEvent,
+            QEvent.Type.ShortcutOverride: self.shortcutOverrideEvent,
+            QEvent.Type.ApplicationDeactivate: self.applicationDeactivateEvent,
+            QEvent.Type.DragEnter: self.dragEnterEvent,
+            QEvent.Type.Drop: self.dropEvent,
+            QEvent.Type.DragMove: self.dragMoveEvent,
+            QEvent.Type.DragLeave: self.dragLeaveEvent,
         }
 
     def eventFilter(self, event_object, event) -> bool:
@@ -122,7 +122,7 @@ class DragNDropManager(ManagerBase):
         # is delivered if the click started while another app was focused.
         self._ctx.commands.activate_window()
 
-        if event.button() != Qt.LeftButton:
+        if event.button() != Qt.MouseButton.LeftButton:
             return
 
         # dragging the picture about instead, see PanManager (a selection
@@ -164,7 +164,7 @@ class DragNDropManager(ManagerBase):
             self._end_drag_ui()
 
     def mouseReleaseEvent(self, event):
-        if event.button() != Qt.LeftButton:
+        if event.button() != Qt.MouseButton.LeftButton:
             return None
 
         # a drag only from the press it is let go of, and none after
@@ -188,7 +188,7 @@ class DragNDropManager(ManagerBase):
         if self._ctx.commands.is_tile_pressed():
             return False
 
-        if not event.buttons() & Qt.LeftButton:
+        if not event.buttons() & Qt.MouseButton.LeftButton:
             return False
 
         if self._drag_start_position is None:
@@ -222,7 +222,7 @@ class DragNDropManager(ManagerBase):
 
         self._is_fake_drag_active = True
         self._drag_start_position = None
-        QApplication.setOverrideCursor(Qt.ClosedHandCursor)
+        QApplication.setOverrideCursor(Qt.CursorShape.ClosedHandCursor)
         self._ensure_drag_ui()
         self._set_source(block)
         self._update_drop_target(QCursor.pos(), is_internal=True)
@@ -251,8 +251,8 @@ class DragNDropManager(ManagerBase):
     def handle_fake_drag_click(self, event) -> bool:
         if not (
             self._is_swallow_click_after_fake_drag
-            and event.type() == QEvent.MouseButtonRelease
-            and event.button() == Qt.LeftButton
+            and event.type() == QEvent.Type.MouseButtonRelease
+            and event.button() == Qt.MouseButton.LeftButton
         ):
             return False
 
@@ -273,7 +273,7 @@ class DragNDropManager(ManagerBase):
         if not self._is_fake_drag_active:
             return None
 
-        if event.key() == Qt.Key_Escape:
+        if event.key() == Qt.Key.Key_Escape:
             self._cancel_fake_drag()
             return True
 

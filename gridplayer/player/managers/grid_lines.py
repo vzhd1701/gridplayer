@@ -61,8 +61,8 @@ class GridLinesManager(LayoutDragManager):
     def event_map(self):
         return {
             **super().event_map,
-            QEvent.Enter: self.pointer_enter,
-            QEvent.Leave: self.pointer_leave,
+            QEvent.Type.Enter: self.pointer_enter,
+            QEvent.Type.Leave: self.pointer_leave,
         }
 
     def is_show_on_hover(self) -> bool:
@@ -93,11 +93,11 @@ class GridLinesManager(LayoutDragManager):
         self._is_pointer_out = False
 
         if self._drag is None:
-            if event.buttons() == Qt.NoButton:
+            if event.buttons() == Qt.MouseButton.NoButton:
                 self._hover_under_pointer()
             return None
 
-        if not event.buttons() & Qt.LeftButton:
+        if not event.buttons() & Qt.MouseButton.LeftButton:
             # let go of somewhere the release never came from
             self._finish()
             return None
@@ -106,7 +106,7 @@ class GridLinesManager(LayoutDragManager):
         return True
 
     def mouse_double_click(self, event):
-        if event.button() != Qt.LeftButton:
+        if event.button() != Qt.MouseButton.LeftButton:
             return None
 
         # the second press of it took the line
@@ -127,7 +127,7 @@ class GridLinesManager(LayoutDragManager):
         return True
 
     def _press(self, event):
-        if event.button() != Qt.LeftButton:
+        if event.button() != Qt.MouseButton.LeftButton:
             return None
 
         found = self._line_under_pointer()
@@ -216,7 +216,9 @@ class GridLinesManager(LayoutDragManager):
 
         local = global_pos - self._area.topLeft()
         position = local.x() if line.is_column else local.y()
-        is_snapping = not modifiers & Qt.AltModifier and self.is_snapping()
+        is_snapping = (
+            not modifiers & Qt.KeyboardModifier.AltModifier and self.is_snapping()
+        )
 
         weights = drag.moved(position, is_snapping)
         self._ctx.commands.set_grid_weights(weights)
@@ -280,4 +282,6 @@ class GridLinesManager(LayoutDragManager):
 
 
 def _cursor_of(line: Line) -> Qt.CursorShape:
-    return Qt.SplitHCursor if line.is_column else Qt.SplitVCursor
+    return (
+        Qt.CursorShape.SplitHCursor if line.is_column else Qt.CursorShape.SplitVCursor
+    )

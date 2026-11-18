@@ -32,7 +32,7 @@ from PyQt5.QtWidgets import (
 
 from gridplayer.params.static import GridMode
 from gridplayer.utils.compositor_linux import is_compositor_running
-from gridplayer.utils.qt import translate
+from gridplayer.utils.qt import flag_value, translate
 from gridplayer.widgets.closing_click import EatenClick
 from gridplayer.widgets.grid_line_mark import EDGE_COLOR, LINE_COLOR, GridLineTag
 from gridplayer.widgets.settings_controls import SegmentedChoice
@@ -86,14 +86,14 @@ KEY_DOES_COLOR = QColor("#b4b4b4")
 
 # the colours of the controls in a popup, dark whatever the theme
 POPUP_PALETTE = {
-    QPalette.Text: "#e6e6e6",
-    QPalette.WindowText: "#e6e6e6",
-    QPalette.ButtonText: "#e6e6e6",
-    QPalette.Base: "#1e1e1e",
-    QPalette.Window: "#1e1e1e",
-    QPalette.Button: "#2a2a2a",
-    QPalette.Highlight: "#4a4a4a",
-    QPalette.HighlightedText: "#e6e6e6",
+    QPalette.ColorRole.Text: "#e6e6e6",
+    QPalette.ColorRole.WindowText: "#e6e6e6",
+    QPalette.ColorRole.ButtonText: "#e6e6e6",
+    QPalette.ColorRole.Base: "#1e1e1e",
+    QPalette.ColorRole.Window: "#1e1e1e",
+    QPalette.ColorRole.Button: "#2a2a2a",
+    QPalette.ColorRole.Highlight: "#4a4a4a",
+    QPalette.ColorRole.HighlightedText: "#e6e6e6",
 }
 
 HINT_STYLE = (
@@ -118,19 +118,25 @@ CORNER_REACH = 14
 
 # the pointer over each edge and corner of a tile, to size it by
 SIZE_CURSORS = {
-    (-1, 0): Qt.SizeHorCursor,
-    (1, 0): Qt.SizeHorCursor,
-    (0, -1): Qt.SizeVerCursor,
-    (0, 1): Qt.SizeVerCursor,
-    (-1, -1): Qt.SizeFDiagCursor,
-    (1, 1): Qt.SizeFDiagCursor,
-    (1, -1): Qt.SizeBDiagCursor,
-    (-1, 1): Qt.SizeBDiagCursor,
+    (-1, 0): Qt.CursorShape.SizeHorCursor,
+    (1, 0): Qt.CursorShape.SizeHorCursor,
+    (0, -1): Qt.CursorShape.SizeVerCursor,
+    (0, 1): Qt.CursorShape.SizeVerCursor,
+    (-1, -1): Qt.CursorShape.SizeFDiagCursor,
+    (1, 1): Qt.CursorShape.SizeFDiagCursor,
+    (1, -1): Qt.CursorShape.SizeBDiagCursor,
+    (-1, 1): Qt.CursorShape.SizeBDiagCursor,
 }
 
-DONE_KEYS = frozenset({Qt.Key_Escape, Qt.Key_Return, Qt.Key_Enter})
+DONE_KEYS = frozenset({Qt.Key.Key_Escape, Qt.Key.Key_Return, Qt.Key.Key_Enter})
 MODIFIER_KEYS = frozenset(
-    {Qt.Key_Shift, Qt.Key_Control, Qt.Key_Alt, Qt.Key_AltGr, Qt.Key_Meta}
+    {
+        Qt.Key.Key_Shift,
+        Qt.Key.Key_Control,
+        Qt.Key.Key_Alt,
+        Qt.Key.Key_AltGr,
+        Qt.Key.Key_Meta,
+    }
 )
 
 
@@ -140,15 +146,15 @@ def bar_icon(kind: str, ratio: float) -> QIcon:
 
     icon = QIcon()
     for mode, color in (
-        (QIcon.Normal, BAR_ICON_COLOR),
-        (QIcon.Disabled, BAR_ICON_OFF_COLOR),
+        (QIcon.Mode.Normal, BAR_ICON_COLOR),
+        (QIcon.Mode.Disabled, BAR_ICON_OFF_COLOR),
     ):
         pixmap = QPixmap(QSize(16, 16) * ratio)
         pixmap.setDevicePixelRatio(ratio)
-        pixmap.fill(Qt.transparent)
+        pixmap.fill(Qt.GlobalColor.transparent)
 
         painter = QPainter(pixmap)
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         paint_icon(painter, kind, QRectF(0, 0, 16, 16), color)
         painter.end()
 
@@ -167,10 +173,10 @@ def paint_icon(painter: QPainter, kind: str, rect: QRectF, color: QColor) -> Non
     if fill is not None:
         painter.fillPath(fill, color)
     pen = QPen(color, 1.4)
-    pen.setCapStyle(Qt.RoundCap)
-    pen.setJoinStyle(Qt.RoundJoin)
+    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
     painter.setPen(pen)
-    painter.setBrush(Qt.NoBrush)
+    painter.setBrush(Qt.BrushStyle.NoBrush)
     painter.drawPath(lines)
     painter.restore()
 
@@ -357,8 +363,10 @@ class _BarButton(QPushButton):
     drag it by."""
 
     def changeEvent(self, event) -> None:
-        if event.type() == QEvent.EnabledChange:
-            self.setAttribute(Qt.WA_TransparentForMouseEvents, not self.isEnabled())
+        if event.type() == QEvent.Type.EnabledChange:
+            self.setAttribute(
+                Qt.WidgetAttribute.WA_TransparentForMouseEvents, not self.isEnabled()
+            )
         super().changeEvent(event)
 
 
@@ -368,12 +376,12 @@ class _Grip(QWidget):
     def __init__(self, parent):
         super().__init__(parent)
         self.setFixedSize(10, 18)
-        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        painter.setPen(Qt.NoPen)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(BAR_GRIP_COLOR)
         for x in (3, 7):
             for y in (4, 9, 14):
@@ -386,7 +394,7 @@ class _Bar(QFrame):
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.setCursor(Qt.SizeAllCursor)
+        self.setCursor(Qt.CursorShape.SizeAllCursor)
 
         self._grab: QPoint | None = None
         # where it was put by hand, from the editor's bottom middle
@@ -401,7 +409,7 @@ class _Bar(QFrame):
     def mousePressEvent(self, event) -> None:
         # not the switch's, which passes a press on on its own item
         is_switch = isinstance(self.childAt(event.pos()), SegmentedChoice)
-        if event.button() == Qt.LeftButton and not is_switch:
+        if event.button() == Qt.MouseButton.LeftButton and not is_switch:
             self._grab = event.pos()
 
     def mouseMoveEvent(self, event) -> None:
@@ -443,7 +451,10 @@ class LayoutEditor(QWidget):
 
     def __init__(self, can_undo, can_redo, can_reopen, parent=None):
         super().__init__(
-            parent, Qt.Tool | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint
+            parent,
+            Qt.WindowType.Tool
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.NoDropShadowWindowHint,
         )
 
         self._can_undo = can_undo
@@ -452,10 +463,10 @@ class LayoutEditor(QWidget):
 
         self._is_translucent = is_compositor_running()
         if self._is_translucent:
-            self.setAttribute(Qt.WA_TranslucentBackground)
+            self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         self.setMouseTracking(True)
-        self.setFocusPolicy(Qt.StrongFocus)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         self._bar = _Bar(self)
         self._bar.setObjectName("layoutEditorBar")
@@ -494,15 +505,15 @@ class LayoutEditor(QWidget):
 
         self._hint = QLabel(self)
         self._hint.setStyleSheet(HINT_STYLE)
-        self._hint.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self._hint.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
     # --- the bar ---
 
     def _bar_button(self, slot, tip=None, icon=None, text="") -> QPushButton:
         button = _BarButton(text, self._bar)
-        button.setCursor(Qt.ArrowCursor)
+        button.setCursor(Qt.CursorShape.ArrowCursor)
         button.setFixedSize(BAR_BUTTON, BAR_BUTTON)
-        button.setFocusPolicy(Qt.NoFocus)
+        button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         if icon is not None:
             button.setIcon(bar_icon(icon, self.devicePixelRatioF()))
         if tip is not None:
@@ -522,9 +533,9 @@ class LayoutEditor(QWidget):
 
         done = QPushButton(translate("Edit Grid", "Done"), self._bar)
         done.setObjectName("layoutEditorDone")
-        done.setCursor(Qt.ArrowCursor)
+        done.setCursor(Qt.CursorShape.ArrowCursor)
         done.setFixedHeight(BAR_BUTTON)
-        done.setFocusPolicy(Qt.NoFocus)
+        done.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         done.clicked.connect(self.done)
 
         layout = QHBoxLayout(self._bar)
@@ -567,9 +578,9 @@ class LayoutEditor(QWidget):
         switch.setCurrentIndex(
             switch.findData(GridMode.FREE if self.is_tiles else GridMode.FIXED)
         )
-        switch.setCursor(Qt.ArrowCursor)
+        switch.setCursor(Qt.CursorShape.ArrowCursor)
         # the editor's keys stay the editor's: Tab and the arrows
-        switch.setFocusPolicy(Qt.NoFocus)
+        switch.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         switch.setPalette(popup_palette(switch))
         switch.currentIndexChanged.connect(
             lambda _: self.kind_requested.emit(switch.currentData())
@@ -665,7 +676,7 @@ class LayoutEditor(QWidget):
 
         if not self.is_dragging():
             self.unsetCursor()
-            self.leaveEvent(QEvent(QEvent.Leave))
+            self.leaveEvent(QEvent(QEvent.Type.Leave))
 
     # --- the popups ---
 
@@ -698,7 +709,7 @@ class LayoutEditor(QWidget):
                 rows.append((keys[name], does))
         rows.append(
             (
-                keys_text(Qt.Key_Enter, Qt.Key_Escape),
+                keys_text(Qt.Key.Key_Enter, Qt.Key.Key_Escape),
                 translate("Edit Grid", "Done"),
             )
         )
@@ -761,13 +772,13 @@ class LayoutEditor(QWidget):
         return event.key() in DONE_KEYS
 
     def event(self, event) -> bool:
-        if event.type() == QEvent.ShortcutOverride and self._is_own_key(event):
+        if event.type() == QEvent.Type.ShortcutOverride and self._is_own_key(event):
             event.accept()
             return True
         return super().event(event)
 
     def keyPressEvent(self, event) -> None:
-        if event.key() == Qt.Key_Escape and self.is_dragging():
+        if event.key() == Qt.Key.Key_Escape and self.is_dragging():
             self.cancel_drag()
         elif event.key() in DONE_KEYS:
             self.done.emit()
@@ -811,21 +822,23 @@ class LayoutEditor(QWidget):
 
     def _paint_veil(self, painter) -> None:
         if self._is_translucent:
-            painter.setCompositionMode(QPainter.CompositionMode_Source)
+            painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Source)
             painter.fillRect(self.rect(), VEIL_COLOR)
-            painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
+            painter.setCompositionMode(
+                QPainter.CompositionMode.CompositionMode_SourceOver
+            )
         else:
             painter.fillRect(self.rect(), OPAQUE_COLOR)
 
     def _outline(self, painter, rect: QRect, pen: QPen, inset: float = INSET) -> None:
         inner = QRectF(rect).adjusted(inset, inset, -inset, -inset)
-        painter.setBrush(Qt.NoBrush)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
 
         # a dark edge either side of the line, to show over any picture:
         # whole, under a dashed one, whose dashes would not meet its own
         edge = QPen(pen)
         edge.setColor(EDGE_COLOR)
-        edge.setStyle(Qt.SolidLine)
+        edge.setStyle(Qt.PenStyle.SolidLine)
         edge.setWidthF(pen.widthF() + 2)
         painter.setPen(edge)
         painter.drawRoundedRect(inner, 4, 4)
@@ -863,7 +876,7 @@ class LayoutEditor(QWidget):
     ) -> None:
         """A name in its box (see _name_box), an icon before it, if any."""
 
-        painter.setPen(Qt.NoPen)
+        painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(back)
         painter.drawRoundedRect(box, 4, 4)
 
@@ -876,19 +889,19 @@ class LayoutEditor(QWidget):
         if close is not None:
             text.setRight(text.right() - CLOSE_SIZE - 2)
         painter.setPen(color)
-        painter.drawText(text, Qt.AlignCenter, name)
+        painter.drawText(text, Qt.AlignmentFlag.AlignCenter, name)
 
         if close is not None:
             self._close_button(painter, close)
 
     def _close_button(self, painter, close: QRectF) -> None:
-        painter.setPen(Qt.NoPen)
+        painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(LINE_COLOR)
         painter.drawEllipse(close)
 
         cross = close.adjusted(5, 5, -5, -5)
         pen = QPen(EDGE_COLOR, 1.6)
-        pen.setCapStyle(Qt.RoundCap)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         painter.setPen(pen)
         painter.drawLine(cross.topLeft(), cross.bottomRight())
         painter.drawLine(cross.topRight(), cross.bottomLeft())
@@ -911,7 +924,7 @@ class LayoutEditor(QWidget):
         room = int(rect.width()) - 4 * INSET - 16 - lead
         if has_close:
             room -= CLOSE_SIZE + 4
-        name = metrics.elidedText(name, Qt.ElideMiddle, room)
+        name = metrics.elidedText(name, Qt.TextElideMode.ElideMiddle, room)
         if not name:
             return None
 
@@ -955,15 +968,18 @@ class EditorPopup(QFrame):
 
     def __init__(self, title: str, parts, width: int, parent):
         super().__init__(
-            parent, Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint
+            parent,
+            Qt.WindowType.Popup
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.NoDropShadowWindowHint,
         )
         self._is_translucent = is_compositor_running()
         if self._is_translucent:
-            self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setAttribute(Qt.WA_NoMouseReplay)
-        self.setAttribute(Qt.WA_DeleteOnClose)
+            self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_NoMouseReplay)
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         # its own, not the editor's under it, which it has while it is up
-        self.setCursor(Qt.ArrowCursor)
+        self.setCursor(Qt.CursorShape.ArrowCursor)
         self._width = width
         # closed by a key, or by the editor going (see dismiss)
         self._is_dismissed = False
@@ -988,12 +1004,12 @@ class EditorPopup(QFrame):
             own = QPalette(palette)
             color = widget.property("color")
             if color is not None:
-                own.setColor(QPalette.WindowText, color)
+                own.setColor(QPalette.ColorRole.WindowText, color)
             widget.setPalette(own)
 
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setPen(POPUP_BORDER_COLOR)
         painter.setBrush(POPUP_BACK_COLOR)
         box = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)
@@ -1033,7 +1049,7 @@ class EditorPopup(QFrame):
         self.close()
 
     def keyPressEvent(self, event) -> None:
-        if event.key() == Qt.Key_Escape:
+        if event.key() == Qt.Key.Key_Escape:
             self.dismiss()
         else:
             # the player's, as in the editor: the keys are the popup's
@@ -1061,7 +1077,9 @@ def popup_palette(widget: QWidget) -> QPalette:
 def modifier_name(modifier) -> str:
     """A modifier key as the system names it: "Shift", or "⇧" on macOS."""
 
-    text = QKeySequence(int(modifier) | Qt.Key_A).toString(QKeySequence.NativeText)
+    text = QKeySequence(flag_value(modifier) | Qt.Key.Key_A).toString(
+        QKeySequence.SequenceFormat.NativeText
+    )
     return text[:-1].rstrip("+")
 
 
@@ -1069,5 +1087,6 @@ def keys_text(*keys) -> str:
     """Keys as the system names them, one or another."""
 
     return ", ".join(
-        QKeySequence(key).toString(QKeySequence.NativeText) for key in keys
+        QKeySequence(key).toString(QKeySequence.SequenceFormat.NativeText)
+        for key in keys
     )

@@ -25,10 +25,10 @@ class EatenClick(QObject):
 
     def eventFilter(self, obj, event) -> bool:
         kind = event.type()
-        if kind in {QEvent.MouseButtonPress, QEvent.MouseButtonDblClick}:
+        if kind in {QEvent.Type.MouseButtonPress, QEvent.Type.MouseButtonDblClick}:
             self._is_pressed = True
             return True
-        if kind == QEvent.MouseButtonRelease:
+        if kind == QEvent.Type.MouseButtonRelease:
             # the window's and then its widget's, each eaten
             QTimer.singleShot(0, self._done)
             return True
@@ -36,7 +36,10 @@ class EatenClick(QObject):
 
     def _expire(self) -> None:
         # held down still: its release, whenever it comes
-        if not self._is_pressed and QApplication.mouseButtons() == Qt.NoButton:
+        if (
+            not self._is_pressed
+            and QApplication.mouseButtons() == Qt.MouseButton.NoButton
+        ):
             self._done()
 
     def _done(self) -> None:

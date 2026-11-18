@@ -61,7 +61,9 @@ class SetSubtitleEncodingDialog(QDialog):
         )
 
         buttons = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel, Qt.Horizontal, self
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
+            Qt.Orientation.Horizontal,
+            self,
         )
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
@@ -79,4 +81,4 @@ class SetSubtitleEncodingDialog(QDialog):
 
         dialog = cls(encoding=encoding, parent=parent)
 
-        return dialog.combo.currentData() if dialog.exec_() else None
+        return dialog.combo.currentData() if dialog.exec() else None

@@ -100,7 +100,10 @@ class TrayManager(ManagerBase):
             )
 
         self._icon.showMessage(
-            __app_name__, text, QSystemTrayIcon.Information, NOTE_DURATION_MS
+            __app_name__,
+            text,
+            QSystemTrayIcon.MessageIcon.Information,
+            NOTE_DURATION_MS,
         )
 
         Settings().set("player/tray_note_shown", True)
@@ -185,7 +188,7 @@ class TrayManager(ManagerBase):
         if env.IS_MACOS:
             return
 
-        if reason == QSystemTrayIcon.Trigger:
+        if reason == QSystemTrayIcon.ActivationReason.Trigger:
             self._toggle_window()
 
     def _toggle_window(self):

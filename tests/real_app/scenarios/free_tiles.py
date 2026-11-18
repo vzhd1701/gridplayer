@@ -71,7 +71,7 @@ def _set(d, name, rect):
     d.pump(0.2)
 
 
-def _mouse(d, kind, pos, modifiers=Qt.NoModifier):
+def _mouse(d, kind, pos, modifiers=Qt.KeyboardModifier.NoModifier):
     """The pointer there, and the mouse event, as the window it is over has
     them from the system."""
 
@@ -82,20 +82,27 @@ def _mouse(d, kind, pos, modifiers=Qt.NoModifier):
     if kind == "move":
         buttons = QApplication.mouseButtons()
         event = QMouseEvent(
-            QEvent.MouseMove, local, pos, Qt.NoButton, buttons, modifiers
+            QEvent.Type.MouseMove,
+            local,
+            pos,
+            Qt.MouseButton.NoButton,
+            buttons,
+            modifiers,
         )
         QApplication.sendEvent(window, event)
     elif kind == "press":
-        QTest.mousePress(window, Qt.LeftButton, modifiers, local)
+        QTest.mousePress(window, Qt.MouseButton.LeftButton, modifiers, local)
     elif kind == "release":
-        QTest.mouseRelease(window, Qt.LeftButton, modifiers, local)
+        QTest.mouseRelease(window, Qt.MouseButton.LeftButton, modifiers, local)
     elif kind == "double":
-        QTest.mouseDClick(window, Qt.LeftButton, modifiers, local)
+        QTest.mouseDClick(window, Qt.MouseButton.LeftButton, modifiers, local)
 
     d.pump(0.1)
 
 
-def _drag(d, start, end, modifiers=Qt.NoModifier, steps=8, release=True):
+def _drag(
+    d, start, end, modifiers=Qt.KeyboardModifier.NoModifier, steps=8, release=True
+):
     _mouse(d, "move", start)
     _mouse(d, "press", start)
     # a pixel at a time at first, as a mouse goes: a drag of the video
@@ -132,7 +139,9 @@ def _overlapping(rects) -> list:
 def scenario(d):
     # a drag of a video, which would hold the tile still until let go
     video_drags = []
-    QDrag.exec = lambda _drag, *_args: video_drags.append(1) or Qt.IgnoreAction
+    QDrag.exec = lambda _drag, *_args: (
+        video_drags.append(1) or Qt.DropAction.IgnoreAction
+    )
 
     d.player.resize(WIDTH, HEIGHT)
     d.pump(0.3)
@@ -178,7 +187,9 @@ def scenario(d):
     # the pointer turns on an edge, not in the middle
     _mouse(d, "move", _at(d, 21, 90))
     d.check(
-        "a resize pointer on the left edge", _cursor() == Qt.SizeHorCursor, _cursor()
+        "a resize pointer on the left edge",
+        _cursor() == Qt.CursorShape.SizeHorCursor,
+        _cursor(),
     )
     _mouse(d, "move", _at(d, 140, 90))
     d.check("none in the middle", _cursor() is None, _cursor())
@@ -215,7 +226,7 @@ def scenario(d):
     undo = d.player._managers_inst["grid"]._undo
     undo_before = len(undo)
     _drag(d, _at(d, 339, 199), _at(d, 200, 120), release=False)
-    QTest.keyClick(d.player.windowHandle(), Qt.Key_Escape)
+    QTest.keyClick(d.player.windowHandle(), Qt.Key.Key_Escape)
     d.pump(0.1)
     _mouse(d, "release", _at(d, 200, 120))
     a = _rects(d)["a.mp4"]
@@ -233,7 +244,7 @@ def scenario(d):
         said,
     )
     d.shot("3_snapped")
-    QTest.keyClick(d.player.windowHandle(), Qt.Key_Escape)
+    QTest.keyClick(d.player.windowHandle(), Qt.Key.Key_Escape)
     d.pump(0.1)
     _mouse(d, "release", _at(d, 124, 270))
     d.check("no word once let go", not tag.isVisible())
@@ -245,7 +256,7 @@ def scenario(d):
     _drag(d, _at(d, 140, 270), _at(d, 124, 270), release=False)
     manager = d.player._managers_inst["free_tiles"]
     QApplication.sendEvent(
-        QApplication.instance(), QEvent(QEvent.ApplicationDeactivate)
+        QApplication.instance(), QEvent(QEvent.Type.ApplicationDeactivate)
     )
     d.pump(0.1)
     frame = manager._frame
@@ -263,7 +274,12 @@ def scenario(d):
     d.check("undone, c back", _near(c_rect, (20, 200, 260, 335)), c_rect)
 
     # Shift: any shape
-    _drag(d, _at(d, 140, 334), _at(d, 140, 380), modifiers=Qt.ShiftModifier)
+    _drag(
+        d,
+        _at(d, 140, 334),
+        _at(d, 140, 380),
+        modifiers=Qt.KeyboardModifier.ShiftModifier,
+    )
     c_rect = _rects(d)["c.mp4"]
     d.check("c made taller, as wide", _near(c_rect, (20, 200, 260, 380)), c_rect)
 

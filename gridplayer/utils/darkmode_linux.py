@@ -88,8 +88,8 @@ def portal_read(namespace: str, key: str):
     )
     message.setArguments([namespace, key])
 
-    reply = bus.call(message, QDBus.Block, _PORTAL_TIMEOUT_MS)
-    if reply.type() == QDBusMessage.ErrorMessage:
+    reply = bus.call(message, QDBus.CallMode.Block, _PORTAL_TIMEOUT_MS)
+    if reply.type() == QDBusMessage.MessageType.ErrorMessage:
         if reply.errorName() in _PORTAL_NO_ANSWER:
             logger.warning(
                 "Desktop portal does not answer, not asking it again: %s",

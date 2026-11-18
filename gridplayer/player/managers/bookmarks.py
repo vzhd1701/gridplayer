@@ -371,7 +371,7 @@ class BookmarksManager(ManagerBase):
 
     def _confirm_split(self) -> bool:
         box = QCustomMessageBox(
-            QMessageBox.Question,
+            QMessageBox.Icon.Question,
             translate("Dialog - Bookmarks sharing", "Bookmarks", "Header"),
             translate(
                 "Dialog - Bookmarks sharing", "Stop sharing bookmarks between cells?"
@@ -388,11 +388,11 @@ class BookmarksManager(ManagerBase):
         )
         stop = box.addButton(
             translate("Dialog - Bookmarks sharing", "Stop Sharing"),
-            QMessageBox.AcceptRole,
+            QMessageBox.ButtonRole.AcceptRole,
         )
-        box.addButton(QMessageBox.Cancel)
+        box.addButton(QMessageBox.StandardButton.Cancel)
 
-        box.exec_()
+        box.exec()
 
         return box.clickedButton() is stop
 
@@ -419,7 +419,7 @@ class BookmarksManager(ManagerBase):
             rows.append((more, ""))
 
         box = QCustomMessageBox(
-            QMessageBox.Question,
+            QMessageBox.Icon.Question,
             translate("Dialog - Bookmarks sharing", "Bookmarks", "Header"),
             translate(
                 "Dialog - Bookmarks sharing", "Merge the bookmarks of each file?"
@@ -436,14 +436,15 @@ class BookmarksManager(ManagerBase):
         )
         box.set_list(rows)
         merge = box.addButton(
-            translate("Dialog - Bookmarks sharing", "Merge"), QMessageBox.AcceptRole
+            translate("Dialog - Bookmarks sharing", "Merge"),
+            QMessageBox.ButtonRole.AcceptRole,
         )
         box.addButton(
             translate("Dialog - Bookmarks sharing", "Keep Separate"),
-            QMessageBox.RejectRole,
+            QMessageBox.ButtonRole.RejectRole,
         )
 
-        box.exec_()
+        box.exec()
 
         return box.clickedButton() is merge
 

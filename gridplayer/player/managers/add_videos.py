@@ -10,7 +10,7 @@ from typing import NamedTuple
 
 from pydantic import ValidationError
 from PyQt5.QtCore import QObject, Qt, QTimer, pyqtSignal
-from PyQt5.QtWidgets import QApplication, QDialog, QFileDialog, qApp
+from PyQt5.QtWidgets import QApplication, QDialog, QFileDialog
 
 from gridplayer.dialogs.add_choice import (
     AddChoiceDialog,
@@ -458,7 +458,7 @@ class AddVideosManager(ManagerBase):
             parent=self.parent(),
             caption=translate("Dialog - Add Files", "Add Files", "Header"),
         )
-        dialog.setFileMode(QFileDialog.ExistingFiles)
+        dialog.setFileMode(QFileDialog.FileMode.ExistingFiles)
 
         dialog.setNameFilters(media_name_filters())
 
@@ -494,10 +494,10 @@ class AddVideosManager(ManagerBase):
         if not self.is_clipboard_full():
             return
 
-        self.add_media(extract_mime_uris(qApp.clipboard().mimeData()))
+        self.add_media(extract_mime_uris(QApplication.clipboard().mimeData()))
 
     def is_clipboard_full(self):
-        return bool(extract_mime_uris(qApp.clipboard().mimeData()))
+        return bool(extract_mime_uris(QApplication.clipboard().mimeData()))
 
     def add_media(self, uris, drop=None):
         """Put files, folders, list files and links into cells.
@@ -571,7 +571,7 @@ class AddVideosManager(ManagerBase):
 
         self._is_reading = True
         self._is_cursor_busy = True
-        QApplication.setOverrideCursor(Qt.BusyCursor)
+        QApplication.setOverrideCursor(Qt.CursorShape.BusyCursor)
 
         self._reading = _Reading(request)
         self._told = None
@@ -675,7 +675,7 @@ class AddVideosManager(ManagerBase):
             return
 
         request, expanded, groups = asked
-        choice = dialog.choice() if result == QDialog.Accepted else None
+        choice = dialog.choice() if result == QDialog.DialogCode.Accepted else None
 
         if choice is not None:
             self._place_as(request, expanded, groups, choice)
@@ -686,7 +686,7 @@ class AddVideosManager(ManagerBase):
         dialog, self._dialog = self._dialog, None
 
         if dialog is not None:
-            dialog.done(QDialog.Rejected)
+            dialog.done(QDialog.DialogCode.Rejected)
             dialog.deleteLater()
 
     def _restore_cursor(self):

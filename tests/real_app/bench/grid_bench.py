@@ -210,7 +210,7 @@ def instrument():
         def paint(self, event):
             painter = QPainter(self)
             if smooth:
-                painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+                painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
             placement = self.placement() if self.has_frame() else None
             covers = placement is not None and (
                 placement.target[0] <= 0
@@ -219,7 +219,7 @@ def instrument():
                 and placement.target[3] >= self.height()
             )
             if fill or not covers:
-                painter.fillRect(self.rect(), Qt.black)
+                painter.fillRect(self.rect(), Qt.GlobalColor.black)
             if placement is not None:
                 painter.drawImage(
                     QRectF(*placement.target), self._image, QRectF(*placement.source)
@@ -654,7 +654,7 @@ class GuiProbe:
         self.late_ms = []
         self._last = None
         self.timer = QTimer()
-        self.timer.setTimerType(Qt.PreciseTimer)
+        self.timer.setTimerType(Qt.TimerType.PreciseTimer)
         self.timer.setInterval(self.INTERVAL_MS)
         self.timer.timeout.connect(self._tick)
         self.timer.start()

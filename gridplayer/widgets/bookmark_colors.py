@@ -118,7 +118,7 @@ def _rim_inside(shape: QPainterPath, width: float) -> QPainterPath:
 
     stroker = QPainterPathStroker()
     stroker.setWidth(width * 2)
-    stroker.setJoinStyle(Qt.MiterJoin)
+    stroker.setJoinStyle(Qt.PenJoinStyle.MiterJoin)
 
     return shape.intersected(stroker.createStroke(shape))
 
@@ -144,9 +144,9 @@ class _MarkerIconEngine(QIconEngine):
         shape = _icon_outline(middle_x, top, size)
 
         painter.save()
-        painter.setRenderHint(QPainter.Antialiasing, True)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
-        if mode == QIcon.Disabled:
+        if mode == QIcon.Mode.Disabled:
             painter.setOpacity(0.4)
 
         fill_bookmark_marker(painter, shape, self._fills(shape))
@@ -168,7 +168,7 @@ class _MarkerIconEngine(QIconEngine):
 
     def pixmap(self, size, mode, state):
         pixmap = QPixmap(size)
-        pixmap.fill(Qt.transparent)
+        pixmap.fill(Qt.GlobalColor.transparent)
 
         painter = QPainter(pixmap)
         self.paint(painter, QRect(QPoint(0, 0), size), mode, state)
@@ -211,11 +211,13 @@ def _text_marker_png(color: str | None, rim_rgba: int, scale: int) -> bytes:
     size = BOOKMARK_MARKER
     width, height = _text_marker_size()
 
-    image = QImage(width * scale, height * scale, QImage.Format_ARGB32_Premultiplied)
-    image.fill(Qt.transparent)
+    image = QImage(
+        width * scale, height * scale, QImage.Format.Format_ARGB32_Premultiplied
+    )
+    image.fill(Qt.GlobalColor.transparent)
 
     painter = QPainter(image)
-    painter.setRenderHint(QPainter.Antialiasing, True)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
     painter.scale(scale, scale)
 
     draw_bookmark_marker(
@@ -229,7 +231,7 @@ def _text_marker_png(color: str | None, rim_rgba: int, scale: int) -> bytes:
 
     data = QByteArray()
     buffer = QBuffer(data)
-    buffer.open(QIODevice.WriteOnly)
+    buffer.open(QIODevice.OpenModeFlag.WriteOnly)
     image.save(buffer, "PNG")
 
     return bytes(data)

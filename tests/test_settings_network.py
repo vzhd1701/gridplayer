@@ -36,7 +36,9 @@ def settings(tmp_path, monkeypatch):
     """An ini of our own, so no test writes the one the user has."""
 
     store = _Settings.__new__(_Settings)
-    store.settings = QSettings(str(tmp_path / "settings.ini"), QSettings.IniFormat)
+    store.settings = QSettings(
+        str(tmp_path / "settings.ini"), QSettings.Format.IniFormat
+    )
 
     monkeypatch.setattr(settings_dialog, "Settings", lambda: store)
 
@@ -73,7 +75,7 @@ def make_dialog(settings, _no_real_jar):
         dialog.close()
         dialog.deleteLater()
 
-    QApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+    QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
 
 @pytest.fixture
@@ -91,7 +93,7 @@ class TestThePageIsWiredUp:
         assert dialog.form_of(key) is dialog.forms["network"]
 
     def test_the_section_opens_the_network_page(self, dialog):
-        entry = dialog.section_index.findItems("Network", Qt.MatchExactly)[0]
+        entry = dialog.section_index.findItems("Network", Qt.MatchFlag.MatchExactly)[0]
 
         assert entry.data(SECTION_PAGE_ROLE) is dialog.pages["network"]
 
@@ -247,7 +249,7 @@ class _Opened:
     def __init__(self, opened, checkup):
         opened.append(checkup)
 
-    def exec_(self):
+    def exec(self):
         return None
 
 

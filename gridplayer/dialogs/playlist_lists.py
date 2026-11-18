@@ -46,7 +46,7 @@ from gridplayer.widgets.settings_controls import (
     icon_button,
 )
 
-LIST_ID_ROLE = Qt.UserRole
+LIST_ID_ROLE = Qt.ItemDataRole.UserRole
 
 
 class Column(IntEnum):
@@ -63,9 +63,9 @@ class _ListRows(QTreeView):
         self.setRootIsDecorated(False)
         self.setUniformRowHeights(True)
         self.setAllColumnsShowFocus(True)
-        self.setSelectionMode(QAbstractItemView.SingleSelection)
-        self.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
 
         self.setStyleSheet(
             f"""
@@ -82,7 +82,7 @@ class _ListRows(QTreeView):
         self.delete_handler = None
 
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Delete and self.delete_handler is not None:
+        if event.key() == Qt.Key.Key_Delete and self.delete_handler is not None:
             self.delete_handler()
             event.accept()
             return
@@ -90,7 +90,7 @@ class _ListRows(QTreeView):
         super().keyPressEvent(event)
 
     def contextMenuEvent(self, event):
-        if event.reason() == QContextMenuEvent.Keyboard:
+        if event.reason() == QContextMenuEvent.Reason.Keyboard:
             index = self.currentIndex()
             pos = self.visualRect(index).bottomLeft() if index.isValid() else QPoint()
         else:
@@ -179,9 +179,9 @@ class PlaylistListsPage(QWidget):
 
         header = self._list.header()
         header.setStretchLastSection(False)
-        header.setSectionResizeMode(Column.NAME, QHeaderView.Stretch)
+        header.setSectionResizeMode(Column.NAME, QHeaderView.ResizeMode.Stretch)
         for column in (Column.ITEMS, Column.SOURCE, Column.CELLS):
-            header.setSectionResizeMode(column, QHeaderView.ResizeToContents)
+            header.setSectionResizeMode(column, QHeaderView.ResizeMode.ResizeToContents)
 
         self._hint = QLabel()
         self._hint.setWordWrap(True)
@@ -291,7 +291,9 @@ class PlaylistListsPage(QWidget):
             name_item.setData(media_list.id, LIST_ID_ROLE)
 
             count_item = QStandardItem(count_txt(len(media_list.items)))
-            count_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            count_item.setTextAlignment(
+                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+            )
 
             source_item = QStandardItem(_source_txt(media_list))
             if media_list.source is not None:
@@ -314,7 +316,9 @@ class PlaylistListsPage(QWidget):
                         "Its cells didn't open. It stays in the playlist.",
                     )
                 )
-            cells_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            cells_item.setTextAlignment(
+                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+            )
 
             self._model.appendRow([name_item, count_item, source_item, cells_item])
 
@@ -517,7 +521,7 @@ class PlaylistListsPage(QWidget):
             action = menu.addAction(button.icon(), button.text(), button.click)
             action.setEnabled(button.isEnabled())
 
-        menu.exec_(global_pos)
+        menu.exec(global_pos)
         menu.deleteLater()
 
 

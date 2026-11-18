@@ -75,16 +75,16 @@ def paint_outline(
     own_painter = painter is None
     if own_painter:
         painter = QPainter(widget)
-    painter.setRenderHint(QPainter.Antialiasing)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
     rect, stroke, radius = dashed_frame(widget)
     pen = QPen(chrome_color(widget, TEXT_ALPHA if is_active else CHROME_ALPHA))
     pen.setWidthF(stroke)
     if dashed:
         pen.setDashPattern(_frame_dashes(widget, stroke))
-    pen.setCapStyle(Qt.RoundCap)
-    pen.setJoinStyle(Qt.RoundJoin)
+    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
     painter.setPen(pen)
-    painter.setBrush(Qt.NoBrush)
+    painter.setBrush(Qt.BrushStyle.NoBrush)
     painter.drawRoundedRect(rect, radius, radius)
     if own_painter:
         painter.end()
@@ -116,9 +116,9 @@ def paint_idle_disc(widget, painter: QPainter | None = None) -> None:
     own_painter = painter is None
     if own_painter:
         painter = QPainter(widget)
-    painter.setRenderHint(QPainter.Antialiasing)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
     circle = idle_disc_rect(widget)
-    painter.setPen(Qt.NoPen)
+    painter.setPen(Qt.PenStyle.NoPen)
     painter.setBrush(chrome_color(widget))
     painter.drawEllipse(circle)
 

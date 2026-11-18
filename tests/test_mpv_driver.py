@@ -3388,7 +3388,7 @@ def test_own_window_opens_its_file_at_once(mocker):
     service.add_own_window(player)
 
     player.output_due.connect.assert_called_once_with(
-        service._queue_output, Qt.QueuedConnection
+        service._queue_output, Qt.ConnectionType.QueuedConnection
     )
     assert not service._start_turn.isActive()
 

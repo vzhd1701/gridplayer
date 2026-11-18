@@ -290,7 +290,7 @@ def _screenshot_image(result) -> QImage | None:
     if width <= 0 or height <= 0 or len(data) < stride * height:
         return None
 
-    return QImage(data, width, height, stride, QImage.Format_RGB32).copy()
+    return QImage(data, width, height, stride, QImage.Format.Format_RGB32).copy()
 
 
 class WindowPicture(NamedTuple):

@@ -62,7 +62,9 @@ class UpdateEveryDialog(QDialog):
             )
         )
 
-        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
 
@@ -97,7 +99,7 @@ class UpdateEveryDialog(QDialog):
 
         dialog = cls(every_s, is_from_site, parent)
 
-        is_set = dialog.exec_() == QDialog.Accepted
+        is_set = dialog.exec() == QDialog.DialogCode.Accepted
         every_s = dialog.every_s
 
         dialog.deleteLater()

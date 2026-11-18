@@ -21,7 +21,7 @@ class QColorCircle(QtWidgets.QRadioButton):
 
     def paintEvent(self, event):
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         self.draw_selected_outline(painter)
 
@@ -30,7 +30,7 @@ class QColorCircle(QtWidgets.QRadioButton):
     def draw_selected_outline(self, painter):
         if self.isChecked():
             color = QColor(self.palette().color(self.foregroundRole()))
-            dot_line_pen = QPen(QBrush(color), 2, Qt.DotLine)
+            dot_line_pen = QPen(QBrush(color), 2, Qt.PenStyle.DotLine)
             painter.setPen(dot_line_pen)
 
             one_pixel_margin_circle = self.rect().adjusted(1, 1, -1, -1)
@@ -50,7 +50,7 @@ class QColorCircle(QtWidgets.QRadioButton):
             moderately_big = 20
             f.setPixelSize(moderately_big)
             painter.setFont(f)
-            painter.drawText(self.rect(), Qt.AlignCenter, "…")
+            painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "…")
         else:
             painter.setBrush(self.color)
 
@@ -58,7 +58,7 @@ class QColorCircle(QtWidgets.QRadioButton):
 
     def mousePressEvent(self, event):
         if self.is_custom:
-            init_color = self.color or Qt.white
+            init_color = self.color or Qt.GlobalColor.white
             new_color = QtWidgets.QColorDialog.getColor(
                 init_color,
                 self,
@@ -195,8 +195,10 @@ class _Swatches(QtWidgets.QWidget):
         self._keyed = max(self._current, 0)
 
         self.setMouseTracking(True)
-        self.setFocusPolicy(Qt.StrongFocus)
-        self.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed
+        )
 
     def _rows(self) -> int:
         return -(-len(self._colors) // SWATCH_COLUMNS)
@@ -225,7 +227,7 @@ class _Swatches(QtWidgets.QWidget):
 
     def paintEvent(self, event):
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         for index, color in enumerate(self._colors):
             circle = self._circle(index)
@@ -243,7 +245,7 @@ class _Swatches(QtWidgets.QWidget):
                 ring = theme_color(self, "highlight")
             if ring is not None:
                 painter.setPen(QPen(ring, 2))
-                painter.setBrush(Qt.NoBrush)
+                painter.setBrush(Qt.BrushStyle.NoBrush)
                 painter.drawEllipse(circle.adjusted(-3, -3, 3, 3))
 
     def choose(self, index: int):
@@ -266,15 +268,15 @@ class _Swatches(QtWidgets.QWidget):
 
     def mouseReleaseEvent(self, event):
         index = self._at(event.pos())
-        if event.button() == Qt.LeftButton and index >= 0:
+        if event.button() == Qt.MouseButton.LeftButton and index >= 0:
             self.choose(index)
 
     def keyPressEvent(self, event):
         steps = {
-            Qt.Key_Left: -1,
-            Qt.Key_Right: 1,
-            Qt.Key_Up: -SWATCH_COLUMNS,
-            Qt.Key_Down: SWATCH_COLUMNS,
+            Qt.Key.Key_Left: -1,
+            Qt.Key.Key_Right: 1,
+            Qt.Key.Key_Up: -SWATCH_COLUMNS,
+            Qt.Key.Key_Down: SWATCH_COLUMNS,
         }
         if event.key() in steps:
             keyed = self._keyed + steps[event.key()]
@@ -282,7 +284,7 @@ class _Swatches(QtWidgets.QWidget):
                 self._keyed = keyed
                 self.update()
             return
-        if event.key() in {Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space}:
+        if event.key() in {Qt.Key.Key_Return, Qt.Key.Key_Enter, Qt.Key.Key_Space}:
             self.choose(self._keyed)
             return
         super().keyPressEvent(event)
@@ -306,7 +308,7 @@ class _ColorPopup(QtWidgets.QFrame):
     picked = pyqtSignal(QColor)
 
     def __init__(self, current: QColor, parent=None):
-        super().__init__(parent, Qt.Popup)
+        super().__init__(parent, Qt.WindowType.Popup)
 
         self._current = QColor(current)
 
@@ -325,7 +327,7 @@ class _ColorPopup(QtWidgets.QFrame):
         layout.setSpacing(6)
         layout.addWidget(self.swatches)
         layout.addWidget(_Rule())
-        layout.addWidget(self.other, 0, Qt.AlignLeft)
+        layout.addWidget(self.other, 0, Qt.AlignmentFlag.AlignLeft)
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -380,9 +382,11 @@ class QCompactColorPicker(QtWidgets.QAbstractButton):
         self._color = QColor("#ffffff")
         self._popup: _ColorPopup | None = None
 
-        self.setFocusPolicy(Qt.TabFocus)
-        self.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
-        self.setAttribute(Qt.WA_Hover)
+        self.setFocusPolicy(Qt.FocusPolicy.TabFocus)
+        self.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed
+        )
+        self.setAttribute(Qt.WidgetAttribute.WA_Hover)
         self.clicked.connect(self._open_popup)
 
     @property
@@ -407,7 +411,7 @@ class QCompactColorPicker(QtWidgets.QAbstractButton):
 
     def paintEvent(self, event):
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         if not self.isEnabled():
             painter.setOpacity(DISABLED_OPACITY)
@@ -428,8 +432,8 @@ class QCompactColorPicker(QtWidgets.QAbstractButton):
         painter.setPen(theme_color(self, "text"))
         painter.drawText(
             QRect(text_left, 0, arrow_left - text_left, self.height()),
-            Qt.AlignLeft | Qt.AlignVCenter,
-            self._color.name(QColor.HexRgb).upper(),
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+            self._color.name(QColor.NameFormat.HexRgb).upper(),
         )
 
         middle = self.height() / 2
@@ -440,13 +444,18 @@ class QCompactColorPicker(QtWidgets.QAbstractButton):
                 QPointF(arrow_left + ARROW_PX / 2, middle + ARROW_PX / 4),
             ]
         )
-        painter.setPen(Qt.NoPen)
+        painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(theme_color(self, "text"))
         painter.drawPolygon(arrow)
 
     def keyPressEvent(self, event):
         # as a combo box opens its list
-        if event.key() in {Qt.Key_Down, Qt.Key_Space, Qt.Key_Return, Qt.Key_Enter}:
+        if event.key() in {
+            Qt.Key.Key_Down,
+            Qt.Key.Key_Space,
+            Qt.Key.Key_Return,
+            Qt.Key.Key_Enter,
+        }:
             self.click()
             return
         super().keyPressEvent(event)

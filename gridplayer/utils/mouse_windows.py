@@ -52,7 +52,7 @@ class _HeldButtonsFilter(QAbstractNativeEventFilter):
 
     def nativeEventFilter(self, eventType, message):
         if (
-            QGuiApplication.mouseButtons() != Qt.NoButton
+            QGuiApplication.mouseButtons() != Qt.MouseButton.NoButton
             and bytes(eventType) == b"windows_generic_MSG"
         ):
             msg = wintypes.MSG.from_address(int(message))

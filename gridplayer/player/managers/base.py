@@ -55,7 +55,7 @@ class ManagerBase(QObject):
         window = widget.window()
 
         # one never taking the mouse, a line or a word shown over the player
-        if window.windowFlags() & Qt.WindowTransparentForInput:
+        if window.windowFlags() & Qt.WindowType.WindowTransparentForInput:
             return False
 
         return window is not self.parent() and not isinstance(window, OverlayBlock)

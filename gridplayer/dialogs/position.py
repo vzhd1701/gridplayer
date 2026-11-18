@@ -59,7 +59,7 @@ class _PositionPreview(QWidget):
         super().__init__(parent)
 
         self.setMinimumHeight(150)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
         self._pane_w = 0
         self._pane_h = 0
@@ -74,7 +74,7 @@ class _PositionPreview(QWidget):
 
     def paintEvent(self, _event):
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         if self._pane_w > 0 and self._pane_h > 0:
             self._paint_pane(painter)
@@ -109,8 +109,8 @@ class _PositionPreview(QWidget):
         pane_rect = on_canvas(pane)
 
         # black where the picture leaves the pane, as it is on screen
-        painter.setPen(Qt.NoPen)
-        painter.setBrush(QColor(Qt.black))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor(Qt.GlobalColor.black))
         painter.drawRect(pane_rect)
 
         if picture is not None:
@@ -127,13 +127,13 @@ class _PositionPreview(QWidget):
             in_pane = QPainterPath()
             in_pane.addRect(pane_rect)
 
-            painter.setPen(Qt.NoPen)
+            painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(QColor(0, 0, 0, 130))
             painter.drawPath(past_pane.subtracted(in_pane))
 
         # the pane's edges, what is on show being inside them
         painter.setPen(QPen(self.palette().highlight(), 2))
-        painter.setBrush(Qt.NoBrush)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawRect(pane_rect)
 
 
@@ -191,7 +191,7 @@ class SetPositionDialog(QDialog):
             (1, "y", translate("Dialog - Set Position", "Vertical")),
         ):
             spin = QSpinBox()
-            spin.setAlignment(Qt.AlignRight)
+            spin.setAlignment(Qt.AlignmentFlag.AlignRight)
             spin.valueChanged.connect(self._on_offset_changed)
 
             offset_grid.addWidget(QLabel(name_title), row, 0)
@@ -210,7 +210,9 @@ class SetPositionDialog(QDialog):
         reset = QPushButton(translate("Dialog - Set Position", "Reset"))
         reset.clicked.connect(self._on_reset)
 
-        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
 
@@ -258,7 +260,7 @@ class SetPositionDialog(QDialog):
     def changeEvent(self, event):
         super().changeEvent(event)
 
-        if event.type() == QEvent.PaletteChange:
+        if event.type() == QEvent.Type.PaletteChange:
             self._update_anchor_icons()
 
     def _on_anchor(self, anchor: VideoAnchor):
@@ -322,13 +324,13 @@ def _anchor_pixmap(anchor: VideoAnchor, color: QColor) -> QPixmap:
     size = _ANCHOR_ICON_SIZE
 
     pixmap = QPixmap(size, size)
-    pixmap.fill(Qt.transparent)
+    pixmap.fill(Qt.GlobalColor.transparent)
 
     painter = QPainter(pixmap)
-    painter.setRenderHint(QPainter.Antialiasing)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
     painter.setPen(QPen(color, 1))
-    painter.setBrush(Qt.NoBrush)
+    painter.setBrush(Qt.BrushStyle.NoBrush)
     painter.drawRect(QRectF(0.5, 0.5, size - 1, size - 1))
 
     # small enough for its three places each way to be well apart
@@ -338,7 +340,7 @@ def _anchor_pixmap(anchor: VideoAnchor, color: QColor) -> QPixmap:
     room_w = size - 2 * inset - picture_w
     room_h = size - 2 * inset - picture_h
 
-    painter.setPen(Qt.NoPen)
+    painter.setPen(Qt.PenStyle.NoPen)
     painter.setBrush(color)
     painter.drawRect(
         QRectF(

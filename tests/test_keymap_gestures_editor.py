@@ -80,7 +80,7 @@ def test_moving_a_video_is_only_shown(editor, mocker):
 
 def test_the_drop_key_is_picked_from_the_few_there_are(editor, mocker):
     menus = []
-    mocker.patch.object(CustomMenu, "exec_", lambda menu, *_: menus.append(menu))
+    mocker.patch.object(CustomMenu, "exec", lambda menu, *_: menus.append(menu))
 
     editor._show_action_menu(GESTURE_DROP_SWITCH, None)
 
@@ -97,7 +97,7 @@ def test_the_drop_key_is_picked_from_the_few_there_are(editor, mocker):
 
 def test_a_drag_row_offers_a_drag_not_shortcuts(editor, mocker):
     menus = []
-    mocker.patch.object(CustomMenu, "exec_", lambda menu, *_: menus.append(menu))
+    mocker.patch.object(CustomMenu, "exec", lambda menu, *_: menus.append(menu))
 
     editor._show_action_menu(GESTURE_PAN, None)
 

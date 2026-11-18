@@ -40,7 +40,7 @@ def _shown(lines) -> int:
 
 
 def scenario(d):
-    QDrag.exec = lambda _drag, *_args: Qt.IgnoreAction
+    QDrag.exec = lambda _drag, *_args: Qt.DropAction.IgnoreAction
 
     d.player.resize(WIDTH, HEIGHT)
     d.pump(0.3)
@@ -126,12 +126,12 @@ def scenario(d):
     d.pump(0.2)
     own = _at(d, 400, 150)
     _mouse(d, "move", own)
-    _mouse(d, "press", own, Qt.ControlModifier)
-    _mouse(d, "release", own, Qt.ControlModifier)
+    _mouse(d, "press", own, Qt.KeyboardModifier.ControlModifier)
+    _mouse(d, "release", own, Qt.KeyboardModifier.ControlModifier)
     d.pump(0.2)
     d.check("Ctrl+Click put b in front", _order(d)[-1] == "b.mp4", _order(d))
     d.check("b still playing", not b.video_params.is_paused)
-    modifiers = Qt.ControlModifier | Qt.ShiftModifier
+    modifiers = Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier
     _mouse(d, "press", own, modifiers)
     _mouse(d, "release", own, modifiers)
     d.pump(0.2)

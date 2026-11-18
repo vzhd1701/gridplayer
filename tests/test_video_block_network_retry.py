@@ -23,7 +23,9 @@ def _qapp():
 @pytest.fixture(autouse=True)
 def _isolated_settings(tmp_path):
     settings = Settings()
-    settings.settings = QSettings(str(tmp_path / "test.ini"), QSettings.IniFormat)
+    settings.settings = QSettings(
+        str(tmp_path / "test.ini"), QSettings.Format.IniFormat
+    )
 
 
 @pytest.fixture(autouse=True)

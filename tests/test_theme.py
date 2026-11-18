@@ -32,8 +32,8 @@ def test_current_colors_match_system_theme():
 
 def test_fusion_palette_has_readable_contrast():
     palette = fusion_palette()
-    base = palette.color(QPalette.Base)
-    text = palette.color(QPalette.Text)
+    base = palette.color(QPalette.ColorRole.Base)
+    text = palette.color(QPalette.ColorRole.Text)
     if is_dark_mode():
         assert base.lightness() > 40
         assert text.lightness() > 180
@@ -66,7 +66,9 @@ def test_apply_theme_sets_app_palette():
     from gridplayer.params.theme import apply_theme
 
     apply_theme(app)
-    assert app.palette().color(QPalette.Base).name() == current_colors()["base"]
+    assert (
+        app.palette().color(QPalette.ColorRole.Base).name() == current_colors()["base"]
+    )
     assert "QComboBox QAbstractItemView" in app.styleSheet()
 
 
@@ -124,7 +126,7 @@ def test_dialog_button_icons_stripped_by_proxy_style(mocker):
         assert style.standardIcon(standard_icon).isNull()
 
     # non-dialog icons pass through to the wrapped Fusion style
-    assert not style.standardIcon(QStyle.SP_DirIcon).isNull()
+    assert not style.standardIcon(QStyle.StandardPixmap.SP_DirIcon).isNull()
 
     # apply_theme wraps the app style; the stripping must survive the
     # QStyleSheetStyle wrapper that app.setStyleSheet() puts on top of it.
@@ -133,8 +135,8 @@ def test_dialog_button_icons_stripped_by_proxy_style(mocker):
     apply_theme(app)
 
     assert theme_mod._dialog_button_style_installed
-    assert app.style().standardIcon(QStyle.SP_DialogOkButton).isNull()
-    assert not app.style().standardIcon(QStyle.SP_DirIcon).isNull()
+    assert app.style().standardIcon(QStyle.StandardPixmap.SP_DialogOkButton).isNull()
+    assert not app.style().standardIcon(QStyle.StandardPixmap.SP_DirIcon).isNull()
 
 
 def test_html_set_after_the_theme_still_gets_theme_links():

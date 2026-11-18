@@ -60,7 +60,9 @@ def _isolated_settings(tmp_path):
     settings = Settings()
     real_settings = settings.settings
 
-    settings.settings = QSettings(str(tmp_path / "test.ini"), QSettings.IniFormat)
+    settings.settings = QSettings(
+        str(tmp_path / "test.ini"), QSettings.Format.IniFormat
+    )
 
     yield
 
@@ -139,7 +141,7 @@ def open_dialog():
 
     def _open(block, selected=()):
         dialog = BookmarksDialog(block, selected=selected)
-        dialog.setAttribute(Qt.WA_DontShowOnScreen)
+        dialog.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen)
         dialog.show()
         QApplication.processEvents()
 
@@ -166,7 +168,7 @@ def _times(block):
     return [bookmark.time_ms for bookmark in block.bookmarks]
 
 
-def _cell(dialog, row, column, role=Qt.DisplayRole):
+def _cell(dialog, row, column, role=Qt.ItemDataRole.DisplayRole):
     return dialog._model.index(row, column).data(role)
 
 
@@ -207,17 +209,19 @@ class TestTheList:
 
     def test_one_without_a_name_goes_by_its_number_in_italics(self, dialog):
         assert _cell(dialog, 0, Column.NAME) == "Bookmark 1"
-        assert _cell(dialog, 0, Column.NAME, Qt.FontRole).italic()
+        assert _cell(dialog, 0, Column.NAME, Qt.ItemDataRole.FontRole).italic()
 
     def test_its_name_to_edit_is_its_own_the_number_left_to_show_under_it(self, dialog):
-        assert _cell(dialog, 0, Column.NAME, Qt.EditRole) == ""
+        assert _cell(dialog, 0, Column.NAME, Qt.ItemDataRole.EditRole) == ""
         assert _cell(dialog, 0, Column.NAME, DEFAULT_NAME_ROLE) == "Bookmark 1"
-        assert _cell(dialog, 1, Column.NAME, Qt.EditRole) == "Goal & Run"
+        assert _cell(dialog, 1, Column.NAME, Qt.ItemDataRole.EditRole) == "Goal & Run"
 
     def test_the_one_the_video_is_at_has_the_play_mark(self, block, dialog):
         def marks():
             return [
-                _cell(dialog, row, Column.TIME, Qt.DecorationRole).cacheKey()
+                _cell(
+                    dialog, row, Column.TIME, Qt.ItemDataRole.DecorationRole
+                ).cacheKey()
                 for row in range(3)
             ]
 
@@ -254,7 +258,10 @@ class TestOutOfReach:
         block.loop.set_end_time(40000)
         dialog = open_dialog(block)
 
-        tooltips = [_cell(dialog, row, Column.NAME, Qt.ToolTipRole) for row in range(3)]
+        tooltips = [
+            _cell(dialog, row, Column.NAME, Qt.ItemDataRole.ToolTipRole)
+            for row in range(3)
+        ]
 
         assert tooltips == ["Outside the loop", None, "Outside the loop"]
 
@@ -290,7 +297,7 @@ class TestOutOfReach:
         edges = [(row, text) for row, text, _ in dialog._list.edges]
 
         assert edges == [(1, "end 01:00")]
-        assert _cell(dialog, 1, Column.NAME, Qt.ToolTipRole) == (
+        assert _cell(dialog, 1, Column.NAME, Qt.ItemDataRole.ToolTipRole) == (
             "Past the end of the video"
         )
 
@@ -310,11 +317,11 @@ class TestAdding:
     ):
         block.seek(20000)
 
-        QTest.mouseClick(dialog._add_button, Qt.LeftButton)
+        QTest.mouseClick(dialog._add_button, Qt.MouseButton.LeftButton)
 
         assert _times(block) == [10000, 20000, 30000, 50000]
         assert _picked(dialog) == [1]
-        assert dialog._list.state() == QAbstractItemView.EditingState
+        assert dialog._list.state() == QAbstractItemView.State.EditingState
 
         editor = dialog._list.findChild(QLineEdit)
         assert editor.placeholderText() == "Bookmark 2"
@@ -325,7 +332,7 @@ class TestAdding:
 
         editor = dialog._list.findChild(QLineEdit)
         editor.setText("Kick-off")
-        QTest.keyClick(editor, Qt.Key_Return)
+        QTest.keyClick(editor, Qt.Key.Key_Return)
         _settle()
 
         assert block.bookmarks[1] == Bookmark(time_ms=20000, name="Kick-off")
@@ -357,9 +364,9 @@ class TestRenaming:
     def test_f2_edits_the_name_of_the_current_one(self, block, open_dialog):
         dialog = open_dialog(block, selected=(1,))
 
-        QTest.keyClick(dialog._list, Qt.Key_F2)
+        QTest.keyClick(dialog._list, Qt.Key.Key_F2)
 
-        assert dialog._list.state() == QAbstractItemView.EditingState
+        assert dialog._list.state() == QAbstractItemView.State.EditingState
         assert dialog._list.findChild(QLineEdit).text() == "Goal & Run"
 
 
@@ -374,7 +381,7 @@ class TestMoving:
         block = make_block((Bookmark(time_ms=10437),))
         dialog = open_dialog(block)
 
-        assert _cell(dialog, 0, Column.TIME, Qt.EditRole) == "00:10.437"
+        assert _cell(dialog, 0, Column.TIME, Qt.ItemDataRole.EditRole) == "00:10.437"
 
         _edit(dialog, 0, Column.TIME, "00:10.438")
 
@@ -418,7 +425,7 @@ class TestRemoving:
     def test_the_picked_ones_go_and_the_next_is_picked(self, block, open_dialog):
         dialog = open_dialog(block, selected=(0, 1))
 
-        QTest.mouseClick(dialog._remove_button, Qt.LeftButton)
+        QTest.mouseClick(dialog._remove_button, Qt.MouseButton.LeftButton)
 
         assert _times(block) == [50000]
         assert _picked(dialog) == [0]
@@ -426,13 +433,13 @@ class TestRemoving:
     def test_delete_does_the_same(self, block, open_dialog):
         dialog = open_dialog(block, selected=(2,))
 
-        QTest.keyClick(dialog._list, Qt.Key_Delete)
+        QTest.keyClick(dialog._list, Qt.Key.Key_Delete)
 
         assert _times(block) == [10000, 30000]
         assert _picked(dialog) == [1]
 
     def test_all_of_them_go_without_asking(self, block, dialog):
-        QTest.mouseClick(dialog._remove_all_button, Qt.LeftButton)
+        QTest.mouseClick(dialog._remove_all_button, Qt.MouseButton.LeftButton)
 
         assert block.bookmarks == ()
         assert dialog._model.rowCount() == 0
@@ -442,7 +449,7 @@ class TestJumping:
     def test_enter_goes_to_the_current_one(self, block, open_dialog):
         dialog = open_dialog(block, selected=(1,))
 
-        QTest.keyClick(dialog._list, Qt.Key_Return)
+        QTest.keyClick(dialog._list, Qt.Key.Key_Return)
 
         assert block.time == 30000
         # the dialog stays up
@@ -453,7 +460,7 @@ class TestJumping:
         synced = []
         block.sync_time.connect(synced.append)
 
-        QTest.keyClick(dialog._list, Qt.Key_Return)
+        QTest.keyClick(dialog._list, Qt.Key.Key_Return)
 
         assert synced == [50000]
 
@@ -473,7 +480,7 @@ class TestJumping:
 
 class TestCopyAndPaste:
     def test_copy_puts_them_on_the_clipboard_as_timestamps(self, dialog):
-        QTest.mouseClick(dialog._copy_button, Qt.LeftButton)
+        QTest.mouseClick(dialog._copy_button, Qt.MouseButton.LeftButton)
 
         assert QApplication.clipboard().text() == ("0:10\n0:30 Goal & Run\n0:50 Late")
         assert _status(dialog) == "Bookmarks copied: 3"
@@ -601,7 +608,7 @@ class TestTheVideo:
         assert dialog._player.play_pause.is_off
 
     def test_space_does_too(self, block, dialog):
-        QTest.keyClick(dialog._list, Qt.Key_Space)
+        QTest.keyClick(dialog._list, Qt.Key.Key_Space)
 
         assert not block.video_params.is_paused
 
@@ -633,7 +640,7 @@ class TestWithNothingPlaying:
     def test_the_list_reads_as_it_did(self, stopped):
         assert stopped._model.rowCount() == 3
         assert _cell(stopped, 0, Column.TIME) == "00:10.000"
-        assert _cell(stopped, 1, Column.NAME, Qt.ForegroundRole) is None
+        assert _cell(stopped, 1, Column.NAME, Qt.ItemDataRole.ForegroundRole) is None
         assert stopped._list.edges == ()
 
     def test_the_bar_is_back_at_the_start_with_its_markers(self, stopped):
@@ -693,7 +700,7 @@ class TestWithNothingPlaying:
         assert not dialog._player.play_pause.isEnabled()
 
         dialog._player.play_pause.clicked.emit()
-        QTest.keyClick(dialog._list, Qt.Key_Space)
+        QTest.keyClick(dialog._list, Qt.Key.Key_Space)
 
         assert not block.is_video_initialized
         assert dialog._model.rowCount() == 3
@@ -834,7 +841,7 @@ class TestTheVideoGoing:
         opened = _manage_and(block, remove_one_and_close)
 
         assert not opened["left_open"]
-        assert opened["dialog"].result() == QDialog.Accepted
+        assert opened["dialog"].result() == QDialog.DialogCode.Accepted
         assert block.bookmarks == BOOKMARKS[1:]
 
     def test_another_file_in_its_place_takes_it_too(self, block, tmp_path):
@@ -843,7 +850,7 @@ class TestTheVideoGoing:
         opened = _manage_and(block, lambda _dialog: block.navigation.next())
 
         assert not opened["left_open"]
-        assert opened["dialog"].result() == QDialog.Accepted
+        assert opened["dialog"].result() == QDialog.DialogCode.Accepted
         assert block.video_params.uri == tmp_path / "other.mkv"
 
 
@@ -856,7 +863,7 @@ def shown(mocker):
     def _exec(menu, _pos):
         menus.append(menu)
 
-    mocker.patch.object(dialog_module.CustomMenu, "exec_", _exec)
+    mocker.patch.object(dialog_module.CustomMenu, "exec", _exec)
 
     return menus
 
@@ -880,7 +887,9 @@ def _shown(keys):
     """Keys as a menu shows them here: macOS has ⌘C for Ctrl+C."""
 
     return [
-        QKeySequence(key).toString(QKeySequence.NativeText) if key else ""
+        QKeySequence(key).toString(QKeySequence.SequenceFormat.NativeText)
+        if key
+        else ""
         for key in keys
     ]
 
@@ -893,7 +902,7 @@ def _item(menu, title):
 
 def _right_click(dialog, pos):
     QApplication.sendEvent(
-        dialog._list.viewport(), QContextMenuEvent(QContextMenuEvent.Mouse, pos)
+        dialog._list.viewport(), QContextMenuEvent(QContextMenuEvent.Reason.Mouse, pos)
     )
 
 
@@ -948,7 +957,7 @@ class TestTheRowMenu:
 
         QApplication.sendEvent(
             dialog._list,
-            QContextMenuEvent(QContextMenuEvent.Keyboard, QPoint(0, 0)),
+            QContextMenuEvent(QContextMenuEvent.Reason.Keyboard, QPoint(0, 0)),
         )
 
         assert _titles(shown[0]) == self.ITEMS
@@ -969,7 +978,7 @@ class TestTheRowMenu:
 
         _item(shown[0], "Edit Time").trigger()
 
-        assert dialog._list.state() == QAbstractItemView.EditingState
+        assert dialog._list.state() == QAbstractItemView.State.EditingState
         assert dialog._list.findChild(QLineEdit).text() == "00:30.000"
 
     def test_a_marker_s_is_the_same_for_its_bookmark(self, block, dialog, shown):
@@ -1056,15 +1065,15 @@ class TestTheKeys:
     def test_shift_f2_opens_the_time_to_type_over(self, block, open_dialog):
         dialog = open_dialog(block, selected=(1,))
 
-        QTest.keyClick(dialog._list, Qt.Key_F2, Qt.ShiftModifier)
+        QTest.keyClick(dialog._list, Qt.Key.Key_F2, Qt.KeyboardModifier.ShiftModifier)
 
-        assert dialog._list.state() == QAbstractItemView.EditingState
+        assert dialog._list.state() == QAbstractItemView.State.EditingState
         assert dialog._list.findChild(QLineEdit).text() == "00:30.000"
 
     def test_f2_alone_opens_the_name(self, block, open_dialog):
         dialog = open_dialog(block, selected=(1,))
 
-        QTest.keyClick(dialog._list, Qt.Key_F2)
+        QTest.keyClick(dialog._list, Qt.Key.Key_F2)
 
         assert dialog._list.findChild(QLineEdit).text() == "Goal & Run"
 
@@ -1072,21 +1081,21 @@ class TestTheKeys:
         dialog = open_dialog(block, selected=(1,))
         block.seek(40000)
 
-        QTest.keyClick(dialog._list, Qt.Key_M, Qt.ControlModifier)
+        QTest.keyClick(dialog._list, Qt.Key.Key_M, Qt.KeyboardModifier.ControlModifier)
 
         assert _times(block) == [10000, 40000, 50000]
 
     def test_insert_adds_one_where_the_video_is(self, block, dialog):
         block.seek(20000)
 
-        QTest.keyClick(dialog._list, Qt.Key_Insert)
+        QTest.keyClick(dialog._list, Qt.Key.Key_Insert)
 
         assert _times(block) == [10000, 20000, 30000, 50000]
 
     def test_copy_copies_the_picked_ones(self, block, open_dialog):
         dialog = open_dialog(block, selected=(1, 2))
 
-        QTest.keySequence(dialog._list, QKeySequence(QKeySequence.Copy))
+        QTest.keySequence(dialog._list, QKeySequence(QKeySequence.StandardKey.Copy))
 
         assert QApplication.clipboard().text() == "0:30 Goal & Run\n0:50 Late"
         assert _status(dialog) == "Bookmarks copied: 2"
@@ -1094,14 +1103,14 @@ class TestTheKeys:
     def test_paste_adds_those_in_the_clipboard(self, block, dialog):
         QApplication.clipboard().setText("0:20 Kick-off")
 
-        QTest.keySequence(dialog._list, QKeySequence(QKeySequence.Paste))
+        QTest.keySequence(dialog._list, QKeySequence(QKeySequence.StandardKey.Paste))
 
         assert _times(block) == [10000, 20000, 30000, 50000]
 
     def test_paste_with_no_timestamps_says_so(self, block, dialog):
         QApplication.clipboard().setText("just some words")
 
-        QTest.keySequence(dialog._list, QKeySequence(QKeySequence.Paste))
+        QTest.keySequence(dialog._list, QKeySequence(QKeySequence.StandardKey.Paste))
 
         assert _times(block) == [10000, 30000, 50000]
         assert _status(dialog) == "No timestamps to paste"
@@ -1114,7 +1123,7 @@ class TestTheCount:
     def test_it_follows_them(self, block, open_dialog):
         dialog = open_dialog(block, selected=(0,))
 
-        QTest.keyClick(dialog._list, Qt.Key_Delete)
+        QTest.keyClick(dialog._list, Qt.Key.Key_Delete)
 
         assert _status(dialog) == "Bookmarks: 2"
 
@@ -1209,7 +1218,7 @@ class TestThePlayerRow:
 
         player = dialog._player
         palette = player.palette()
-        palette.setColor(QPalette.Window, QColor(Qt.red))
+        palette.setColor(QPalette.ColorRole.Window, QColor(Qt.GlobalColor.red))
         player.setPalette(palette)
         player.setAutoFillBackground(True)
 
@@ -1219,7 +1228,7 @@ class TestThePlayerRow:
 
         # not rounded off it
         for corner in (box.topLeft(), box.bottomRight()):
-            assert QColor(image.pixel(corner)) != QColor(Qt.red)
+            assert QColor(image.pixel(corner)) != QColor(Qt.GlobalColor.red)
 
         # nor mixed with it
         if widget is not player.bar:
@@ -1640,7 +1649,10 @@ class TestColouringInTheManager:
         )
         dialog = open_dialog(block)
 
-        icons = [_cell(dialog, row, Column.NAME, Qt.DecorationRole) for row in (0, 1)]
+        icons = [
+            _cell(dialog, row, Column.NAME, Qt.ItemDataRole.DecorationRole)
+            for row in (0, 1)
+        ]
 
         assert [_icon_color(icon) for icon in icons] == ["#ffab00", BLUE]
 

@@ -233,7 +233,7 @@ def fill_bookmark_marker(painter, shape: QPolygonF | QPainterPath, colors):
     """
 
     painter.save()
-    painter.setPen(Qt.NoPen)
+    painter.setPen(Qt.PenStyle.NoPen)
 
     if len(colors) == 1:
         painter.setBrush(colors[0])
@@ -248,7 +248,7 @@ def fill_bookmark_marker(painter, shape: QPolygonF | QPainterPath, colors):
         painter.save()
         painter.setClipRect(
             QRectF(left, bounds.top() - 1, right - left, bounds.height() + 2),
-            Qt.IntersectClip,
+            Qt.ClipOperation.IntersectClip,
         )
         painter.setBrush(color)
         _draw_shape(painter, shape)
@@ -268,7 +268,7 @@ def draw_bookmark_marker(painter, shape: QPolygonF, colors, rim: QColor):
 
     painter.save()
     painter.setPen(pen)
-    painter.setBrush(Qt.NoBrush)
+    painter.setBrush(Qt.BrushStyle.NoBrush)
     painter.drawPolygon(shape)
     painter.restore()
 
@@ -432,10 +432,10 @@ def paint_faded(painter: QPainter, area: QRect, opacity: float, paint) -> None:
     layer = QImage(
         round(area.width() * ratio),
         round(area.height() * ratio),
-        QImage.Format_ARGB32_Premultiplied,
+        QImage.Format.Format_ARGB32_Premultiplied,
     )
     layer.setDevicePixelRatio(ratio)
-    layer.fill(Qt.transparent)
+    layer.fill(Qt.GlobalColor.transparent)
 
     layer_painter = QPainter(layer)
     layer_painter.translate(-area.topLeft())
@@ -465,9 +465,9 @@ def paint_box_shadow(painter: QPainter, path: QPainterPath, peak_alpha: float):
     outside.addRect(bounds)
 
     painter.save()
-    painter.setRenderHint(QPainter.Antialiasing, True)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
     painter.setClipPath(outside.subtracted(path))
-    painter.setBrush(Qt.NoBrush)
+    painter.setBrush(Qt.BrushStyle.NoBrush)
 
     shadow = path.translated(0, BOX_SHADOW_DROP)
 
@@ -476,7 +476,7 @@ def paint_box_shadow(painter: QPainter, path: QPainterPath, peak_alpha: float):
         color.setAlphaF(step_alpha * (1 - ring / (rings + 1)))
 
         pen = QPen(color, ring * 2)
-        pen.setJoinStyle(Qt.RoundJoin)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
         painter.setPen(pen)
         painter.drawPath(shadow)
 
@@ -492,7 +492,7 @@ def _box_shadow_pixmap(path: QPainterPath, dpr: float) -> tuple[QPixmap, QPoint]
 
     pixmap = QPixmap(rect.size() * dpr)
     pixmap.setDevicePixelRatio(dpr)
-    pixmap.fill(Qt.transparent)
+    pixmap.fill(Qt.GlobalColor.transparent)
 
     painter = QPainter(pixmap)
     painter.translate(-rect.topLeft())
@@ -523,7 +523,7 @@ class OverlayWidget(QWidget):
         super().__init__(**kwargs)
 
         font_height = 13
-        self._color = QColor(Qt.white)
+        self._color = QColor(Qt.GlobalColor.white)
 
         # on the opaque overlay, which shows nothing through it: no see-through
         # fill, no rounded corners and no shadows, the window being cut to the
@@ -541,7 +541,7 @@ class OverlayWidget(QWidget):
 
         # These widgets paint their own pixels. A system/style fill would be
         # opaque and shows up as a solid box under translucent compositing.
-        self.setAttribute(Qt.WA_NoSystemBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
         self.setAutoFillBackground(False)
 
         self.setMinimumHeight(font_height + self.padding)
@@ -599,7 +599,7 @@ class OverlayWidget(QWidget):
         picture through; over a cell with no picture, the theme's base."""
 
         if self._is_on_chrome:
-            return _theme_color(QPalette.Base)
+            return _theme_color(QPalette.ColorRole.Base)
 
         color = QColor(self.color)
 
@@ -613,7 +613,7 @@ class OverlayWidget(QWidget):
         """What is written and drawn on its box, never see-through."""
 
         if self._is_on_chrome:
-            return _theme_color(QPalette.Text)
+            return _theme_color(QPalette.ColorRole.Text)
 
         return self.color_contrast
 
@@ -622,7 +622,7 @@ class OverlayWidget(QWidget):
         """Its box under the mouse, for one that is clicked."""
 
         if self._is_on_chrome:
-            return _theme_color(QPalette.Highlight)
+            return _theme_color(QPalette.ColorRole.Highlight)
 
         if self._is_solid:
             return self.color_contrast_mid
@@ -635,7 +635,7 @@ class OverlayWidget(QWidget):
     @property
     def hover_text_color(self) -> QColor:
         if self._is_on_chrome:
-            return _theme_color(QPalette.Text)
+            return _theme_color(QPalette.ColorRole.Text)
 
         return QColor(self.color)
 
@@ -645,8 +645,8 @@ class OverlayWidget(QWidget):
         a line inside its edge makes it look smaller."""
 
         painter.save()
-        painter.setRenderHint(QPainter.Antialiasing, not self._is_solid)
-        painter.setPen(Qt.NoPen)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, not self._is_solid)
+        painter.setPen(Qt.PenStyle.NoPen)
         painter.fillPath(self.box_path(), self.fill_color if fill is None else fill)
         painter.restore()
 
@@ -692,7 +692,7 @@ class OverlayLabel(OverlayWidget):
 
         self._label = ""
 
-        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -701,7 +701,7 @@ class OverlayLabel(OverlayWidget):
 
         self.paint_box(painter)
         painter.setPen(self.text_color)
-        painter.drawText(self.rect(), Qt.AlignCenter, label)
+        painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, label)
 
     def printable_label(self, width, font):
         label = self.label
@@ -712,7 +712,7 @@ class OverlayLabel(OverlayWidget):
         size = metrics.size(0, label)
         if size.width() > max_width:
             size.setWidth(max_width)
-            label = metrics.elidedText(label, Qt.ElideMiddle, max_width)
+            label = metrics.elidedText(label, Qt.TextElideMode.ElideMiddle, max_width)
 
         return label
 
@@ -733,7 +733,7 @@ class OverlayShortLabel(OverlayWidget):
         self._text = ""
         self._is_visuals_updated = False
 
-        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -743,7 +743,7 @@ class OverlayShortLabel(OverlayWidget):
 
         self.paint_box(painter)
         painter.setPen(self.text_color)
-        painter.drawText(self.rect(), Qt.AlignCenter, self.text)
+        painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, self.text)
 
     def update_visuals(self):
         padding = 10
@@ -786,7 +786,7 @@ class OverlayListWindowTag(OverlayShortLabel):
             self.update_visuals()
 
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         fill = QColor(self.text_color)
 
@@ -802,10 +802,10 @@ class OverlayListWindowTag(OverlayShortLabel):
         pen = QPen(rim)
         pen.setWidthF(self.rim_width)
         painter.setPen(pen)
-        painter.setBrush(Qt.NoBrush)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawPath(self.box_path(inset=self.rim_width / 2))
 
-        painter.drawText(self.rect(), Qt.AlignCenter, self.text)
+        painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, self.text)
 
 
 class OverlayShortLabelFloating(OverlayShortLabel):
@@ -1025,7 +1025,7 @@ class OverlayShortLabelFloating(OverlayShortLabel):
         if room < HOVER_LABEL_MIN_NAME_PX:
             return None
 
-        return QFontMetrics(font).elidedText(name, Qt.ElideRight, room)
+        return QFontMetrics(font).elidedText(name, Qt.TextElideMode.ElideRight, room)
 
     def _update_shape(self):
         """Cut the label to its box and its pointer, on the opaque overlay.
@@ -1051,8 +1051,8 @@ class OverlayShortLabelFloating(OverlayShortLabel):
             return QRegion(self._pointer().toPolygon())
 
         # the marker as painted, its rim and all
-        painted = QImage(self.size(), QImage.Format_ARGB32_Premultiplied)
-        painted.fill(Qt.transparent)
+        painted = QImage(self.size(), QImage.Format.Format_ARGB32_Premultiplied)
+        painted.fill(Qt.GlobalColor.transparent)
 
         painter = QPainter(painted)
         self.draw_pointer(painter)
@@ -1084,7 +1084,7 @@ class OverlayShortLabelFloating(OverlayShortLabel):
         if room < HOVER_LABEL_MIN_NAME_PX:
             return time_txt
 
-        name = metrics.elidedText(chapter[0].label, Qt.ElideRight, room)
+        name = metrics.elidedText(chapter[0].label, Qt.TextElideMode.ElideRight, room)
 
         return f"{prefix}{name}"
 
@@ -1120,7 +1120,9 @@ class OverlayShortLabelFloating(OverlayShortLabel):
         if room < HOVER_LABEL_MIN_NAME_PX:
             return None
 
-        return QFontMetrics(self.font()).elidedText(names, Qt.ElideRight, room)
+        return QFontMetrics(self.font()).elidedText(
+            names, Qt.TextElideMode.ElideRight, room
+        )
 
     def _under_lines(self) -> list[_UnderLine]:
         """The lines below the time: the bookmarks, then the segments."""
@@ -1153,7 +1155,7 @@ class OverlayShortLabelFloating(OverlayShortLabel):
             # the box and its pointer in one, or the fill would be laid on
             # twice where they meet
             painter.save()
-            painter.setRenderHint(QPainter.Antialiasing, True)
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
             painter.fillPath(self.box_path(), self.fill_color)
             painter.restore()
 
@@ -1164,7 +1166,7 @@ class OverlayShortLabelFloating(OverlayShortLabel):
         if under_lines:
             self.draw_lines(painter, text_box, under_lines)
         else:
-            painter.drawText(text_box, Qt.AlignCenter, self.text)
+            painter.drawText(text_box, Qt.AlignmentFlag.AlignCenter, self.text)
 
         if self.is_opaque and self._is_on_marker:
             # the marker below the box, as the label is cut to it
@@ -1243,7 +1245,7 @@ class OverlayShortLabelFloating(OverlayShortLabel):
 
         painter.drawText(
             QRect(text_box.left(), top, text_box.width(), line_height),
-            Qt.AlignCenter,
+            Qt.AlignmentFlag.AlignCenter,
             self.text,
         )
 
@@ -1284,7 +1286,7 @@ class OverlayShortLabelFloating(OverlayShortLabel):
 
                 painter.drawText(
                     QRect(text_left, top, text_width, line_height),
-                    Qt.AlignVCenter | Qt.AlignLeft,
+                    Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
                     line.text,
                 )
 
@@ -1303,7 +1305,7 @@ class OverlayShortLabelFloating(OverlayShortLabel):
                         painter.fontMetrics().horizontalAdvance(after),
                         line_height,
                     ),
-                    Qt.AlignVCenter | Qt.AlignLeft,
+                    Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
                     after,
                 )
                 painter.restore()
@@ -1321,7 +1323,7 @@ class OverlayShortLabelFloating(OverlayShortLabel):
         )
 
         painter.save()
-        painter.setRenderHint(QPainter.Antialiasing, True)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
         draw_bookmark_marker(painter, shape, [color], self.color_contrast)
         painter.restore()
 
@@ -1340,7 +1342,7 @@ class OverlayShortLabelFloating(OverlayShortLabel):
         painter.drawRect(swatch.adjusted(0, 0, -1, -1))
 
     def draw_pointer(self, painter):
-        painter.setRenderHint(QPainter.Antialiasing, True)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
         pointer = self._pointer()
 
@@ -1365,7 +1367,7 @@ class OverlayShortLabelFloating(OverlayShortLabel):
         path.addPolygon(pointer)
         path.closeSubpath()
 
-        painter.setPen(Qt.NoPen)
+        painter.setPen(Qt.PenStyle.NoPen)
         painter.fillPath(path, self.color)
 
     def update_visuals(self):
@@ -1421,8 +1423,8 @@ class OverlayBar(OverlayWidget):
         rest = QPainterPath(box)
 
         painter.save()
-        painter.setRenderHint(QPainter.Antialiasing, not self._is_solid)
-        painter.setPen(Qt.NoPen)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, not self._is_solid)
+        painter.setPen(Qt.PenStyle.NoPen)
 
         for rect, color in parts:
             if rect.isEmpty():
@@ -1502,7 +1504,7 @@ class OverlayProgressBar(OverlayBar):
 
         self.mouse_over.emit(top_edge, mouse_position, self.width())
 
-        if QGuiApplication.mouseButtons() == Qt.LeftButton:
+        if QGuiApplication.mouseButtons() == Qt.MouseButton.LeftButton:
             self._update_position(self.progress_select_x)
             event.accept()
 
@@ -1514,13 +1516,13 @@ class OverlayProgressBar(OverlayBar):
     def mouseReleaseEvent(self, event):
         """Consume mouse release to avoid pausing from parent event"""
 
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             event.accept()
         else:
             event.ignore()
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             self._update_position(event.pos().x())
 
         event.ignore()
@@ -1582,7 +1584,7 @@ class OverlayProgressBar(OverlayBar):
         cur_start_loop_rect.setX(cur_start_loop)
         cur_start_loop_rect.setWidth(1)
 
-        painter.fillRect(cur_start_loop_rect, Qt.green)
+        painter.fillRect(cur_start_loop_rect, Qt.GlobalColor.green)
 
     def draw_hovered_chapter(self, painter):
         """Set the chapter under the mouse apart from the rest of the bar."""
@@ -1643,8 +1645,8 @@ class OverlayProgressBar(OverlayBar):
         middle_y = self.height() / 2
 
         painter.save()
-        painter.setRenderHint(QPainter.Antialiasing, True)
-        painter.setPen(Qt.NoPen)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        painter.setPen(Qt.PenStyle.NoPen)
 
         for mark in highlights:
             x = self._x_at(mark.time_ms)
@@ -1671,8 +1673,8 @@ class OverlayProgressBar(OverlayBar):
         min_gap = half_width * 2 + CHAPTER_NOTCH_MIN_GAP
 
         painter.save()
-        painter.setRenderHint(QPainter.Antialiasing, True)
-        painter.setPen(Qt.NoPen)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(self.color_contrast)
 
         last_x = None
@@ -1884,8 +1886,8 @@ class OverlayBookmarkMarkers(OverlayWidget):
         if not self.is_opaque:
             return
 
-        painted = QImage(self.size(), QImage.Format_ARGB32_Premultiplied)
-        painted.fill(Qt.transparent)
+        painted = QImage(self.size(), QImage.Format.Format_ARGB32_Premultiplied)
+        painted.fill(Qt.GlobalColor.transparent)
 
         painter = QPainter(painted)
         self._paint_markers(painter)
@@ -1963,7 +1965,7 @@ class OverlayBookmarkMarkers(OverlayWidget):
             event.ignore()
             return
 
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             _, bookmarks = marker
             self.marker_clicked.emit(tuple(mark.time_ms for mark in bookmarks))
 
@@ -2001,7 +2003,7 @@ class OverlayBookmarkMarkers(OverlayWidget):
         self._paint_markers(painter)
 
     def _paint_markers(self, painter):
-        painter.setRenderHint(QPainter.Antialiasing, True)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
         for index, (x, bookmarks) in enumerate(self._markers):
             # the hover label's pointer for now, drawn by the label
@@ -2030,7 +2032,7 @@ class OverlayVolumeBar(OverlayBar):
         self.setMinimumWidth(self.minimumHeight())
         self.setMaximumHeight(self.minimumHeight() * 4)
         self.setMinimumHeight(10)
-        self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Expanding)
+        self.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
         self.setMouseTracking(True)
 
@@ -2047,7 +2049,7 @@ class OverlayVolumeBar(OverlayBar):
 
         self.update()
 
-        if QGuiApplication.mouseButtons() == Qt.LeftButton:
+        if QGuiApplication.mouseButtons() == Qt.MouseButton.LeftButton:
             self._update_position(self.progress_select_y)
             event.accept()
 
@@ -2060,7 +2062,7 @@ class OverlayVolumeBar(OverlayBar):
         event.accept()
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             self._update_position(event.pos().y())
             event.accept()
         else:
@@ -2130,7 +2132,7 @@ class OverlayBorder(OverlayWidget):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
     def showEvent(self, event) -> None:
         self._apply_ring_mask()
@@ -2146,7 +2148,7 @@ class OverlayBorder(OverlayWidget):
 
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
-        painter.setPen(Qt.NoPen)
+        painter.setPen(Qt.PenStyle.NoPen)
 
         if getattr(self.parent(), "is_opaque", False):
             # Same idea as OverlayShortLabelFloating: clip the paint, then
@@ -2172,7 +2174,7 @@ class OverlayBorder(OverlayWidget):
 
     def _ring_path(self, width: int | None = None) -> QPainterPath:
         path = QPainterPath()
-        path.setFillRule(Qt.OddEvenFill)
+        path.setFillRule(Qt.FillRule.OddEvenFill)
         path.addRect(QRectF(self.rect()))
         inset = float(self.border_width if width is None else width)
         path.addRect(
@@ -2222,7 +2224,7 @@ class OverlayZoomSelection(OverlayWidget):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.setMinimumSize(0, 0)
 
         self._selection = QRect()
@@ -2298,7 +2300,7 @@ class OverlayZoomHint(OverlayWidget):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.setMinimumSize(0, 0)
 
         self._is_wanted = False
@@ -2333,7 +2335,7 @@ class OverlayZoomHint(OverlayWidget):
         line_box.setHeight(metrics.height())
 
         for line in lines:
-            painter.drawText(line_box, Qt.AlignCenter, line)
+            painter.drawText(line_box, Qt.AlignmentFlag.AlignCenter, line)
             line_box.translate(0, metrics.height() + self.line_gap)
 
     def _layout(self) -> tuple[tuple[str, ...], QRect | None]:
@@ -2409,7 +2411,7 @@ class OverlayDiscBadge(OverlayWidget):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.setMinimumSize(0, 0)
 
         self._colors = (QColor(0, 0, 0), QColor(255, 255, 255))
@@ -2463,17 +2465,17 @@ class OverlayDiscBadge(OverlayWidget):
             return
 
         painter = QPainter(self)
-        painter.setPen(Qt.NoPen)
+        painter.setPen(Qt.PenStyle.NoPen)
 
         if self._is_parent_opaque():
             # Fill the exact X11 mask pixels. drawEllipse() does not match
             # QRegion.Ellipse 1:1, so leftover mask dots showed Window white.
             disc_rect = self._glyph_mask_rect()
-            mask = QRegion(disc_rect, QRegion.Ellipse)
+            mask = QRegion(disc_rect, QRegion.RegionType.Ellipse)
             self._set_mask_if_changed(mask)
             painter.setClipRegion(mask)
             painter.fillRect(disc_rect, self.circle_color)
-            painter.setRenderHint(QPainter.Antialiasing)
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
             self._draw_glyph(painter, QRectF(disc_rect))
             return
 
@@ -2487,8 +2489,8 @@ class OverlayDiscBadge(OverlayWidget):
 
     def _paint_disc(self, painter: QPainter):
         circle = self._glyph_rect()
-        painter.setPen(Qt.NoPen)
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setBrush(QBrush(self.circle_color))
         painter.drawEllipse(circle)
         self._draw_glyph(painter, circle)
@@ -2520,7 +2522,9 @@ class OverlayDiscBadge(OverlayWidget):
                 self.clearMask()
             return
 
-        self._set_mask_if_changed(QRegion(self._glyph_mask_rect(), QRegion.Ellipse))
+        self._set_mask_if_changed(
+            QRegion(self._glyph_mask_rect(), QRegion.RegionType.Ellipse)
+        )
 
     def _set_mask_if_changed(self, mask: QRegion) -> None:
         # X11 Shape setMask briefly unmasks the widget; the opaque parent
@@ -2600,14 +2604,18 @@ class OverlayDropIndicator(OverlayDiscBadge):
     def _draw_dot(self, painter: QPainter, circle: QRectF):
         cx, cy = circle.center().x(), circle.center().y()
         radius = circle.width() / 2 * 0.22
-        painter.setPen(Qt.NoPen)
+        painter.setPen(Qt.PenStyle.NoPen)
         painter.drawEllipse(QPointF(cx, cy), radius, radius)
 
     def _draw_replace(self, painter: QPainter, circle: QRectF):
         cx, cy = circle.center().x(), circle.center().y()
         arm = circle.width() / 2 * 0.38
         stroke = disc_line(circle.width() / 2)
-        painter.setPen(QPen(self.glyph_color, stroke, Qt.SolidLine, Qt.RoundCap))
+        painter.setPen(
+            QPen(
+                self.glyph_color, stroke, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap
+            )
+        )
         painter.drawLine(QPointF(cx - arm, cy - arm), QPointF(cx + arm, cy + arm))
         painter.drawLine(QPointF(cx + arm, cy - arm), QPointF(cx - arm, cy + arm))
 
@@ -2615,7 +2623,11 @@ class OverlayDropIndicator(OverlayDiscBadge):
         cx, cy = circle.center().x(), circle.center().y()
         arm = circle.width() / 2 * 0.5
         stroke = disc_line(circle.width() / 2)
-        painter.setPen(QPen(self.glyph_color, stroke, Qt.SolidLine, Qt.RoundCap))
+        painter.setPen(
+            QPen(
+                self.glyph_color, stroke, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap
+            )
+        )
         painter.drawLine(QPointF(cx - arm, cy), QPointF(cx + arm, cy))
         painter.drawLine(QPointF(cx, cy - arm), QPointF(cx, cy + arm))
 
@@ -2624,7 +2636,11 @@ class OverlayDropIndicator(OverlayDiscBadge):
         radius = circle.width() / 2
         length = radius * 0.52
         stroke = disc_line(radius)
-        painter.setPen(QPen(self.glyph_color, stroke, Qt.SolidLine, Qt.RoundCap))
+        painter.setPen(
+            QPen(
+                self.glyph_color, stroke, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap
+            )
+        )
         for deg in (90.0, 150.0, 210.0):
             rad = math.radians(deg)
             dx = math.cos(rad) * length
@@ -2664,9 +2680,15 @@ class OverlayDropIndicator(OverlayDiscBadge):
         stroke = disc_line(radius)
         color = self.glyph_color
 
-        pen = QPen(color, stroke, Qt.SolidLine, Qt.FlatCap, Qt.RoundJoin)
+        pen = QPen(
+            color,
+            stroke,
+            Qt.PenStyle.SolidLine,
+            Qt.PenCapStyle.FlatCap,
+            Qt.PenJoinStyle.RoundJoin,
+        )
         painter.setPen(pen)
-        painter.setBrush(Qt.NoBrush)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
 
         arc_rect = QRectF(cx - arc_r, cy - arc_r, 2 * arc_r, 2 * arc_r)
         span = 118
@@ -2674,7 +2696,7 @@ class OverlayDropIndicator(OverlayDiscBadge):
         painter.drawArc(arc_rect, int(starts[0] * 16), span * 16)
         painter.drawArc(arc_rect, int(starts[1] * 16), span * 16)
 
-        painter.setPen(Qt.NoPen)
+        painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(QBrush(color))
         self._draw_arc_arrow_head(painter, cx, cy, arc_r, starts[0] + span, stroke)
         self._draw_arc_arrow_head(painter, cx, cy, arc_r, starts[1] + span, stroke)

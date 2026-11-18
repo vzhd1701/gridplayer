@@ -40,7 +40,7 @@ class ExceptionDialog(QDialog):
             "{APP_BUGTRACKER_URL}", __app_bugtracker_url__
         )
         self.error_label = QLabel(exception_info, self)
-        self.error_label.setTextFormat(Qt.RichText)
+        self.error_label.setTextFormat(Qt.TextFormat.RichText)
         self.error_label.setOpenExternalLinks(True)
 
         self.exception_box = QTextBrowser(self)
@@ -52,7 +52,7 @@ class ExceptionDialog(QDialog):
         self.copy_button.setMinimumWidth(150)
         self.copy_button.clicked.connect(self.copy_text)
 
-        self.buttons = QDialogButtonBox(QDialogButtonBox.Close, self)
+        self.buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close, self)
         self.buttons.rejected.connect(self.reject)
 
         self._ui_setup()
@@ -67,7 +67,7 @@ class ExceptionDialog(QDialog):
         buttons_row.addWidget(self.buttons)
 
         layout = QVBoxLayout(self)
-        layout.setSizeConstraint(QLayout.SetFixedSize)
+        layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
 
         layout.addLayout(error_row)
         layout.addWidget(self.exception_box)

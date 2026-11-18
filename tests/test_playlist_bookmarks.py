@@ -34,7 +34,9 @@ def _isolated_settings(tmp_path):
     settings = Settings()
     real_settings = settings.settings
 
-    settings.settings = QSettings(str(tmp_path / "test.ini"), QSettings.IniFormat)
+    settings.settings = QSettings(
+        str(tmp_path / "test.ini"), QSettings.Format.IniFormat
+    )
     PlaylistSettings().clear()
 
     yield
@@ -102,7 +104,7 @@ def answers(mocker):
         next(button for button in box.buttons() if answer in button.text()).click()
         return 0
 
-    mocker.patch.object(QCustomMessageBox, "exec_", _exec)
+    mocker.patch.object(QCustomMessageBox, "exec", _exec)
 
     return SimpleNamespace(asked=asked, give=to_give.append)
 
@@ -276,7 +278,7 @@ def open_viewer(registry, blocks, opened, grid):
             cells=lambda: list(blocks),
             open_files=open_files,
         )
-        dialog.setAttribute(Qt.WA_DontShowOnScreen)
+        dialog.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen)
         dialog.show()
         QApplication.processEvents()
 
@@ -313,7 +315,9 @@ def _pick(dialog, row, child=None):
         index = dialog._model.index(child, 0, index)
 
     selection = dialog._list.selectionModel()
-    selection.setCurrentIndex(index, selection.ClearAndSelect | selection.Rows)
+    selection.setCurrentIndex(
+        index, selection.SelectionFlag.ClearAndSelect | selection.SelectionFlag.Rows
+    )
 
 
 class TestTheViewer:
@@ -345,7 +349,7 @@ class TestTheViewer:
 
         parent = dialog._model.index(0, 0)
         assert [
-            dialog._model.index(row, 0, parent).data(Qt.UserRole + 1)
+            dialog._model.index(row, 0, parent).data(Qt.ItemDataRole.UserRole + 1)
             for row in range(dialog._model.rowCount(parent))
         ] == [
             ("00:10.000", "Bookmark 1", False, None),
@@ -465,7 +469,7 @@ class TestRemovingInTheViewer:
         dialog = open_viewer()
 
         _pick(dialog, 0, child=1)
-        QTest.keyClick(dialog._list, Qt.Key_Delete)
+        QTest.keyClick(dialog._list, Qt.Key.Key_Delete)
 
         assert registry.get(URL, None) == (A[0],)
 
@@ -592,7 +596,7 @@ def shown(mocker):
     def _exec(menu, _pos):
         menus.append(menu)
 
-    mocker.patch.object(viewer_module.CustomMenu, "exec_", _exec)
+    mocker.patch.object(viewer_module.CustomMenu, "exec", _exec)
 
     return menus
 
@@ -612,7 +616,10 @@ def _item(menu, title):
 
 def _pick_more(dialog, row):
     selection = dialog._list.selectionModel()
-    selection.select(dialog._model.index(row, 0), selection.Select | selection.Rows)
+    selection.select(
+        dialog._model.index(row, 0),
+        selection.SelectionFlag.Select | selection.SelectionFlag.Rows,
+    )
 
 
 def _right_click(dialog, pos):
@@ -620,8 +627,12 @@ def _right_click(dialog, pos):
     picked already, then the menu is asked for."""
 
     viewport = dialog._list.viewport()
-    QTest.mouseClick(viewport, Qt.RightButton, Qt.NoModifier, pos)
-    QApplication.sendEvent(viewport, QContextMenuEvent(QContextMenuEvent.Mouse, pos))
+    QTest.mouseClick(
+        viewport, Qt.MouseButton.RightButton, Qt.KeyboardModifier.NoModifier, pos
+    )
+    QApplication.sendEvent(
+        viewport, QContextMenuEvent(QContextMenuEvent.Reason.Mouse, pos)
+    )
 
 
 def _row_center(dialog, row):
@@ -711,7 +722,7 @@ class TestCopyingInTheViewer:
         dialog = open_viewer()
         _pick(dialog, 0)
 
-        QTest.keySequence(dialog._list, QKeySequence(QKeySequence.Copy))
+        QTest.keySequence(dialog._list, QKeySequence(QKeySequence.StandardKey.Copy))
 
         assert clipboard.text() == "0:10\n0:30 Goal"
 

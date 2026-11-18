@@ -257,7 +257,9 @@ class TestWhere:
         monkeypatch.delenv(app_dir.ENV_USER_DATA_DIR, raising=False)
         monkeypatch.setattr(app_dir, "is_portable", lambda: False)
 
-        expected = QStandardPaths.writableLocation(QStandardPaths.CacheLocation)
+        expected = QStandardPaths.writableLocation(
+            QStandardPaths.StandardLocation.CacheLocation
+        )
 
         assert app_dir.get_app_cache_dir() == Path(expected)
 

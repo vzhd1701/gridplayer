@@ -65,7 +65,9 @@ def _isolated_settings(tmp_path):
     settings = Settings()
     real_settings = settings.settings
 
-    settings.settings = QSettings(str(tmp_path / "test.ini"), QSettings.IniFormat)
+    settings.settings = QSettings(
+        str(tmp_path / "test.ini"), QSettings.Format.IniFormat
+    )
 
     yield
 
@@ -867,7 +869,7 @@ def test_the_menu_says_where_it_was_opened_while_it_is_open():
     seen = []
 
     menu = Mock()
-    menu.exec_.side_effect = lambda _pos: seen.append(context.context_menu_pos)
+    menu.exec.side_effect = lambda _pos: seen.append(context.context_menu_pos)
     manager.make_menu = Mock(return_value=menu)
 
     event = Mock()

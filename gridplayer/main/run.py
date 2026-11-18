@@ -56,4 +56,4 @@ def run_app():
     if not sys.argv[1:]:
         QTimer.singleShot(0, player.restore_last_playlist)
 
-    return app.exec_()
+    return app.exec()

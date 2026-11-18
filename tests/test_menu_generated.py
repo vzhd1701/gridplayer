@@ -21,7 +21,7 @@ def window():
     yield window
 
     window.deleteLater()
-    QApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+    QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
 
 def _tracks(window, titles, has_templates=True):
@@ -52,7 +52,7 @@ def _open_and_close(window, action):
     shown = [a.text() for a in menu.actions()]
 
     menu.deleteLater()
-    QApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+    QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
     return shown
 

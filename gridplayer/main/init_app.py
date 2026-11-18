@@ -64,7 +64,7 @@ def init_app():
 
     app.setStyle(create_fusion_style())
 
-    app.setAttribute(Qt.AA_DisableWindowContextHelpButton)
+    app.setAttribute(Qt.ApplicationAttribute.AA_DisableWindowContextHelpButton)
     app.styleHints().setShowShortcutsInContextMenus(True)
 
     apply_theme(app)

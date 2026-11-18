@@ -28,7 +28,9 @@ def _qapp():
 @pytest.fixture(autouse=True)
 def _isolated_settings(tmp_path, mocker):
     settings = Settings()
-    settings.settings = QSettings(str(tmp_path / "test.ini"), QSettings.IniFormat)
+    settings.settings = QSettings(
+        str(tmp_path / "test.ini"), QSettings.Format.IniFormat
+    )
 
 
 def test_settings_crop_round_trip():

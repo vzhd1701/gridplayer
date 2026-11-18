@@ -63,7 +63,9 @@ class VideoDriverMpvWindow(VideoDriverMpv):
         # a live stream loaded paused, let go of once its picture is up
         self._is_pause_due = False
 
-        self._picture_taken.connect(self._on_picture_taken, Qt.QueuedConnection)
+        self._picture_taken.connect(
+            self._on_picture_taken, Qt.ConnectionType.QueuedConnection
+        )
 
     def _new_player(self, media_input: MediaInput, **options) -> MpvPlayer:
         return super()._new_player(media_input, wid=self._win_id, **options)
@@ -315,9 +317,9 @@ class VideoFrameMpvWindow(MpvFrame, VideoFrameVLC):
         # it to be mapped, which it never is (seen under XWayland). The overlay is
         # a window of its own over the video there, and takes the mouse.
         if env.IS_WINDOWS:
-            surface.setWindowFlags(Qt.WindowTransparentForInput)
-        surface.setAttribute(Qt.WA_TransparentForMouseEvents)
-        surface.setAttribute(Qt.WA_NativeWindow)
+            surface.setWindowFlags(Qt.WindowType.WindowTransparentForInput)
+        surface.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        surface.setAttribute(Qt.WidgetAttribute.WA_NativeWindow)
 
         return surface
 

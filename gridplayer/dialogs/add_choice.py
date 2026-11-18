@@ -112,9 +112,9 @@ class AddChoiceDialog(QDialog):
 
         buttons = QDialogButtonBox()
         self._add_button = buttons.addButton(
-            translate("Adding", "Add"), QDialogButtonBox.AcceptRole
+            translate("Adding", "Add"), QDialogButtonBox.ButtonRole.AcceptRole
         )
-        buttons.addButton(QDialogButtonBox.Cancel)
+        buttons.addButton(QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
 
@@ -203,7 +203,7 @@ class AddChoiceDialog(QDialog):
 
         dialog = cls(question, what, options, parent=parent)
 
-        is_picked = dialog.exec_() == QDialog.Accepted
+        is_picked = dialog.exec() == QDialog.DialogCode.Accepted
         choice = dialog.choice()
 
         dialog.deleteLater()
@@ -327,9 +327,9 @@ class _OptionCard(QFrame):
         self._show_picked(button.isChecked())
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             self._button.setChecked(True)
-            self._button.setFocus(Qt.MouseFocusReason)
+            self._button.setFocus(Qt.FocusReason.MouseFocusReason)
 
         super().mousePressEvent(event)
 
@@ -478,7 +478,7 @@ def warning_box(text: str, is_boxed: bool = True) -> QFrame:
     icon.setPixmap(
         QIcon.fromTheme("warning").pixmap(QSize(WARNING_ICON_PX, WARNING_ICON_PX))
     )
-    icon.setAlignment(Qt.AlignTop)
+    icon.setAlignment(Qt.AlignmentFlag.AlignTop)
 
     label = QLabel(text)
     label.setWordWrap(True)
@@ -505,7 +505,7 @@ class ManyCellsDialog(QCustomMessageBox):
 
     def __init__(self, count: int, parent=None):
         super().__init__(
-            QMessageBox.Warning,
+            QMessageBox.Icon.Warning,
             translate("Adding", "Add", "Header"),
             translate("Adding", "Add {COUNT} cells?").format(COUNT=count_txt(count)),
             parent=parent,
@@ -517,9 +517,11 @@ class ManyCellsDialog(QCustomMessageBox):
         self.setCheckBox(self._again)
 
         self.setDefaultButton(
-            self.addButton(translate("Adding", "Add"), QMessageBox.AcceptRole)
+            self.addButton(
+                translate("Adding", "Add"), QMessageBox.ButtonRole.AcceptRole
+            )
         )
-        self.addButton(QMessageBox.Cancel)
+        self.addButton(QMessageBox.StandardButton.Cancel)
 
     @property
     def is_warned_again(self) -> bool:
@@ -531,7 +533,7 @@ class ManyCellsDialog(QCustomMessageBox):
 
         dialog = cls(count, parent)
 
-        is_added = dialog.exec_() == QDialog.Accepted
+        is_added = dialog.exec() == QDialog.DialogCode.Accepted
         is_warned_again = dialog.is_warned_again
 
         dialog.deleteLater()
@@ -544,7 +546,7 @@ def show_failed(failed, is_nothing_added: bool, parent=None) -> None:
     them listed, all of them to copy. None at all said, where nothing that
     was dropped or opened could be played."""
 
-    icon = QMessageBox.Critical if is_nothing_added else QMessageBox.Warning
+    icon = QMessageBox.Icon.Critical if is_nothing_added else QMessageBox.Icon.Warning
     title = translate("Adding", "Add", "Header")
 
     if not failed:
@@ -570,10 +572,10 @@ def show_failed(failed, is_nothing_added: bool, parent=None) -> None:
         )
         rows.append((more, ""))
 
-    box = QCustomMessageBox(icon, title, text, QMessageBox.Ok, parent)
+    box = QCustomMessageBox(icon, title, text, QMessageBox.StandardButton.Ok, parent)
     box.set_list(rows)
     box.set_copy_text("\n".join(f"{where}\n    {why}" for where, why in failed))
-    box.exec_()
+    box.exec()
     box.deleteLater()
 
 
@@ -583,13 +585,15 @@ FAILED_LISTED = 5
 
 def _separator() -> QFrame:
     line = QFrame()
-    line.setFrameShape(QFrame.HLine)
-    line.setFrameShadow(QFrame.Plain)
+    line.setFrameShape(QFrame.Shape.HLine)
+    line.setFrameShadow(QFrame.Shadow.Plain)
 
     # the theme's gray between the window and its text: Sunken draws a
     # light edge that stands out on a dark window
     palette = line.palette()
-    palette.setColor(QPalette.WindowText, palette.color(QPalette.Mid))
+    palette.setColor(
+        QPalette.ColorRole.WindowText, palette.color(QPalette.ColorRole.Mid)
+    )
     line.setPalette(palette)
 
     return line

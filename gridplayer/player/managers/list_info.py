@@ -200,7 +200,7 @@ class ItemLookups(QObject):
         self._learned_timer.timeout.connect(self._put_on_learned)
 
         # queued even from here: a future cancelled here is told at once
-        self._came.connect(self._on_came, Qt.QueuedConnection)
+        self._came.connect(self._on_came, Qt.ConnectionType.QueuedConnection)
 
     def look_up(self, list_id: UUID, items, is_missing_only: bool) -> None:
         """The items of a list looked up, those with nothing known of them

@@ -29,7 +29,7 @@ def test_hidden_resting_over_the_videos(manager, mocker):
 
     manager.hide_cursor()
 
-    assert QApplication.overrideCursor().shape() == Qt.BlankCursor
+    assert QApplication.overrideCursor().shape() == Qt.CursorShape.BlankCursor
 
 
 def test_left_on_show_resting_over_the_list_window(manager, mocker):

@@ -53,7 +53,9 @@ def _isolated_settings(tmp_path):
     settings = Settings()
     real_settings = settings.settings
 
-    settings.settings = QSettings(str(tmp_path / "test.ini"), QSettings.IniFormat)
+    settings.settings = QSettings(
+        str(tmp_path / "test.ini"), QSettings.Format.IniFormat
+    )
 
     yield
 
@@ -339,7 +341,7 @@ class TestTheBox:
         assert dialog.combo.currentData() == DEFAULT_ENCODING
 
     def test_dismissing_it_leaves_the_video_alone(self, monkeypatch):
-        monkeypatch.setattr(SetSubtitleEncodingDialog, "exec_", lambda self: 0)
+        monkeypatch.setattr(SetSubtitleEncodingDialog, "exec", lambda self: 0)
 
         assert SetSubtitleEncodingDialog.get_encoding(encoding="KOI8-R") is None
 
@@ -348,7 +350,7 @@ class TestTheBox:
             dialog.combo.setCurrentIndex(dialog.combo.findData("Windows-1251"))
             return 1
 
-        monkeypatch.setattr(SetSubtitleEncodingDialog, "exec_", _pick)
+        monkeypatch.setattr(SetSubtitleEncodingDialog, "exec", _pick)
 
         assert SetSubtitleEncodingDialog.get_encoding() == "Windows-1251"
 
@@ -363,14 +365,20 @@ class TestTheListFitsOnScreen:
         # maxVisibleItems is ignored while the popup is the platform's own
         assert "combobox-popup: 0" in combo.styleSheet()
         # and a combo's list is built with its scroll bar off
-        assert combo.view().verticalScrollBarPolicy() == Qt.ScrollBarAsNeeded
+        assert (
+            combo.view().verticalScrollBarPolicy()
+            == Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
 
     def test_the_box_the_menu_opens_is_capped_the_same_way(self):
         dialog = SetSubtitleEncodingDialog()
 
         assert dialog.combo.maxVisibleItems() == MAX_VISIBLE_COMBO_ITEMS
         assert "combobox-popup: 0" in dialog.combo.styleSheet()
-        assert dialog.combo.view().verticalScrollBarPolicy() == Qt.ScrollBarAsNeeded
+        assert (
+            dialog.combo.view().verticalScrollBarPolicy()
+            == Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
 
     def test_the_short_lists_keep_the_popup_the_platform_draws(self):
         form = SettingsForm(VIDEO_FIELDS)

@@ -186,7 +186,11 @@ class MpvVideoSurface(MpvSurfaceView, SoftwareVideoSurface):
         return True
 
     def present_frame(self, slot) -> None:
-        image_format = QImage.Format_RGBX8888 if slot.is_rgba else QImage.Format_RGB32
+        image_format = (
+            QImage.Format.Format_RGBX8888
+            if slot.is_rgba
+            else QImage.Format.Format_RGB32
+        )
         self.present_rgb32(slot.pixels, slot.width, slot.height, image_format)
 
     def keep_frame(self, rendered) -> None:
@@ -331,7 +335,7 @@ class VideoDriverMpv(VLCVideoDriver):
         # before the size, which can take High up
         if self._on_scaling_changed is not None:
             self._player.scaling_changed.connect(
-                self._on_scaling_changed, Qt.QueuedConnection
+                self._on_scaling_changed, Qt.ConnectionType.QueuedConnection
             )
         if self._shown_size is not None:
             self._player.set_shown_size(*self._shown_size)
@@ -350,7 +354,7 @@ class VideoDriverMpv(VLCVideoDriver):
             (self._player.chapters_changed, self._on_chapters_changed),
             (self._player.render_context_ready, self._start_player),
         ):
-            signal.connect(slot, Qt.QueuedConnection)
+            signal.connect(slot, Qt.ConnectionType.QueuedConnection)
 
         self._start_drawing()
 

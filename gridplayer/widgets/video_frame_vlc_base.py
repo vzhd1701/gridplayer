@@ -198,7 +198,7 @@ def fill_black(widget: QWidget) -> None:
     """Have Qt paint the widget black, not in its palette's window colour."""
 
     palette = widget.palette()
-    palette.setColor(widget.backgroundRole(), Qt.black)
+    palette.setColor(widget.backgroundRole(), Qt.GlobalColor.black)
     widget.setPalette(palette)
     widget.setAutoFillBackground(True)
 
@@ -393,7 +393,7 @@ class PauseSnapshot(QWidget):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        self.setAttribute(Qt.WA_OpaquePaintEvent)
+        self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent)
 
         self._snapshot_pixmap: QPixmap | None = None
         self._is_blank = False
@@ -406,7 +406,7 @@ class PauseSnapshot(QWidget):
         # failed snapshot
         if not snapshot_file:
             pixmap = QPixmap(1, 1)
-            pixmap.fill(Qt.black)
+            pixmap.fill(Qt.GlobalColor.black)
             self.set_pixmap(pixmap)
             self._is_blank = True
             return
@@ -440,7 +440,9 @@ class PauseSnapshot(QWidget):
             return
 
         if rect is None:
-            fitted = self._snapshot_pixmap.size().scaled(size, Qt.KeepAspectRatio)
+            fitted = self._snapshot_pixmap.size().scaled(
+                size, Qt.AspectRatioMode.KeepAspectRatio
+            )
             rect = (
                 (size.width() - fitted.width()) // 2,
                 (size.height() - fitted.height()) // 2,
@@ -457,8 +459,8 @@ class PauseSnapshot(QWidget):
         self._picture = self._snapshot_pixmap.scaled(
             max(right - left, 1),
             max(bottom - top, 1),
-            Qt.IgnoreAspectRatio,
-            Qt.SmoothTransformation,
+            Qt.AspectRatioMode.IgnoreAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
         )
         self._picture.setDevicePixelRatio(ratio)
         self._picture_pos = QPointF(left / ratio, top / ratio)
@@ -477,7 +479,7 @@ class PauseSnapshot(QWidget):
 
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
-        painter.fillRect(self.rect(), Qt.black)
+        painter.fillRect(self.rect(), Qt.GlobalColor.black)
 
         if self._picture is not None:
             painter.drawPixmap(self._picture_pos, self._picture)
@@ -759,8 +761,8 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
         video_clip = QWidget(self)
         video_clip.setMouseTracking(True)
-        video_clip.setWindowFlags(Qt.WindowTransparentForInput)
-        video_clip.setAttribute(Qt.WA_TransparentForMouseEvents)
+        video_clip.setWindowFlags(Qt.WindowType.WindowTransparentForInput)
+        video_clip.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
         return video_clip
 
@@ -888,15 +890,15 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         )
 
     def ui_setup(self) -> None:
-        self.setWindowFlags(Qt.WindowTransparentForInput)
-        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.setWindowFlags(Qt.WindowType.WindowTransparentForInput)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
         self.setMouseTracking(True)
 
         QStackedLayout(self)
         self.layout().setSpacing(0)
         self.layout().setContentsMargins(0, 0, 0, 0)
-        self.layout().setStackingMode(QStackedLayout.StackAll)
+        self.layout().setStackingMode(QStackedLayout.StackingMode.StackAll)
 
     def _fill_uncovered_black(self, is_letterboxed: bool = False) -> None:
         """Paint whatever the native surface does not cover black.
@@ -926,13 +928,19 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
     def ui_helper_widgets(self) -> None:
         self.audio_only_placeholder.setMouseTracking(True)
-        self.audio_only_placeholder.setWindowFlags(Qt.WindowTransparentForInput)
-        self.audio_only_placeholder.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.audio_only_placeholder.setWindowFlags(
+            Qt.WindowType.WindowTransparentForInput
+        )
+        self.audio_only_placeholder.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents
+        )
         self.audio_only_placeholder.hide()
 
         self.pause_snapshot.setMouseTracking(True)
-        self.pause_snapshot.setWindowFlags(Qt.WindowTransparentForInput)
-        self.pause_snapshot.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.pause_snapshot.setWindowFlags(Qt.WindowType.WindowTransparentForInput)
+        self.pause_snapshot.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents
+        )
         self.pause_snapshot.hide()
 
     def crash_emit(self, exception_txt) -> None:

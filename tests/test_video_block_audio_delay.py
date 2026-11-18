@@ -26,7 +26,9 @@ def _qapp():
 @pytest.fixture(autouse=True)
 def _isolated_settings(tmp_path):
     settings = Settings()
-    settings.settings = QSettings(str(tmp_path / "test.ini"), QSettings.IniFormat)
+    settings.settings = QSettings(
+        str(tmp_path / "test.ini"), QSettings.Format.IniFormat
+    )
 
 
 def _block(delay_ms=0, has_audio=True):
@@ -192,13 +194,13 @@ class TestTheDialogIsHeardAsItIsUsed:
         assert block.video_params.audio_delay_ms == 0
 
     def test_a_dialog_with_no_video_behind_it_hands_back_the_number(self, monkeypatch):
-        monkeypatch.setattr(SetAudioDelayDialog, "exec_", lambda self: 1)
+        monkeypatch.setattr(SetAudioDelayDialog, "exec", lambda self: 1)
 
         assert SetAudioDelayDialog.get_delay_ms(delay_ms=250) == 250
 
     def test_cancelling_that_one_hands_back_nothing(self, monkeypatch):
         """None, since zero is a delay somebody may well have meant."""
 
-        monkeypatch.setattr(SetAudioDelayDialog, "exec_", lambda self: 0)
+        monkeypatch.setattr(SetAudioDelayDialog, "exec", lambda self: 0)
 
         assert SetAudioDelayDialog.get_delay_ms(delay_ms=250) is None

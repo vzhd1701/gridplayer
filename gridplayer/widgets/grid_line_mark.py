@@ -91,14 +91,14 @@ class FloatingMark(QWidget):
     def __init__(self, parent=None):
         super().__init__(
             parent,
-            Qt.ToolTip
-            | Qt.FramelessWindowHint
-            | Qt.WindowTransparentForInput
-            | Qt.NoDropShadowWindowHint,
+            Qt.WindowType.ToolTip
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowTransparentForInput
+            | Qt.WindowType.NoDropShadowWindowHint,
         )
 
-        self.setAttribute(Qt.WA_ShowWithoutActivating)
-        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
     def show_at(self, rect: QRect) -> None:
         """Shown at rect on the screen, painted anew if it is not the size
@@ -316,7 +316,7 @@ def _at(is_column, middle, along) -> QPointF:
 
 def _winding(path: QPainterPath) -> QPainterPath:
     # filled where any of its shapes is, the dots over the line too
-    path.setFillRule(Qt.WindingFill)
+    path.setFillRule(Qt.FillRule.WindingFill)
     return path
 
 
@@ -331,7 +331,7 @@ class ShapedMark(FloatingMark):
 
         self._is_translucent = is_compositor_running()
         if self._is_translucent:
-            self.setAttribute(Qt.WA_TranslucentBackground)
+            self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         # the cut, and whether the window has yet to be
         self._cut: QBitmap | None = None
@@ -356,7 +356,7 @@ class ShapedMark(FloatingMark):
         painter = QPainter(self)
         if not self._is_translucent:
             painter.fillRect(self.rect(), outer)
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         return painter
 
 
@@ -402,9 +402,9 @@ def _mask(size: QSize, path: QPainterPath) -> QBitmap:
     """The window cut to the path, whole pixels in or out."""
 
     bitmap = QBitmap(size)
-    bitmap.fill(Qt.color0)
+    bitmap.fill(Qt.GlobalColor.color0)
     painter = QPainter(bitmap)
-    painter.fillPath(path, QBrush(Qt.color1))
+    painter.fillPath(path, QBrush(Qt.GlobalColor.color1))
     painter.end()
     return bitmap
 
@@ -521,7 +521,7 @@ class GridLineTag(ShapedMark):
         painter.fillPath(self._outline(), TAG_BORDER_COLOR)
         painter.fillPath(self._outline(inset=1), TAG_BACK_COLOR)
         painter.setPen(LINE_COLOR)
-        painter.drawText(self.rect(), Qt.AlignCenter, self._text)
+        painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, self._text)
 
     def _outline(self, inset: float = 0) -> QPainterPath:
         """The pill the word is on, in the window."""

@@ -159,7 +159,7 @@ class GridEditor(LayoutEditor):
         self._more_cols = stepper("+", 0, 1, cols_tip)
 
         for count in (self._rows_label, self._cols_label):
-            count.setAlignment(Qt.AlignCenter)
+            count.setAlignment(Qt.AlignmentFlag.AlignCenter)
             count.setMinimumWidth(14)
 
         self._fit_lines = self._bar_button(
@@ -213,13 +213,13 @@ class GridEditor(LayoutEditor):
             ),
             (
                 translate("Edit Grid", "{} + drag a line").format(
-                    modifier_name(Qt.AltModifier)
+                    modifier_name(Qt.KeyboardModifier.AltModifier)
                 ),
                 translate("Edit Grid", "No snapping"),
             ),
             (
                 translate("Edit Grid", "{} while dragging").format(
-                    keys_text(Qt.Key_Escape)
+                    keys_text(Qt.Key.Key_Escape)
                 ),
                 translate("Edit Grid", "Put it back"),
             ),
@@ -422,7 +422,9 @@ class GridEditor(LayoutEditor):
         line = drag.line
 
         position = point.x() if line.is_column else point.y()
-        is_snapping = not modifiers & Qt.AltModifier and self._is_snapping()
+        is_snapping = (
+            not modifiers & Qt.KeyboardModifier.AltModifier and self._is_snapping()
+        )
 
         weights = drag.moved(position, is_snapping)
         self._col_weights = tuple(weights.cols)
@@ -467,12 +469,16 @@ class GridEditor(LayoutEditor):
         if closing is not None:
             self._hover = closing
             self._hover_line = None
-            self.setCursor(Qt.PointingHandCursor)
+            self.setCursor(Qt.CursorShape.PointingHandCursor)
         elif line is not None:
             self._hover_line = line
             self._line_across = point.y() if line.is_column else point.x()
             self._hover = None
-            self.setCursor(Qt.SplitHCursor if line.is_column else Qt.SplitVCursor)
+            self.setCursor(
+                Qt.CursorShape.SplitHCursor
+                if line.is_column
+                else Qt.CursorShape.SplitVCursor
+            )
         else:
             self._hover_line = None
             self._hover = self._cell_at(point)
@@ -485,7 +491,7 @@ class GridEditor(LayoutEditor):
             self.update()
 
     def mousePressEvent(self, event) -> None:
-        if event.button() != Qt.LeftButton:
+        if event.button() != Qt.MouseButton.LeftButton:
             return
 
         pos = event.pos()
@@ -553,7 +559,7 @@ class GridEditor(LayoutEditor):
         )
 
     def mouseReleaseEvent(self, event) -> None:
-        if event.button() != Qt.LeftButton:
+        if event.button() != Qt.MouseButton.LeftButton:
             return
 
         if self._close_pressed is not None:
@@ -587,21 +593,25 @@ class GridEditor(LayoutEditor):
         if sides is None:
             self.unsetCursor()
         elif not sides:
-            self.setCursor(Qt.ClosedHandCursor if is_dragging else Qt.OpenHandCursor)
+            self.setCursor(
+                Qt.CursorShape.ClosedHandCursor
+                if is_dragging
+                else Qt.CursorShape.OpenHandCursor
+            )
         elif sides in ({"left", "top"}, {"right", "bottom"}):
-            self.setCursor(Qt.SizeFDiagCursor)
+            self.setCursor(Qt.CursorShape.SizeFDiagCursor)
         elif sides in ({"right", "top"}, {"left", "bottom"}):
-            self.setCursor(Qt.SizeBDiagCursor)
+            self.setCursor(Qt.CursorShape.SizeBDiagCursor)
         elif sides & {"left", "right"}:
-            self.setCursor(Qt.SizeHorCursor)
+            self.setCursor(Qt.CursorShape.SizeHorCursor)
         else:
-            self.setCursor(Qt.SizeVerCursor)
+            self.setCursor(Qt.CursorShape.SizeVerCursor)
 
     # --- drawing ---
 
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         self._paint_veil(painter)
 
         covered = set()
@@ -612,7 +622,7 @@ class GridEditor(LayoutEditor):
                 for col in range(cell.col, cell.col + cell.colspan)
             )
 
-        painter.setPen(Qt.NoPen)
+        painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(EMPTY_COLOR)
         for row in range(self._rows):
             for col in range(self._cols):
@@ -674,7 +684,7 @@ class GridEditor(LayoutEditor):
 
     def _draw_target(self, painter) -> None:
         rect = self.rect_of(*self._target)
-        style = Qt.SolidLine if self._is_target_ok else Qt.DashLine
+        style = Qt.PenStyle.SolidLine if self._is_target_ok else Qt.PenStyle.DashLine
         self._outline(painter, rect, QPen(LINE_COLOR, 3, style))
 
         name = self._drag.cell.name

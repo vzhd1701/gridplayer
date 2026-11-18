@@ -693,9 +693,9 @@ def _badge_pixels(badge, size=120) -> QImage:
     badge.resize(size, size)
     badge.set_indicator(DropIndicator.ARROW_RIGHT)
 
-    image = QImage(size, size, QImage.Format_ARGB32)
-    image.fill(Qt.transparent)
-    badge.render(image, QPoint(0, 0), QRegion(), QWidget.DrawChildren)
+    image = QImage(size, size, QImage.Format.Format_ARGB32)
+    image.fill(Qt.GlobalColor.transparent)
+    badge.render(image, QPoint(0, 0), QRegion(), QWidget.RenderFlag.DrawChildren)
 
     return image
 
@@ -792,9 +792,9 @@ def test_opaque_active_ring_shows_on_a_picture_of_its_own_colour():
     ring.color = "#ffffff"
     ring.resize(100, 80)
 
-    image = QImage(100, 80, QImage.Format_ARGB32)
-    image.fill(Qt.transparent)
-    ring.render(image, QPoint(0, 0), QRegion(), QWidget.DrawChildren)
+    image = QImage(100, 80, QImage.Format.Format_ARGB32)
+    image.fill(Qt.GlobalColor.transparent)
+    ring.render(image, QPoint(0, 0), QRegion(), QWidget.RenderFlag.DrawChildren)
 
     width = ring.border_width
     row = [image.pixelColor(x, 40) for x in range(width + 1)]
@@ -834,13 +834,13 @@ def test_sync_cell_background_only_fills_when_stopped(mocker):
     block = mocker.Mock()
     block.is_stopped = True
     VideoBlock._sync_cell_background(block)
-    block.setAttribute.assert_called_with(Qt.WA_StyledBackground, True)
+    block.setAttribute.assert_called_with(Qt.WidgetAttribute.WA_StyledBackground, True)
     block.setAutoFillBackground.assert_called_with(True)
 
     block.reset_mock()
     block.is_stopped = False
     VideoBlock._sync_cell_background(block)
-    block.setAttribute.assert_called_with(Qt.WA_StyledBackground, False)
+    block.setAttribute.assert_called_with(Qt.WidgetAttribute.WA_StyledBackground, False)
     block.setAutoFillBackground.assert_called_with(False)
 
 
@@ -878,10 +878,10 @@ def test_overlays_are_hidden_while_a_tile_is_dragged_and_shown_again(mocker):
 @pytest.fixture
 def floating():
     holder = QWidget()
-    holder.setAttribute(Qt.WA_DontShowOnScreen)
+    holder.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen)
     holder.resize(320, 180)
     overlay = OverlayBlockFloating(holder)
-    overlay.setAttribute(Qt.WA_DontShowOnScreen)
+    overlay.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen)
     overlay.resize(320, 180)
     holder.show()
     overlay.show()

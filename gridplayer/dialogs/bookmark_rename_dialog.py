@@ -18,15 +18,16 @@ class QBookmarkRenameDialog(QtWidgets.QDialog):
         self.colors = BookmarkColorPalette(parent=self)
 
         buttons = QtWidgets.QDialogButtonBox(
-            QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel,
-            Qt.Horizontal,
+            QtWidgets.QDialogButtonBox.StandardButton.Ok
+            | QtWidgets.QDialogButtonBox.StandardButton.Cancel,
+            Qt.Orientation.Horizontal,
             self,
         )
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
 
         layout = QtWidgets.QVBoxLayout(self)
-        layout.setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
+        layout.setSizeConstraint(QtWidgets.QLayout.SizeConstraint.SetFixedSize)
         layout.addWidget(self.name)
         layout.addWidget(self.colors)
         layout.addWidget(buttons)

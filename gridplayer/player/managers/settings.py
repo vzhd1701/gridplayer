@@ -56,7 +56,7 @@ class SettingsManager(ManagerBase):
         previous_settings = Settings().get_all()
 
         dialog = SettingsDialog(self.parent())
-        dialog.exec_()
+        dialog.exec()
         # gone at once, not with deleteLater: the theme is applied below, and
         # it styles over every widget there is, a closed dialog's too
         sip.delete(dialog)

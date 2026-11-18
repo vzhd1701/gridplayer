@@ -256,7 +256,7 @@ class Bookmarker(VideoBlockPart):
         if menu is None:
             return
 
-        menu.exec_(global_pos)
+        menu.exec(global_pos)
 
         # parented to the window, which would otherwise keep every one
         menu.deleteLater()
@@ -475,7 +475,7 @@ class Bookmarker(VideoBlockPart):
         )
 
         self._manager = dialog
-        dialog.exec_()
+        dialog.exec()
         self._manager = None
 
         dialog.deleteLater()

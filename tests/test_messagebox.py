@@ -21,25 +21,25 @@ def _texts(box) -> list[str]:
 
 
 def _answered_with(mocker, text):
-    """exec_ answering with the button named."""
+    """exec answering with the button named."""
 
     def _exec(box):
         _button(box, text).click()
         return box.result()
 
-    mocker.patch.object(QCustomMessageBox, "exec_", _exec)
+    mocker.patch.object(QCustomMessageBox, "exec", _exec)
 
 
 class TestWhatItSays:
     def test_the_question_then_what_it_means(self):
-        box = QCustomMessageBox(QMessageBox.Question, "Playlist", "Save changes?")
+        box = QCustomMessageBox(QMessageBox.Icon.Question, "Playlist", "Save changes?")
         box.setInformativeText("Your changes will be lost.")
 
         assert _texts(box) == ["Save changes?", "Your changes will be lost."]
         assert box.windowTitle() == "Playlist"
 
     def test_the_question_in_bold(self):
-        box = QCustomMessageBox(QMessageBox.Question, "Playlist", "Save changes?")
+        box = QCustomMessageBox(QMessageBox.Icon.Question, "Playlist", "Save changes?")
 
         (question,) = [
             b for b in box.findChildren(QLabel) if b.text() == "Save changes?"
@@ -47,12 +47,14 @@ class TestWhatItSays:
         assert question.font().bold()
 
     def test_nothing_more_where_nothing_more_is_said(self):
-        box = QCustomMessageBox(QMessageBox.Warning, "Add", "Add 30 cells?")
+        box = QCustomMessageBox(QMessageBox.Icon.Warning, "Add", "Add 30 cells?")
 
         assert _texts(box) == ["Add 30 cells?"]
 
     def test_a_list_of_what_it_is_about(self):
-        box = QCustomMessageBox(QMessageBox.Critical, "Add", "Couldn't add 2 items")
+        box = QCustomMessageBox(
+            QMessageBox.Icon.Critical, "Add", "Couldn't add 2 items"
+        )
 
         box.set_list([("a.mts", "Not a video"), ("and 1 more", "")])
 
@@ -65,7 +67,10 @@ class TestWhatItSays:
 
     def test_copy_puts_it_all_on_the_clipboard_and_stays_up(self):
         box = QCustomMessageBox(
-            QMessageBox.Critical, "Add", "Couldn't add", QMessageBox.Ok
+            QMessageBox.Icon.Critical,
+            "Add",
+            "Couldn't add",
+            QMessageBox.StandardButton.Ok,
         )
         box.set_copy_text("a.mts\n    Not a video")
 
@@ -81,7 +86,7 @@ class TestAnswered:
 
         answer = QCustomMessageBox.cancellable_question(None, "Playlist", "Save?")
 
-        assert answer == QMessageBox.Cancel
+        assert answer == QMessageBox.StandardButton.Cancel
 
     def test_buttons_named_for_what_they_do(self, mocker):
         _answered_with(mocker, "Save")
@@ -90,10 +95,12 @@ class TestAnswered:
             None,
             "Playlist",
             "Save?",
-            buttons=QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
+            buttons=QMessageBox.StandardButton.Save
+            | QMessageBox.StandardButton.Discard
+            | QMessageBox.StandardButton.Cancel,
         )
 
-        assert answer == QMessageBox.Save
+        assert answer == QMessageBox.StandardButton.Save
 
     def test_confirmed_by_the_button_named(self, mocker):
         _answered_with(mocker, "Reload")
@@ -109,15 +116,18 @@ class TestAnswered:
 class TestDefault:
     def test_the_button_that_says_yes(self):
         box = QCustomMessageBox(
-            QMessageBox.Question, "", "Save?", QMessageBox.Yes | QMessageBox.No
+            QMessageBox.Icon.Question,
+            "",
+            "Save?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
 
-        assert box.defaultButton() is box.button(QMessageBox.Yes)
+        assert box.defaultButton() is box.button(QMessageBox.StandardButton.Yes)
 
     def test_the_one_set(self):
-        box = QCustomMessageBox(QMessageBox.Warning, "", "Reload?")
-        box.addButton("Reload", QMessageBox.DestructiveRole)
-        cancel = box.addButton(QMessageBox.Cancel)
+        box = QCustomMessageBox(QMessageBox.Icon.Warning, "", "Reload?")
+        box.addButton("Reload", QMessageBox.ButtonRole.DestructiveRole)
+        cancel = box.addButton(QMessageBox.StandardButton.Cancel)
 
         box.setDefaultButton(cancel)
 
@@ -125,16 +135,21 @@ class TestDefault:
         assert cancel.isDefault()
 
     def test_in_bold_once_shown(self):
-        box = QCustomMessageBox(QMessageBox.Information, "", "Done", QMessageBox.Ok)
+        box = QCustomMessageBox(
+            QMessageBox.Icon.Information, "", "Done", QMessageBox.StandardButton.Ok
+        )
 
         box.open()
         box.close()
 
-        assert box.button(QMessageBox.Ok).font().bold()
+        assert box.button(QMessageBox.StandardButton.Ok).font().bold()
 
     def test_enter_never_presses_what_was_tabbed_to(self):
         box = QCustomMessageBox(
-            QMessageBox.Question, "", "Save?", QMessageBox.Yes | QMessageBox.No
+            QMessageBox.Icon.Question,
+            "",
+            "Save?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
 
         assert not any(button.autoDefault() for button in box.buttons())
@@ -143,36 +158,43 @@ class TestDefault:
 class TestEscape:
     def test_cancel(self):
         box = QCustomMessageBox(
-            QMessageBox.Question,
+            QMessageBox.Icon.Question,
             "",
             "Save?",
-            QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
+            QMessageBox.StandardButton.Yes
+            | QMessageBox.StandardButton.No
+            | QMessageBox.StandardButton.Cancel,
         )
 
         box.reject()
 
-        assert box.clickedButton() is box.button(QMessageBox.Cancel)
+        assert box.clickedButton() is box.button(QMessageBox.StandardButton.Cancel)
 
     def test_the_one_button_that_says_no(self):
         box = QCustomMessageBox(
-            QMessageBox.Question, "", "Save?", QMessageBox.Yes | QMessageBox.No
+            QMessageBox.Icon.Question,
+            "",
+            "Save?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
 
         box.reject()
 
-        assert box.clickedButton() is box.button(QMessageBox.No)
+        assert box.clickedButton() is box.button(QMessageBox.StandardButton.No)
 
     def test_ok_alone(self):
-        box = QCustomMessageBox(QMessageBox.Information, "", "Done", QMessageBox.Ok)
+        box = QCustomMessageBox(
+            QMessageBox.Icon.Information, "", "Done", QMessageBox.StandardButton.Ok
+        )
 
         box.reject()
 
-        assert box.clickedButton() is box.button(QMessageBox.Ok)
+        assert box.clickedButton() is box.button(QMessageBox.StandardButton.Ok)
 
 
 class TestCheckBox:
     def test_on_the_left_of_the_buttons(self):
-        box = QCustomMessageBox(QMessageBox.Warning, "", "Add 30 cells?")
+        box = QCustomMessageBox(QMessageBox.Icon.Warning, "", "Add 30 cells?")
         again = QCheckBox("Don't warn again")
 
         box.setCheckBox(again)
@@ -184,7 +206,7 @@ class TestCouldNotBeAdded:
     def test_listed_with_why(self, mocker):
         shown = []
         mocker.patch.object(
-            QCustomMessageBox, "exec_", lambda box: shown.append(_texts(box))
+            QCustomMessageBox, "exec", lambda box: shown.append(_texts(box))
         )
 
         add_choice.show_failed((("a.mts", "Not a video"),), is_nothing_added=True)
@@ -194,7 +216,7 @@ class TestCouldNotBeAdded:
     def test_so_many_the_rest_counted(self, mocker):
         shown = []
         mocker.patch.object(
-            QCustomMessageBox, "exec_", lambda box: shown.append(_texts(box))
+            QCustomMessageBox, "exec", lambda box: shown.append(_texts(box))
         )
         failed = tuple((f"{n}.mts", "Not a video") for n in range(7))
 
@@ -208,7 +230,7 @@ class TestCouldNotBeAdded:
     def test_nothing_at_all_to_add(self, mocker):
         shown = []
         mocker.patch.object(
-            QCustomMessageBox, "exec_", lambda box: shown.append(_texts(box))
+            QCustomMessageBox, "exec", lambda box: shown.append(_texts(box))
         )
 
         add_choice.show_failed((), is_nothing_added=True)

@@ -13,17 +13,17 @@ def _qapp():
 
 
 def test_modifiers_from_event_keyboard_modifiers():
-    event = SimpleNamespace(keyboardModifiers=lambda: Qt.ShiftModifier)
-    assert km.modifiers_from_event(event) == Qt.ShiftModifier
+    event = SimpleNamespace(keyboardModifiers=lambda: Qt.KeyboardModifier.ShiftModifier)
+    assert km.modifiers_from_event(event) == Qt.KeyboardModifier.ShiftModifier
 
 
 def test_modifiers_from_event_qt5_mouse_modifiers():
-    event = SimpleNamespace(modifiers=lambda: Qt.ControlModifier)
-    assert km.modifiers_from_event(event) == Qt.ControlModifier
+    event = SimpleNamespace(modifiers=lambda: Qt.KeyboardModifier.ControlModifier)
+    assert km.modifiers_from_event(event) == Qt.KeyboardModifier.ControlModifier
 
 
 def test_modifiers_from_event_none():
-    assert km.modifiers_from_event(None) == Qt.NoModifier
+    assert km.modifiers_from_event(None) == Qt.KeyboardModifier.NoModifier
 
 
 class _FileMime:
@@ -76,42 +76,56 @@ def _dnd_event(proposed, possible, mime):
 
 
 def test_modifiers_from_dnd_action_shift_is_move_when_copy_offered():
-    event = _dnd_event(Qt.MoveAction, Qt.CopyAction | Qt.MoveAction, _FileMime())
-    assert km.modifiers_from_dnd_action(event) == Qt.ShiftModifier
+    event = _dnd_event(
+        Qt.DropAction.MoveAction,
+        Qt.DropAction.CopyAction | Qt.DropAction.MoveAction,
+        _FileMime(),
+    )
+    assert km.modifiers_from_dnd_action(event) == Qt.KeyboardModifier.ShiftModifier
 
 
 def test_modifiers_from_dnd_action_copy_is_not_shift():
-    event = _dnd_event(Qt.CopyAction, Qt.CopyAction | Qt.MoveAction, _FileMime())
-    assert km.modifiers_from_dnd_action(event) == Qt.NoModifier
+    event = _dnd_event(
+        Qt.DropAction.CopyAction,
+        Qt.DropAction.CopyAction | Qt.DropAction.MoveAction,
+        _FileMime(),
+    )
+    assert km.modifiers_from_dnd_action(event) == Qt.KeyboardModifier.NoModifier
 
 
 def test_modifiers_from_dnd_action_file_move_only_is_shift():
-    event = _dnd_event(Qt.MoveAction, Qt.MoveAction, _FileMime())
-    assert km.modifiers_from_dnd_action(event) == Qt.ShiftModifier
+    event = _dnd_event(Qt.DropAction.MoveAction, Qt.DropAction.MoveAction, _FileMime())
+    assert km.modifiers_from_dnd_action(event) == Qt.KeyboardModifier.ShiftModifier
 
 
 def test_modifiers_from_dnd_action_gnome_portal_move_is_shift():
     event = _dnd_event(
-        Qt.MoveAction, Qt.MoveAction | Qt.TargetMoveAction, _GnomePortalMime()
+        Qt.DropAction.MoveAction,
+        Qt.DropAction.MoveAction | Qt.DropAction.TargetMoveAction,
+        _GnomePortalMime(),
     )
-    assert km.modifiers_from_dnd_action(event) == Qt.ShiftModifier
+    assert km.modifiers_from_dnd_action(event) == Qt.KeyboardModifier.ShiftModifier
 
 
 def test_modifiers_from_dnd_action_internal_video_move_is_not_shift():
-    event = _dnd_event(Qt.MoveAction, Qt.MoveAction, _VideoMime())
-    assert km.modifiers_from_dnd_action(event) == Qt.NoModifier
+    event = _dnd_event(Qt.DropAction.MoveAction, Qt.DropAction.MoveAction, _VideoMime())
+    assert km.modifiers_from_dnd_action(event) == Qt.KeyboardModifier.NoModifier
 
 
 def test_modifiers_from_dnd_action_link_counts_as_shift():
     event = _dnd_event(
-        Qt.LinkAction, Qt.CopyAction | Qt.MoveAction | Qt.LinkAction, _FileMime()
+        Qt.DropAction.LinkAction,
+        Qt.DropAction.CopyAction | Qt.DropAction.MoveAction | Qt.DropAction.LinkAction,
+        _FileMime(),
     )
-    assert km.modifiers_from_dnd_action(event) & Qt.ShiftModifier
+    assert km.modifiers_from_dnd_action(event) & Qt.KeyboardModifier.ShiftModifier
 
 
 def test_query_drop_modifiers_ors_event_and_query(mocker):
     mocker.patch.object(
-        QApplication, "queryKeyboardModifiers", return_value=Qt.NoModifier
+        QApplication,
+        "queryKeyboardModifiers",
+        return_value=Qt.KeyboardModifier.NoModifier,
     )
-    event = SimpleNamespace(keyboardModifiers=lambda: Qt.ShiftModifier)
-    assert km.query_drop_modifiers(event) == Qt.ShiftModifier
+    event = SimpleNamespace(keyboardModifiers=lambda: Qt.KeyboardModifier.ShiftModifier)
+    assert km.query_drop_modifiers(event) == Qt.KeyboardModifier.ShiftModifier

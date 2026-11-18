@@ -97,9 +97,9 @@ MARKER_GAP_PX = 6
 
 # every row carries its file's entry; a bookmark's row the bookmark, as it
 # is shown, and its time
-ENTRY_ROLE = Qt.UserRole
-BOOKMARK_ROLE = Qt.UserRole + 1
-TIME_ROLE = Qt.UserRole + 2
+ENTRY_ROLE = Qt.ItemDataRole.UserRole
+BOOKMARK_ROLE = Qt.ItemDataRole.UserRole + 1
+TIME_ROLE = Qt.ItemDataRole.UserRole + 2
 
 
 class Column(IntEnum):
@@ -153,10 +153,10 @@ def _swatch(color: str, rim: QColor) -> QIcon:
     given one, is no colour at all on a light list."""
 
     pixmap = QPixmap(SWATCH_PX, SWATCH_PX)
-    pixmap.fill(Qt.transparent)
+    pixmap.fill(Qt.GlobalColor.transparent)
 
     painter = QPainter(pixmap)
-    painter.setRenderHint(QPainter.Antialiasing)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
     painter.setPen(rim)
     painter.setBrush(QColor(color))
     painter.drawRoundedRect(QRectF(1.5, 1.5, SWATCH_PX - 3, SWATCH_PX - 3), 3, 3)
@@ -211,11 +211,13 @@ class _BookmarkRowDelegate(QStyledItemDelegate):
         option.text = ""
 
         style = option.widget.style()
-        style.drawControl(QStyle.CE_ItemViewItem, option, painter, option.widget)
+        style.drawControl(
+            QStyle.ControlElement.CE_ItemViewItem, option, painter, option.widget
+        )
 
         palette = option.palette
-        is_selected = bool(option.state & QStyle.State_Selected)
-        selected_color = palette.color(QPalette.HighlightedText)
+        is_selected = bool(option.state & QStyle.StateFlag.State_Selected)
+        selected_color = palette.color(QPalette.ColorRole.HighlightedText)
 
         time_txt, name, is_named, color = bookmark
 
@@ -236,9 +238,9 @@ class _BookmarkRowDelegate(QStyledItemDelegate):
         painter.save()
 
         painter.setPen(selected_color if is_selected else self.time_color)
-        painter.drawText(time_rect, Qt.AlignVCenter, time_txt)
+        painter.drawText(time_rect, Qt.AlignmentFlag.AlignVCenter, time_txt)
 
-        self._marker_icon(color, palette.color(QPalette.Text)).paint(
+        self._marker_icon(color, palette.color(QPalette.ColorRole.Text)).paint(
             painter, marker_rect
         )
 
@@ -249,14 +251,16 @@ class _BookmarkRowDelegate(QStyledItemDelegate):
         if is_selected:
             painter.setPen(selected_color)
         elif is_named:
-            painter.setPen(palette.color(QPalette.Text))
+            painter.setPen(palette.color(QPalette.ColorRole.Text))
         else:
-            painter.setPen(palette.color(QPalette.PlaceholderText))
+            painter.setPen(palette.color(QPalette.ColorRole.PlaceholderText))
 
         painter.drawText(
             name_rect,
-            Qt.AlignVCenter,
-            option.fontMetrics.elidedText(name, Qt.ElideRight, name_rect.width()),
+            Qt.AlignmentFlag.AlignVCenter,
+            option.fontMetrics.elidedText(
+                name, Qt.TextElideMode.ElideRight, name_rect.width()
+            ),
         )
 
         painter.restore()
@@ -277,11 +281,11 @@ class EntryList(QTreeView):
 
         self.setUniformRowHeights(True)
         self.setAllColumnsShowFocus(True)
-        self.setSelectionMode(QAbstractItemView.ExtendedSelection)
-        self.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.setIconSize(QSize(ICON_PX, ICON_PX))
-        self.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
+        self.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
 
         self.setStyleSheet(
             f"""
@@ -297,12 +301,12 @@ class EntryList(QTreeView):
 
     def keyPressEvent(self, event):
         # (the view's own copies the current cell's text)
-        if event.matches(QKeySequence.Copy):
+        if event.matches(QKeySequence.StandardKey.Copy):
             self.copy_requested.emit()
             event.accept()
             return
 
-        if event.key() == Qt.Key_Delete:
+        if event.key() == Qt.Key.Key_Delete:
             self.remove_requested.emit()
             event.accept()
             return
@@ -311,7 +315,7 @@ class EntryList(QTreeView):
 
     def contextMenuEvent(self, event):
         # from the keyboard, for the current row, under it
-        if event.reason() == QContextMenuEvent.Keyboard:
+        if event.reason() == QContextMenuEvent.Reason.Keyboard:
             index = self.currentIndex()
             pos = self.visualRect(index).bottomLeft() if index.isValid() else QPoint()
         else:
@@ -393,11 +397,11 @@ class PlaylistBookmarksPage(QWidget):
 
     def _ui_setup(self):
         self._mode_icon = QLabel()
-        self._mode_icon.setAlignment(Qt.AlignTop)
+        self._mode_icon.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         self._mode = QLabel()
         self._mode.setWordWrap(True)
-        self._mode.setTextFormat(Qt.RichText)
+        self._mode.setTextFormat(Qt.TextFormat.RichText)
         set_secondary(self._mode)
 
         mode = QHBoxLayout()
@@ -523,15 +527,15 @@ class PlaylistBookmarksPage(QWidget):
         super().changeEvent(event)
 
         if self._is_set_up and event.type() in {
-            QEvent.PaletteChange,
-            QEvent.FontChange,
+            QEvent.Type.PaletteChange,
+            QEvent.Type.FontChange,
         }:
             self._update_look()
             self._reload()
 
     def _update_look(self):
         palette = self.palette()
-        is_dark = palette.color(QPalette.Base).lightness() < 128
+        is_dark = palette.color(QPalette.ColorRole.Base).lightness() < 128
 
         self._colors = {
             "reachable": QColor(
@@ -541,9 +545,13 @@ class PlaylistBookmarksPage(QWidget):
                 WARNING_COLOR_DARK if is_dark else WARNING_COLOR_LIGHT
             ),
             "idle": secondary_text_color(),
-            "gone": palette.color(QPalette.Disabled, QPalette.Text),
+            "gone": palette.color(
+                QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text
+            ),
             "count": mixed_color(
-                palette.color(QPalette.Text), palette.color(QPalette.Base), TIME_FADE
+                palette.color(QPalette.ColorRole.Text),
+                palette.color(QPalette.ColorRole.Base),
+                TIME_FADE,
             ),
         }
 
@@ -713,7 +721,7 @@ class PlaylistBookmarksPage(QWidget):
             file_item.setForeground(self._colors["gone"])
 
         count_item = QStandardItem(str(len(entry.bookmarks)))
-        count_item.setTextAlignment(Qt.AlignCenter)
+        count_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         count_item.setForeground(self._colors["count"])
 
         row = [
@@ -892,10 +900,14 @@ class PlaylistBookmarksPage(QWidget):
     def _fit_columns(self):
         header = self._list.header()
         header.setStretchLastSection(False)
-        header.setSectionResizeMode(Column.FILE, QHeaderView.Stretch)
-        header.setSectionResizeMode(Column.CELL, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(Column.COUNT, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(Column.STATUS, QHeaderView.Fixed)
+        header.setSectionResizeMode(Column.FILE, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(
+            Column.CELL, QHeaderView.ResizeMode.ResizeToContents
+        )
+        header.setSectionResizeMode(
+            Column.COUNT, QHeaderView.ResizeMode.ResizeToContents
+        )
+        header.setSectionResizeMode(Column.STATUS, QHeaderView.ResizeMode.Fixed)
         header.resizeSection(Column.STATUS, STATUS_COLUMN_PX)
 
         self._list.setColumnHidden(Column.CELL, self._registry.is_shared)
@@ -983,12 +995,17 @@ class PlaylistBookmarksPage(QWidget):
 
             for index, index_key in indexes:
                 if index_key == current:
-                    selection.setCurrentIndex(index, selection.NoUpdate)
+                    selection.setCurrentIndex(index, selection.SelectionFlag.NoUpdate)
                 if index_key in picked:
-                    selection.select(index, selection.Select | selection.Rows)
+                    selection.select(
+                        index,
+                        selection.SelectionFlag.Select | selection.SelectionFlag.Rows,
+                    )
 
         if not self._list.currentIndex().isValid() and self._model.rowCount():
-            selection.setCurrentIndex(self._model.index(0, 0), selection.NoUpdate)
+            selection.setCurrentIndex(
+                self._model.index(0, 0), selection.SelectionFlag.NoUpdate
+            )
 
     def _picked_entries(self) -> dict:
         """The picked bookmarks, by the entry they are in: None for the
@@ -1222,7 +1239,8 @@ class PlaylistBookmarksPage(QWidget):
         copy = menu.addAction(
             QIcon.fromTheme("copy"),
             with_key_txt(
-                translate("Dialog - Playlist bookmarks", "Copy"), QKeySequence.Copy
+                translate("Dialog - Playlist bookmarks", "Copy"),
+                QKeySequence.StandardKey.Copy,
             ),
         )
         copy.triggered.connect(lambda _=False: self._copy())
@@ -1238,12 +1256,12 @@ class PlaylistBookmarksPage(QWidget):
         remove = menu.addAction(
             QIcon.fromTheme("bookmark-remove"),
             with_key_txt(
-                translate("Dialog - Playlist bookmarks", "Remove"), Qt.Key_Delete
+                translate("Dialog - Playlist bookmarks", "Remove"), Qt.Key.Key_Delete
             ),
         )
         remove.triggered.connect(lambda _=False: self._remove())
 
-        menu.exec_(global_pos)
+        menu.exec(global_pos)
         menu.deleteLater()
 
     def _show_list_menu(self, global_pos):
@@ -1277,5 +1295,5 @@ class PlaylistBookmarksPage(QWidget):
         remove_unreachable.setEnabled(self._unreachable_button.isEnabled())
         remove_unreachable.triggered.connect(lambda _=False: self._remove_unreachable())
 
-        menu.exec_(global_pos)
+        menu.exec(global_pos)
         menu.deleteLater()

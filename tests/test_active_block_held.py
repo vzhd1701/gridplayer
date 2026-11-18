@@ -34,7 +34,7 @@ class _Manager(ActiveBlockManager):
 
 @pytest.fixture
 def buttons(mocker):
-    held = SimpleNamespace(now=Qt.NoButton)
+    held = SimpleNamespace(now=Qt.MouseButton.NoButton)
     mocker.patch.object(active_block, "is_modal_open", return_value=False)
     mocker.patch.object(
         active_block.QApplication, "mouseButtons", side_effect=lambda: held.now
@@ -44,7 +44,11 @@ def buttons(mocker):
 
 def _mouse(manager, kind):
     event = QMouseEvent(
-        kind, QPointF(1, 1), Qt.LeftButton, Qt.LeftButton, Qt.NoModifier
+        kind,
+        QPointF(1, 1),
+        Qt.MouseButton.LeftButton,
+        Qt.MouseButton.LeftButton,
+        Qt.KeyboardModifier.NoModifier,
     )
     manager.eventFilter(None, event)
 
@@ -54,18 +58,18 @@ def test_a_double_click_stays_with_the_video_it_was_pressed_on(buttons):
     small, big = object(), object()
 
     manager.under = small
-    buttons.now = Qt.LeftButton
-    _mouse(manager, QEvent.MouseButtonPress)
+    buttons.now = Qt.MouseButton.LeftButton
+    _mouse(manager, QEvent.Type.MouseButtonPress)
     assert manager._ctx.active_block is small
 
     # shown big: the one shown big till now comes under the pointer
     manager.under = big
     manager.update_active_under_mouse()
-    _mouse(manager, QEvent.MouseMove)
+    _mouse(manager, QEvent.Type.MouseMove)
     assert manager._ctx.active_block is small
 
     # once the button is let go of
-    buttons.now = Qt.NoButton
+    buttons.now = Qt.MouseButton.NoButton
     manager._check_let_go()
     assert manager._ctx.active_block is big
     assert not manager._let_go_timer.isActive()
@@ -80,6 +84,6 @@ def test_a_press_takes_the_video_under_the_pointer(buttons):
 
     # come to it with no move seen
     manager.under = second
-    buttons.now = Qt.LeftButton
-    _mouse(manager, QEvent.MouseButtonPress)
+    buttons.now = Qt.MouseButton.LeftButton
+    _mouse(manager, QEvent.Type.MouseButtonPress)
     assert manager._ctx.active_block is second

@@ -11,7 +11,7 @@ class ElidedLabel(QLabel):
     def __init__(self, text="", parent=None):
         super().__init__(parent)
 
-        self.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
 
         # (QLabel's own would leave the tooltip out)
         self.setText(text)
@@ -30,12 +30,14 @@ class ElidedLabel(QLabel):
         option.initFrom(self)
 
         rect = self.contentsRect()
-        text = self.fontMetrics().elidedText(self.text(), Qt.ElideMiddle, rect.width())
+        text = self.fontMetrics().elidedText(
+            self.text(), Qt.TextElideMode.ElideMiddle, rect.width()
+        )
 
         self.style().drawItemText(
             painter,
             rect,
-            int(self.alignment() | Qt.AlignVCenter),
+            int(self.alignment() | Qt.AlignmentFlag.AlignVCenter),
             option.palette,
             self.isEnabled(),
             text,

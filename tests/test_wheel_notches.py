@@ -15,15 +15,15 @@ from gridplayer.player.managers.actions import ActionsManager
 from gridplayer.utils.keymap import WHEEL_NOTCH, WHEEL_PAUSE_MS, WheelNotches
 
 
-def _wheel(dy=0, dx=0, ms=0, modifiers=Qt.NoModifier):
+def _wheel(dy=0, dx=0, ms=0, modifiers=Qt.KeyboardModifier.NoModifier):
     event = QWheelEvent(
         QPoint(0, 0),
         QPoint(0, 0),
         QPoint(0, 0),
         QPoint(dx, dy),
         0,
-        Qt.Vertical if dy else Qt.Horizontal,
-        Qt.NoButton,
+        Qt.Orientation.Vertical if dy else Qt.Orientation.Horizontal,
+        Qt.MouseButton.NoButton,
         modifiers,
     )
     event.setTimestamp(ms)
@@ -78,7 +78,9 @@ class TestCountingNotches:
         notches = WheelNotches()
 
         assert _turned(
-            notches, _wheel(dy=100), _wheel(dy=100, modifiers=Qt.ControlModifier)
+            notches,
+            _wheel(dy=100),
+            _wheel(dy=100, modifiers=Qt.KeyboardModifier.ControlModifier),
         ) == [0, 0]
 
     def test_a_turn_left_a_while_is_let_go(self):
@@ -133,7 +135,10 @@ class TestFiringShortcuts:
         assert manager.trigger.call_count == 2
 
     def test_held_keys_pick_the_shortcut(self, manager):
-        self._handle(manager, _wheel(dy=WHEEL_NOTCH, modifiers=Qt.ControlModifier))
+        self._handle(
+            manager,
+            _wheel(dy=WHEEL_NOTCH, modifiers=Qt.KeyboardModifier.ControlModifier),
+        )
 
         manager.trigger.assert_called_once_with("Zoom In")
 
@@ -158,11 +163,11 @@ class TestFiringShortcuts:
 
     def test_clicks_still_fire_as_they_did(self, manager):
         release = QMouseEvent(
-            QEvent.MouseButtonRelease,
+            QEvent.Type.MouseButtonRelease,
             QPoint(0, 0),
-            Qt.LeftButton,
-            Qt.LeftButton,
-            Qt.NoModifier,
+            Qt.MouseButton.LeftButton,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
         )
 
         assert self._handle(manager, release)

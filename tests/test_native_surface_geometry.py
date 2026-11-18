@@ -201,7 +201,7 @@ def test_native_frame_fills_uncovered_area_black_once_loaded(monkeypatch):
     frame.load_video_finish(MagicMock(is_audio_only=False, cur_video_track=None))
 
     assert frame.autoFillBackground()
-    assert frame.palette().color(frame.backgroundRole()) == Qt.black
+    assert frame.palette().color(frame.backgroundRole()) == Qt.GlobalColor.black
 
 
 def test_native_frame_is_not_filled_on_x11(monkeypatch):
@@ -233,7 +233,7 @@ def test_native_frame_fills_the_letterbox_black_on_x11(monkeypatch):
 
     assert frame.video_surface.geometry().getRect() == (-8, -8, 416, 466)
     assert frame.autoFillBackground()
-    assert frame.palette().color(frame.backgroundRole()) == Qt.black
+    assert frame.palette().color(frame.backgroundRole()) == Qt.GlobalColor.black
 
 
 def test_native_frame_is_not_filled_on_x11_while_covered(monkeypatch):

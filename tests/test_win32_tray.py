@@ -142,9 +142,9 @@ class TestIcon:
             icon.on_callback(event)
 
         assert reasons == [
-            QSystemTrayIcon.Trigger,
-            QSystemTrayIcon.DoubleClick,
-            QSystemTrayIcon.MiddleClick,
+            QSystemTrayIcon.ActivationReason.Trigger,
+            QSystemTrayIcon.ActivationReason.DoubleClick,
+            QSystemTrayIcon.ActivationReason.MiddleClick,
         ]
         assert notes == [True]
 
@@ -157,7 +157,7 @@ class TestIcon:
 
         icon.on_callback(WM_CONTEXTMENU)
 
-        assert reasons == [QSystemTrayIcon.Context]
+        assert reasons == [QSystemTrayIcon.ActivationReason.Context]
         assert menu.isVisible()
         menu.hide()
 

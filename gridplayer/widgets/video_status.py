@@ -173,7 +173,7 @@ class VideoStatus(QWidget):
         super().__init__(**kwargs)
 
         self.setAutoFillBackground(True)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         # Due to VLC video block glitch, cannot hide video block
         # workaround - make overlay loading screen 99% opaque
@@ -407,7 +407,7 @@ class VideoStatus(QWidget):
 
     def paintEvent(self, event):
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         if self._is_framed:
             paint_solid_outline(self, painter, is_active=self._is_active)
@@ -599,11 +599,13 @@ class VideoStatus(QWidget):
 
     def _draw_line(self, painter, rect, text, font, color):
         metrics = QFontMetrics(font)
-        shown = metrics.elidedText(text, Qt.ElideMiddle, int(rect.width()))
+        shown = metrics.elidedText(
+            text, Qt.TextElideMode.ElideMiddle, int(rect.width())
+        )
 
         painter.setFont(font)
         painter.setPen(color)
-        painter.drawText(rect, Qt.AlignCenter, shown)
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, shown)
 
     def _row_status(self, painter, rect):
         bold, _ = self._fonts()
@@ -699,7 +701,7 @@ class VideoStatus(QWidget):
             if index:
                 was_done = steps[index - 1][1] is StepState.DONE
                 line = QRectF(left + gap, middle - self._px(1), link, self._px(2))
-                painter.setPen(Qt.NoPen)
+                painter.setPen(Qt.PenStyle.NoPen)
                 painter.setBrush(dim if was_done else track)
                 painter.drawRoundedRect(line, line.height() / 2, line.height() / 2)
                 left += gap + link + gap
@@ -707,21 +709,21 @@ class VideoStatus(QWidget):
             center = QPointF(left + marker / 2, middle)
 
             if state is StepState.DONE:
-                painter.setPen(Qt.NoPen)
+                painter.setPen(Qt.PenStyle.NoPen)
                 painter.setBrush(dim)
                 painter.drawEllipse(center, dot / 2, dot / 2)
                 color = dim
             elif state is StepState.CURRENT:
                 stroke = self._px(STEP_RING_STROKE)
                 painter.setPen(QPen(text, stroke))
-                painter.setBrush(Qt.NoBrush)
+                painter.setBrush(Qt.BrushStyle.NoBrush)
                 radius = (ring - stroke) / 2
                 painter.drawEllipse(center, radius, radius)
                 color = text
             else:
                 stroke = self._px(STEP_TODO_STROKE)
                 painter.setPen(QPen(chrome, stroke))
-                painter.setBrush(Qt.NoBrush)
+                painter.setBrush(Qt.BrushStyle.NoBrush)
                 radius = (dot - stroke) / 2
                 painter.drawEllipse(center, radius, radius)
                 color = chrome
@@ -732,7 +734,7 @@ class VideoStatus(QWidget):
             painter.setPen(color)
             painter.drawText(
                 QRectF(left, rect.top(), advance + 1, rect.height()),
-                Qt.AlignVCenter | Qt.AlignLeft,
+                Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
                 label,
             )
             left += advance
@@ -765,7 +767,7 @@ class VideoStatus(QWidget):
         now_ms = time.monotonic() * 1000
 
         painter.save()
-        painter.setPen(Qt.NoPen)
+        painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(color)
 
         for index, offset in enumerate(BARS_OFFSETS_MS):
@@ -801,7 +803,7 @@ class VideoStatus(QWidget):
         now = time.monotonic()
 
         painter.save()
-        painter.setPen(Qt.NoPen)
+        painter.setPen(Qt.PenStyle.NoPen)
 
         for row in range(3):
             phase = ((now - row * ROWS_STEP_S) % ROWS_PERIOD_S) / ROWS_PERIOD_S
@@ -847,7 +849,7 @@ class VideoStatus(QWidget):
         painter.translate(box.center())
         painter.rotate(-45)
         painter.setPen(QPen(color, stroke))
-        painter.setBrush(Qt.NoBrush)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
 
         for sign in (-1, 1):
             link = QRectF(0, 0, length, width)
@@ -866,12 +868,12 @@ class VideoStatus(QWidget):
         share = left / self._countdown_total if self._countdown_total else 0
 
         painter.save()
-        painter.setBrush(Qt.NoBrush)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.setPen(QPen(track, stroke))
         painter.drawEllipse(ring)
 
         pen = QPen(chrome, stroke)
-        pen.setCapStyle(Qt.RoundCap)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         painter.setPen(pen)
         painter.drawArc(ring, 90 * 16, int(share * 360 * 16))
 
@@ -879,7 +881,7 @@ class VideoStatus(QWidget):
         bold.setPointSizeF(max(bold.pointSizeF(), box.height() * 0.3 * 0.75))
         painter.setFont(bold)
         painter.setPen(text)
-        painter.drawText(ring, Qt.AlignCenter, str(self._countdown_left))
+        painter.drawText(ring, Qt.AlignmentFlag.AlignCenter, str(self._countdown_left))
         painter.restore()
 
     def _row_error_icon(self, painter, rect):
@@ -916,11 +918,14 @@ class VideoStatus(QWidget):
 
             if metrics.horizontalAdvance(candidate) > width and first:
                 rest = " ".join(words[index:])
-                return [first, metrics.elidedText(rest, Qt.ElideRight, width)]
+                return [
+                    first,
+                    metrics.elidedText(rest, Qt.TextElideMode.ElideRight, width),
+                ]
 
             first = candidate
 
-        return [metrics.elidedText(about, Qt.ElideRight, width)]
+        return [metrics.elidedText(about, Qt.TextElideMode.ElideRight, width)]
 
     def _row_about(self, painter, rect):
         _, small = self._fonts()

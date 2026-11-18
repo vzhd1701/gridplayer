@@ -48,11 +48,17 @@ def _mouse(d, kind, pos):
     if kind == "move":
         QTest.mouseMove(window, local)
     elif kind == "press":
-        QTest.mousePress(window, Qt.LeftButton, Qt.NoModifier, local)
+        QTest.mousePress(
+            window, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, local
+        )
     elif kind == "release":
-        QTest.mouseRelease(window, Qt.LeftButton, Qt.NoModifier, local)
+        QTest.mouseRelease(
+            window, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, local
+        )
     elif kind == "double":
-        QTest.mouseDClick(window, Qt.LeftButton, Qt.NoModifier, local)
+        QTest.mouseDClick(
+            window, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, local
+        )
     d.pump(0.15)
 
 
@@ -134,7 +140,7 @@ def scenario(d):
     d.check(
         "resize pointer on the strip's line",
         QApplication.overrideCursor() is not None
-        and QApplication.overrideCursor().shape() == Qt.SplitHCursor,
+        and QApplication.overrideCursor().shape() == Qt.CursorShape.SplitHCursor,
     )
     _mouse(d, "press", _at(d, STRIP_LINE - 1))
     _mouse(d, "move", _at(d, 680))

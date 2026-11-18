@@ -30,7 +30,7 @@ def test_a_live_stream_loaded_paused_is_let_go_of_once_its_picture_is_up(driver)
     player.set_pause.assert_not_called()
     player.take_screenshot.assert_called_once()
 
-    picture = QImage(4, 4, QImage.Format_RGB32)
+    picture = QImage(4, 4, QImage.Format.Format_RGB32)
     driver._on_picture_taken(picture, False)
 
     driver.snapshot_image.emit.assert_called_once_with(picture)
@@ -46,7 +46,7 @@ def test_a_live_stream_played_before_its_picture_came_plays_on(driver):
 
     driver._pause_live_at_load(player)
     player.is_pause_asked = False
-    driver._on_picture_taken(QImage(4, 4, QImage.Format_RGB32), False)
+    driver._on_picture_taken(QImage(4, 4, QImage.Format.Format_RGB32), False)
 
     # its picture not put up either, which would be taken for a pause asked
     driver.snapshot_image.emit.assert_not_called()
@@ -67,7 +67,7 @@ def frame(mocker):
 
 
 def test_paused_again_before_it_was_back_keeps_the_picture_up(frame):
-    picture = QImage(4, 4, QImage.Format_RGB32)
+    picture = QImage(4, 4, QImage.Format.Format_RGB32)
     frame.pause_snapshot.isVisible.return_value = False
     frame._on_snapshot_image(picture)
 

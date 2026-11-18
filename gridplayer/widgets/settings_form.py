@@ -88,16 +88,18 @@ def _scroll_by(bar: QScrollBar, step: int):
     animation.setStartValue(bar.value())
     animation.setEndValue(min(bar.value() + step, bar.maximum()))
     animation.setDuration(SCROLL_MS)
-    animation.setEasingCurve(QEasingCurve.OutCubic)
+    animation.setEasingCurve(QEasingCurve.Type.OutCubic)
     animation.valueChanged.connect(bar.setValue)
-    animation.start(QAbstractAnimation.DeleteWhenStopped)
+    animation.start(QAbstractAnimation.DeletionPolicy.DeleteWhenStopped)
 
 
 def _put_away(widget: QWidget) -> bool:
     """Hidden on purpose, rather than not shown yet: one just put in a
     layout is shown only once the event loop comes round to it."""
 
-    return widget.isHidden() and widget.testAttribute(Qt.WA_WState_ExplicitShowHide)
+    return widget.isHidden() and widget.testAttribute(
+        Qt.WidgetAttribute.WA_WState_ExplicitShowHide
+    )
 
 
 class _Shown(QWidget):
@@ -113,7 +115,7 @@ class _Shown(QWidget):
         widget.installEventFilter(self)
 
     def eventFilter(self, obj, event):
-        if event.type() in {QEvent.ShowToParent, QEvent.HideToParent}:
+        if event.type() in {QEvent.Type.ShowToParent, QEvent.Type.HideToParent}:
             self.follow()
         return super().eventFilter(obj, event)
 
@@ -231,8 +233,8 @@ class _FormRow(QWidget):
             return
 
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        painter.setPen(Qt.NoPen)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(theme_color(self, "text"))
         painter.drawRoundedRect(self.mark_bar(), MARK_WIDTH / 2, MARK_WIDTH / 2)
 
@@ -257,14 +259,14 @@ class _Card(_Shown):
         fit_fields(self)
 
     def changeEvent(self, event):
-        if event.type() == QEvent.PaletteChange:
+        if event.type() == QEvent.Type.PaletteChange:
             fit_fields(self)
         super().changeEvent(event)
 
     def paintEvent(self, event):
         painter = paint_card(self)
 
-        painter.setRenderHint(QPainter.Antialiasing, False)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, False)
         painter.setPen(theme_color(self, "window"))
         shown = [row for row in self._rows if not _put_away(row)]
         for row in shown[1:]:
@@ -644,7 +646,7 @@ class SettingsForm(QWidget):
     @staticmethod
     def _add_reset(lay, reset):
         if reset is not None:
-            lay.addWidget(reset, alignment=Qt.AlignVCenter)
+            lay.addWidget(reset, alignment=Qt.AlignmentFlag.AlignVCenter)
 
     def _reset_button(self, key):
         reset = self._make_reset()
@@ -660,7 +662,7 @@ class SettingsForm(QWidget):
         reset.setIconSize(QSize(RESET_ICON_PX, RESET_ICON_PX))
         reset.setAutoRaise(True)
         reset.setToolTip(translate("SettingsDialog", "Reset"))
-        reset.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        reset.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
         # taking up its room while hidden, so nothing moves when it shows
         policy = reset.sizePolicy()
@@ -798,7 +800,7 @@ class SettingsForm(QWidget):
         self._settle()
 
         self._into_view(self._rows[key])
-        self._editors[key].widget.setFocus(Qt.OtherFocusReason)
+        self._editors[key].widget.setFocus(Qt.FocusReason.OtherFocusReason)
 
     def _into_view(self, widget: QWidget):
         scroll = self._scroll_area()
@@ -817,7 +819,7 @@ class SettingsForm(QWidget):
         squeezed for a moment.
         """
 
-        QApplication.sendPostedEvents(None, QEvent.LayoutRequest)
+        QApplication.sendPostedEvents(None, QEvent.Type.LayoutRequest)
 
     def _out_of_reach(self, key) -> bool:
         return key in self._unavailable
@@ -1122,7 +1124,7 @@ class SettingsForm(QWidget):
 
             self._marked_labels.append((label, text, label.textFormat()))
             color = theme_color(label, "highlight").name()
-            label.setTextFormat(Qt.RichText)
+            label.setTextFormat(Qt.TextFormat.RichText)
             label.setText(
                 query.marked(
                     text,
@@ -1216,7 +1218,7 @@ class SettingsForm(QWidget):
 
         # the label as wide as its words, and the room it took after the mark
         lay.setStretch(at, 0)
-        lay.insertWidget(at + 1, mark, 0, Qt.AlignVCenter)
+        lay.insertWidget(at + 1, mark, 0, Qt.AlignmentFlag.AlignVCenter)
         lay.insertStretch(at + 2, 1)
 
     def text_of(self, key: str, value) -> str | None:

@@ -49,7 +49,9 @@ def settings(tmp_path, monkeypatch):
     """An ini of our own, so no test writes the one the user has."""
 
     store = _Settings.__new__(_Settings)
-    store.settings = QSettings(str(tmp_path / "settings.ini"), QSettings.IniFormat)
+    store.settings = QSettings(
+        str(tmp_path / "settings.ini"), QSettings.Format.IniFormat
+    )
 
     monkeypatch.setattr(playlist_settings, "Settings", lambda: store)
 
@@ -107,7 +109,7 @@ def make_window(settings, parts):
     for window in made:
         window.deleteLater()
 
-    QApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+    QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
 
 def _shown(window):
@@ -292,7 +294,7 @@ class TestNewVideos:
 
         assert asked == [{VOLUME: 0.5}]
         assert window.is_for_all_videos is answer
-        assert window.result() == window.Accepted
+        assert window.result() == window.DialogCode.Accepted
 
     def test_cancel_in_the_question_goes_back(self, make_window, monkeypatch):
         window = make_window(has_videos=True)
@@ -334,7 +336,7 @@ class TestNewVideos:
                 button.click()
             return 0
 
-        monkeypatch.setattr(QCustomMessageBox, "exec_", _exec)
+        monkeypatch.setattr(QCustomMessageBox, "exec", _exec)
 
         assert window._ask_for_videos_here({VOLUME: 0.5}) is answer
         assert seen["text"] == "Change the videos already here too?"
@@ -461,9 +463,9 @@ def test_the_question_has_cancel_to_go_back(make_window, monkeypatch):
         box.reject()
         return 0
 
-    monkeypatch.setattr(QCustomMessageBox, "exec_", _exec)
+    monkeypatch.setattr(QCustomMessageBox, "exec", _exec)
 
     window._ask_for_videos_here({VOLUME: 0.5})
 
-    assert roles["All videos"] == QMessageBox.AcceptRole
-    assert roles["Only new"] == QMessageBox.RejectRole
+    assert roles["All videos"] == QMessageBox.ButtonRole.AcceptRole
+    assert roles["Only new"] == QMessageBox.ButtonRole.RejectRole

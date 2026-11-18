@@ -52,7 +52,9 @@ def template_shapes(template: GridTemplate) -> list[tuple[QRectF, bool]]:
 
 def _color() -> QColor:
     # the theme's icons are black, or white in the dark one
-    return QColor(Qt.white if QIcon.themeName() == "dark" else Qt.black)
+    return QColor(
+        Qt.GlobalColor.white if QIcon.themeName() == "dark" else Qt.GlobalColor.black
+    )
 
 
 class _TemplateIconEngine(QIconEngine):
@@ -71,10 +73,10 @@ class _TemplateIconEngine(QIconEngine):
 
     def pixmap(self, size, mode, state):
         pixmap = QPixmap(size)
-        pixmap.fill(Qt.transparent)
+        pixmap.fill(Qt.GlobalColor.transparent)
 
         painter = QPainter(pixmap)
-        painter.setRenderHint(QPainter.Antialiasing, True)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
         side = min(size.width(), size.height())
         painter.translate((size.width() - side) / 2, (size.height() - side) / 2)
@@ -83,16 +85,16 @@ class _TemplateIconEngine(QIconEngine):
         painter.fillPath(self._path(), _color())
         painter.end()
 
-        if mode == QIcon.Disabled:
+        if mode == QIcon.Mode.Disabled:
             return QApplication.style().generatedIconPixmap(
-                QIcon.Disabled, pixmap, QStyleOption()
+                QIcon.Mode.Disabled, pixmap, QStyleOption()
             )
 
         return pixmap
 
     def _path(self) -> QPainterPath:
         path = QPainterPath()
-        path.setFillRule(Qt.OddEvenFill)
+        path.setFillRule(Qt.FillRule.OddEvenFill)
 
         for cell, is_big in template_shapes(self._template):
             radius = min(_RADIUS, cell.width() / 4, cell.height() / 4)

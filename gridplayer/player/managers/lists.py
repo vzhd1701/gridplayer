@@ -761,7 +761,7 @@ class ListsManager(ManagerBase):
             return
 
         self._reading_for = block
-        QApplication.setOverrideCursor(Qt.BusyCursor)
+        QApplication.setOverrideCursor(Qt.CursorShape.BusyCursor)
 
         self._off_thread.run(
             "folder", folder_list, folder, scan_rules(), choice.is_recursive
@@ -852,7 +852,7 @@ class ListsManager(ManagerBase):
         if block is None:
             self._modal_list_id = list_id
             try:
-                dialog.exec_()
+                dialog.exec()
             finally:
                 self._modal_list_id = None
             dialog.deleteLater()
@@ -931,7 +931,7 @@ class ListsManager(ManagerBase):
             question = translate("Dialog - List", "Keep your changes to the list?")
 
         box = QCustomMessageBox(
-            QMessageBox.Question,
+            QMessageBox.Icon.Question,
             translate("Dialog - List", "List", "Header"),
             question,
             parent=dialog,
@@ -944,15 +944,17 @@ class ListsManager(ManagerBase):
         )
 
         keep = box.addButton(
-            translate("Dialog - List", "Keep Changes"), QMessageBox.AcceptRole
+            translate("Dialog - List", "Keep Changes"),
+            QMessageBox.ButtonRole.AcceptRole,
         )
         discard = box.addButton(
-            translate("Dialog - List", "Discard Changes"), QMessageBox.DestructiveRole
+            translate("Dialog - List", "Discard Changes"),
+            QMessageBox.ButtonRole.DestructiveRole,
         )
-        box.addButton(QMessageBox.Cancel)
+        box.addButton(QMessageBox.StandardButton.Cancel)
         box.setDefaultButton(keep)
 
-        box.exec_()
+        box.exec()
 
         clicked = box.clickedButton()
 

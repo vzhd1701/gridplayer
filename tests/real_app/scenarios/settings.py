@@ -69,7 +69,7 @@ def scenario(d):
         reset = next(
             button
             for button in box.buttons()
-            if box.buttonRole(button) == QMessageBox.DestructiveRole
+            if box.buttonRole(button) == QMessageBox.ButtonRole.DestructiveRole
         )
         reset.click()
 

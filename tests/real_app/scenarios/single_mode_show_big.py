@@ -27,13 +27,15 @@ def _double_click(d, cell):
     _point_at(d, cell)
     window = d.player.windowHandle()
     local = window.mapFromGlobal(_middle(cell))
-    QTest.mouseDClick(window, Qt.LeftButton, Qt.NoModifier, local)
+    QTest.mouseDClick(
+        window, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, local
+    )
     d.pump(0.5)
 
 
 def _press_n(d, cell):
     _point_at(d, cell)
-    QTest.keyClick(d.player, Qt.Key_N)
+    QTest.keyClick(d.player, Qt.Key.Key_N)
     d.pump(0.5)
 
 

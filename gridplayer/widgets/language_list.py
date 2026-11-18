@@ -19,7 +19,11 @@ from gridplayer.params.theme import current_colors, selection_fill
 from gridplayer.utils.qt import translate
 
 _MIN_TEXT_WIDTH = 80
-_LTR_ALIGN = Qt.AlignLeft | Qt.AlignAbsolute | Qt.AlignVCenter
+_LTR_ALIGN = (
+    Qt.AlignmentFlag.AlignLeft
+    | Qt.AlignmentFlag.AlignAbsolute
+    | Qt.AlignmentFlag.AlignVCenter
+)
 
 
 def _selection_tint() -> QColor:
@@ -30,12 +34,12 @@ def _colorized_theme_icon(name: str, size: QSize, color: QColor) -> QPixmap:
     source = QIcon.fromTheme(name).pixmap(size)
 
     tinted = QPixmap(source.size())
-    tinted.fill(Qt.transparent)
+    tinted.fill(Qt.GlobalColor.transparent)
 
     painter = QPainter(tinted)
-    painter.setRenderHint(QPainter.SmoothPixmapTransform)
+    painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
     painter.drawPixmap(0, 0, source)
-    painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
+    painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
     painter.fillRect(tinted.rect(), color)
     painter.end()
 
@@ -119,9 +123,9 @@ class LanguageRowWidget(QWidget):
         self._authors = language.authors
 
         self.setObjectName("LanguageRow")
-        self.setAttribute(Qt.WA_StyledBackground, True)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
-        self.setLayoutDirection(Qt.LeftToRight)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
 
         self.icon_checkmark = self._ui_checkmark()
         self.icon_flag = self._ui_icon_flag(language.icon_path)
@@ -140,8 +144,8 @@ class LanguageRowWidget(QWidget):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(self.spacing)
-        layout.addWidget(self.icon_checkmark, 0, Qt.AlignVCenter)
-        layout.addWidget(self.icon_flag, 0, Qt.AlignVCenter)
+        layout.addWidget(self.icon_checkmark, 0, Qt.AlignmentFlag.AlignVCenter)
+        layout.addWidget(self.icon_flag, 0, Qt.AlignmentFlag.AlignVCenter)
         layout.addLayout(text_col, 1)
 
         self._apply_background()
@@ -231,7 +235,7 @@ class LanguageRowWidget(QWidget):
 
         icon_flag_bg_layout = QHBoxLayout(icon_flag_bg)
         icon_flag_bg_layout.setContentsMargins(1, 1, 1, 1)
-        icon_flag_bg_layout.setSizeConstraint(QLayout.SetFixedSize)
+        icon_flag_bg_layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
         icon_flag_bg_layout.addWidget(icon_flag)
 
         return icon_flag_bg
@@ -241,11 +245,13 @@ class LanguageRowWidget(QWidget):
         font = text_label.font()
         font.setPixelSize(self.font_size)
         text_label.setFont(font)
-        text_label.setTextFormat(Qt.RichText)
+        text_label.setTextFormat(Qt.TextFormat.RichText)
         text_label.setWordWrap(True)
-        text_label.setLayoutDirection(Qt.LeftToRight)
+        text_label.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         text_label.setAlignment(_LTR_ALIGN)
-        text_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        text_label.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred
+        )
         text_label.setStyleSheet("QLabel { background: transparent; }")
 
         return text_label
@@ -258,14 +264,16 @@ class LanguageRowWidget(QWidget):
         font = text_label.font()
         font.setPixelSize(self.author_font_size)
         text_label.setFont(font)
-        text_label.setTextFormat(Qt.RichText)
+        text_label.setTextFormat(Qt.TextFormat.RichText)
         text_label.setOpenExternalLinks(True)
         text_label.setWordWrap(False)
-        text_label.setTextInteractionFlags(Qt.LinksAccessibleByMouse)
-        text_label.setFocusPolicy(Qt.NoFocus)
-        text_label.setLayoutDirection(Qt.LeftToRight)
+        text_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.LinksAccessibleByMouse
+        )
+        text_label.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        text_label.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         text_label.setAlignment(_LTR_ALIGN)
-        text_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        text_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         text_label.setStyleSheet("QLabel { background: transparent; }")
         self._apply_author_credit(text_label, len(language.authors))
 
@@ -278,8 +286,8 @@ class LanguageRowWidget(QWidget):
             and watched is authors
             and event.type()
             in (
-                QEvent.MouseButtonPress,
-                QEvent.MouseButtonDblClick,
+                QEvent.Type.MouseButtonPress,
+                QEvent.Type.MouseButtonDblClick,
             )
         ):
             self._select_in_list()
@@ -311,8 +319,8 @@ class LanguageRowWidget(QWidget):
 
     def _ui_checkmark(self):
         icon_checkmark = QLabel(self)
-        icon_checkmark.setAlignment(Qt.AlignCenter)
-        icon_checkmark.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        icon_checkmark.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        icon_checkmark.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         icon_checkmark.setFixedSize(self.check_slot_size)
         icon_checkmark.setStyleSheet("QLabel { background: transparent; }")
 
@@ -325,10 +333,10 @@ class LanguageList(QListWidget):
 
         self._last_viewport_width = 0
 
-        self.setLayoutDirection(Qt.LeftToRight)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
-        self.setResizeMode(QListView.Adjust)
+        self.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.setResizeMode(QListView.ResizeMode.Adjust)
         self.setUniformItemSizes(False)
 
         self._apply_list_style()
@@ -338,7 +346,7 @@ class LanguageList(QListWidget):
         row_item_w = LanguageRowWidget(language)
 
         row_item = QListWidgetItem(self)
-        row_item.setData(Qt.UserRole, language.code)
+        row_item.setData(Qt.ItemDataRole.UserRole, language.code)
         row_item.setSizeHint(row_item_w.sizeHint())
         self.setItemWidget(row_item, row_item_w)
 
@@ -350,7 +358,7 @@ class LanguageList(QListWidget):
     def setValue(self, data_value):
         for i in range(self.count()):
             cur_item = self.item(i)
-            if cur_item.data(Qt.UserRole) == data_value:
+            if cur_item.data(Qt.ItemDataRole.UserRole) == data_value:
                 self.setCurrentItem(cur_item)
                 self.scrollToItem(cur_item)
                 break
@@ -358,7 +366,7 @@ class LanguageList(QListWidget):
     def value(self):
         selected_item = self.currentItem()
         if selected_item:
-            return selected_item.data(Qt.UserRole)
+            return selected_item.data(Qt.ItemDataRole.UserRole)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -369,7 +377,7 @@ class LanguageList(QListWidget):
         self._relayout_rows(force=True)
 
     def changeEvent(self, event):
-        if event.type() == QEvent.PaletteChange:
+        if event.type() == QEvent.Type.PaletteChange:
             self._apply_list_style()
             for i in range(self.count()):
                 widget = self.itemWidget(self.item(i))

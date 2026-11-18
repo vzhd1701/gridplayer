@@ -46,7 +46,9 @@ class TestSegmentedChoice:
         picked = []
         choice.currentIndexChanged.connect(picked.append)
 
-        QTest.mouseClick(choice, Qt.LeftButton, pos=QPoint(choice.width() - 3, 5))
+        QTest.mouseClick(
+            choice, Qt.MouseButton.LeftButton, pos=QPoint(choice.width() - 3, 5)
+        )
 
         assert picked == [2]
         assert choice.currentData() == "none"
@@ -54,12 +56,12 @@ class TestSegmentedChoice:
     def test_arrows_step_and_stop_at_the_ends(self):
         choice = _choice(("A", 1), ("B", 2))
 
-        QTest.keyClick(choice, Qt.Key_Right)
-        QTest.keyClick(choice, Qt.Key_Right)
+        QTest.keyClick(choice, Qt.Key.Key_Right)
+        QTest.keyClick(choice, Qt.Key.Key_Right)
         assert choice.currentIndex() == 1
 
-        QTest.keyClick(choice, Qt.Key_Left)
-        QTest.keyClick(choice, Qt.Key_Left)
+        QTest.keyClick(choice, Qt.Key.Key_Left)
+        QTest.keyClick(choice, Qt.Key.Key_Left)
         assert choice.currentIndex() == 0
 
     def test_an_icon_takes_its_texts_place_the_text_its_tip(self):
@@ -73,7 +75,13 @@ class TestSegmentedChoice:
         at = QPointF(widths[0] + widths[1] / 2, 5)
         QApplication.sendEvent(
             choice,
-            QMouseEvent(QEvent.MouseMove, at, Qt.NoButton, Qt.NoButton, Qt.NoModifier),
+            QMouseEvent(
+                QEvent.Type.MouseMove,
+                at,
+                Qt.MouseButton.NoButton,
+                Qt.MouseButton.NoButton,
+                Qt.KeyboardModifier.NoModifier,
+            ),
         )
         assert choice.toolTip() == "Mosaic"
         choice.grab()
@@ -93,7 +101,7 @@ class TestSwitch:
         switch = Switch()
         label = ToggleLabel("Muted", switch)
 
-        QTest.mouseClick(label, Qt.LeftButton)
+        QTest.mouseClick(label, Qt.MouseButton.LeftButton)
 
         assert switch.isChecked()
 
@@ -102,7 +110,7 @@ class TestSwitch:
         switch.setEnabled(False)
         label = ToggleLabel("Muted", switch)
 
-        QTest.mouseClick(label, Qt.LeftButton)
+        QTest.mouseClick(label, Qt.MouseButton.LeftButton)
 
         assert not switch.isChecked()
 
@@ -145,7 +153,7 @@ class TestTileSnaps:
         changes = []
         editor.changed.connect(lambda: changes.append(True))
 
-        QTest.mouseClick(self._chip(editor, "Equal gaps"), Qt.LeftButton)
+        QTest.mouseClick(self._chip(editor, "Equal gaps"), Qt.MouseButton.LeftButton)
 
         assert changes == [True]
         assert editor.value() == TileSnaps(frozenset(TileSnap))
@@ -239,7 +247,7 @@ class TestARowShownByAChange:
 
         scroll.close()
         scroll.deleteLater()
-        QApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+        QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
     def test_the_page_is_at_its_new_height_before_it_is_painted(self, page):
         """Laid out in the height it had until the event loop came round, every
@@ -272,12 +280,14 @@ class TestFieldsOnACard:
 
     @staticmethod
     def _fill(widget):
-        return widget.palette().color(QPalette.Active, QPalette.Base)
+        return widget.palette().color(
+            QPalette.ColorGroup.Active, QPalette.ColorRole.Base
+        )
 
     @staticmethod
     def _themed(form, base):
         palette = form.palette()
-        palette.setColor(QPalette.Base, QColor(base))
+        palette.setColor(QPalette.ColorRole.Base, QColor(base))
         form.setPalette(palette)
 
     def test_in_the_dark_one_is_lighter_than_the_card(self, form):

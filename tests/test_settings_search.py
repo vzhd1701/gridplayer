@@ -190,7 +190,7 @@ class TestTheForm:
         form.show_found(None)
 
         assert label.text() == "One thing"
-        assert label.textFormat() == Qt.AutoText
+        assert label.textFormat() == Qt.TextFormat.AutoText
         assert _shown(form, "a/two")
 
 
@@ -204,7 +204,7 @@ def dialog():
 
     dialog.close()
     dialog.deleteLater()
-    QApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+    QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
 
 def _found_on(dialog, page_id):
@@ -213,7 +213,8 @@ def _found_on(dialog, page_id):
 
 def _key(dialog, key):
     QApplication.sendEvent(
-        dialog.search_box, QKeyEvent(QEvent.KeyPress, key, Qt.NoModifier)
+        dialog.search_box,
+        QKeyEvent(QEvent.Type.KeyPress, key, Qt.KeyboardModifier.NoModifier),
     )
 
 
@@ -232,7 +233,7 @@ class TestTheDialog:
         assert _found_on(dialog, "player") == 0
 
         item = dialog._index_items["player"]
-        assert not item.flags() & Qt.ItemIsEnabled
+        assert not item.flags() & Qt.ItemFlag.ItemIsEnabled
 
     def test_a_page_with_settings_found_opens_first(self, dialog):
         dialog.show_page("player")
@@ -354,7 +355,7 @@ class TestTheDialog:
         dialog.show_page("player")
         dialog.search_box.setFocus()
         dialog.search_box.setText("jpg")
-        _key(dialog, Qt.Key_Return)
+        _key(dialog, Qt.Key.Key_Return)
         form = dialog.forms["player"]
         field = QApplication.focusWidget()
         assert form.isAncestorOf(field)
@@ -368,8 +369,8 @@ class TestTheDialog:
         dialog.search("pause")
         find = mocker.spy(dialog.forms["playlist"], "find")
 
-        _key(dialog, Qt.Key_Return)
-        _key(dialog, Qt.Key_Down)
+        _key(dialog, Qt.Key.Key_Return)
+        _key(dialog, Qt.Key.Key_Down)
 
         assert not find.called
 
@@ -425,7 +426,7 @@ class TestTheDialog:
     def test_esc_empties_the_box_before_it_closes_the_dialog(self, dialog):
         dialog.search("pause")
 
-        _key(dialog, Qt.Key_Escape)
+        _key(dialog, Qt.Key.Key_Escape)
 
         assert dialog.search_box.text() == ""
         assert dialog.isVisible()
@@ -435,7 +436,7 @@ class TestTheDialog:
         dialog.search_box.setFocus()
         dialog.search_box.setText("minimized")
 
-        _key(dialog, Qt.Key_Return)
+        _key(dialog, Qt.Key.Key_Return)
         _settle()
 
         assert dialog.isVisible()

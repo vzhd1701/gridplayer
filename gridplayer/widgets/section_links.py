@@ -27,7 +27,7 @@ class _Link(ToggleBox):
 
     def __init__(self, text: str):
         super().__init__(text)
-        self.setCursor(Qt.PointingHandCursor)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
 
 
 class SectionLinks(QWidget):
@@ -41,7 +41,7 @@ class SectionLinks(QWidget):
         # the one clicked last, for when the page can't scroll as far as it
         self._picked = None
 
-        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
 
         self._group = QButtonGroup(self)
         self._group.setExclusive(True)

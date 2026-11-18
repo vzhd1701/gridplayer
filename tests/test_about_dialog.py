@@ -19,7 +19,7 @@ def dialog():
     yield dialog
 
     dialog.deleteLater()
-    QApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+    QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
 
 def test_it_shows_the_app(dialog):

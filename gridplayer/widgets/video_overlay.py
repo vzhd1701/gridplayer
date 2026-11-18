@@ -92,24 +92,26 @@ class OverlayMode(Enum):
 
 
 PROPAGATED_EVENTS = (
-    QEvent.MouseButtonRelease,
-    QEvent.MouseButtonPress,
-    QEvent.MouseMove,
-    QEvent.MouseButtonDblClick,
-    QEvent.Wheel,
-    QEvent.ContextMenu,
+    QEvent.Type.MouseButtonRelease,
+    QEvent.Type.MouseButtonPress,
+    QEvent.Type.MouseMove,
+    QEvent.Type.MouseButtonDblClick,
+    QEvent.Type.Wheel,
+    QEvent.Type.ContextMenu,
 )
 
 PROPAGATED_EVENTS_FILTERED = (
-    QEvent.DragEnter,
-    QEvent.DragMove,
-    QEvent.DragLeave,
-    QEvent.Drop,
+    QEvent.Type.DragEnter,
+    QEvent.Type.DragMove,
+    QEvent.Type.DragLeave,
+    QEvent.Type.Drop,
 )
 
 # what a widget on the opaque overlay does that changes the shape the window
 # is cut to
-SHAPE_EVENTS = frozenset({QEvent.Show, QEvent.Hide, QEvent.Move, QEvent.Resize})
+SHAPE_EVENTS = frozenset(
+    {QEvent.Type.Show, QEvent.Type.Hide, QEvent.Type.Move, QEvent.Type.Resize}
+)
 
 # The first Windows to layer a child window, not only a top-level one. The
 # executable has to say in its manifest that it knows Windows 8 as well,
@@ -256,10 +258,10 @@ class OverlayBlock(QWidget):
         layout_main = QStackedLayout(self)
 
         layout_main.setContentsMargins(0, 0, 0, 0)
-        layout_main.setStackingMode(QStackedLayout.StackAll)
+        layout_main.setStackingMode(QStackedLayout.StackingMode.StackAll)
         # as small as its cell, a window of its own as well: the controls
         # with no room are left out, see _fit_controls
-        layout_main.setSizeConstraint(QLayout.SetNoConstraint)
+        layout_main.setSizeConstraint(QLayout.SizeConstraint.SetNoConstraint)
 
         self.control_widget = QWidget(self)
         self.control_widget.setMouseTracking(True)
@@ -448,9 +450,9 @@ class OverlayBlock(QWidget):
 
         rects = [widget.geometry()]
 
-        if event.type() == QEvent.Move:
+        if event.type() == QEvent.Type.Move:
             rects.append(QRect(event.oldPos(), widget.size()))
-        elif event.type() == QEvent.Resize:
+        elif event.type() == QEvent.Type.Resize:
             rects.append(QRect(widget.pos(), event.oldSize()))
 
         parent = widget.parentWidget()
@@ -1059,13 +1061,13 @@ class OverlayBlockChild(OverlayBlock):
         super().__init__(parent)
 
         # frameless with alpha is what Qt draws with UpdateLayeredWindow
-        self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setAttribute(Qt.WA_ShowWithoutActivating)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setWindowFlags(
-            Qt.Window
-            | Qt.FramelessWindowHint
-            | Qt.WindowDoesNotAcceptFocus
-            | Qt.NoDropShadowWindowHint
+            Qt.WindowType.Window
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowDoesNotAcceptFocus
+            | Qt.WindowType.NoDropShadowWindowHint
         )
 
         parent.winId()
@@ -1198,32 +1200,32 @@ class OverlayBlockFloating(OverlayBlock):
         """Some window managers make text look gray when window is out of focus"""
 
         pal = self.palette()
-        col = pal.color(QPalette.Active, QPalette.ButtonText)
-        pal.setColor(QPalette.Inactive, QPalette.Text, col)
+        col = pal.color(QPalette.ColorGroup.Active, QPalette.ColorRole.ButtonText)
+        pal.setColor(QPalette.ColorGroup.Inactive, QPalette.ColorRole.Text, col)
         self.setPalette(pal)
 
     def init_flags(self):
-        self.setAttribute(Qt.WA_NoSystemBackground)
-        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         # Prevent from shooting up on top of other windows on show()
-        self.setAttribute(Qt.WA_ShowWithoutActivating)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
 
         # Allow window to move beyond screen edge
-        self.setAttribute(Qt.WA_X11NetWmWindowTypeDesktop)
+        self.setAttribute(Qt.WidgetAttribute.WA_X11NetWmWindowTypeDesktop)
 
         # Don't allow overlay to receive focus
-        self.setAttribute(Qt.WA_X11DoNotAcceptFocus)
+        self.setAttribute(Qt.WidgetAttribute.WA_X11DoNotAcceptFocus)
 
         # Drag and drop doesn't get through floating overlay
         # need to redirect drag events to Player window
         self.setAcceptDrops(True)
 
         self.setWindowFlags(
-            Qt.Tool
-            | Qt.FramelessWindowHint
-            | Qt.WindowDoesNotAcceptFocus
-            | Qt.NoDropShadowWindowHint
+            Qt.WindowType.Tool
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowDoesNotAcceptFocus
+            | Qt.WindowType.NoDropShadowWindowHint
         )
 
         # workaround to avoid some compositors (KWin) making overlay opaque
@@ -1231,8 +1233,8 @@ class OverlayBlockFloating(OverlayBlock):
             self.setWindowOpacity(0.999)
 
     def make_opaque(self):
-        self.setAttribute(Qt.WA_NoSystemBackground, False)
-        self.setAttribute(Qt.WA_TranslucentBackground, False)
+        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, False)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, False)
 
         self.setGraphicsEffect(None)
 
@@ -1337,7 +1339,7 @@ class OverlayBlockFloating(OverlayBlock):
             return
 
         pal = self.palette()
-        pal.setColor(QPalette.Window, self.border_widget.color)
+        pal.setColor(QPalette.ColorRole.Window, self.border_widget.color)
         self.setPalette(pal)
         self.setAutoFillBackground(True)
 
@@ -1355,21 +1357,21 @@ class OverlayBlockFloating(OverlayBlock):
         if isinstance(event_object, OverlayWidget) and event.type() in SHAPE_EVENTS:
             # the hover label says for itself once it has been put somewhere
             if event_object is not self.floating_progress or (
-                event.type() == QEvent.Hide
+                event.type() == QEvent.Type.Hide
             ):
                 self.refresh_opaque_mask()
 
             return False
 
         if event_object == self.parent().window():
-            if event.type() == QEvent.Move:
+            if event.type() == QEvent.Type.Move:
                 QApplication.sendEvent(self, event)
-            if event.type() == QEvent.LayoutRequest:
+            if event.type() == QEvent.Type.LayoutRequest:
                 self.move_to_parent()
-        if event_object == self.parent() and event.type() == QEvent.Hide:
+        if event_object == self.parent() and event.type() == QEvent.Type.Hide:
             self.hide()
         # a tile of Free Tiles moved, its size the same
-        if event_object == self.parent() and event.type() == QEvent.Move:
+        if event_object == self.parent() and event.type() == QEvent.Type.Move:
             self.move_to_parent()
 
         return super().eventFilter(event_object, event)
@@ -1405,7 +1407,7 @@ class OverlayFakeInvisible(OverlayBlockFloating):
 
         self._is_visible = True
 
-        self.setAttribute(Qt.WA_TransparentForMouseEvents, False)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
         self.update()
 
     def hide(self):
@@ -1414,7 +1416,7 @@ class OverlayFakeInvisible(OverlayBlockFloating):
 
         self._is_visible = False
 
-        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.update()
 
     @property

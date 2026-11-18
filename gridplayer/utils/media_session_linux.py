@@ -336,7 +336,7 @@ class MprisSession(QObject):
                 PLAYER_INTERFACE,
                 changed,
                 # a plain list goes over as av, the spec's is as
-                QDBusArgument([], QMetaType.QStringList),
+                QDBusArgument([], QMetaType.Type.QStringList),
             ]
         )
         self._bus.send(message)

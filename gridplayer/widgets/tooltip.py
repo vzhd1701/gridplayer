@@ -103,10 +103,10 @@ QT_FALL_ASLEEP_MS = 2000
 
 _DISMISS_EVENTS = frozenset(
     (
-        QEvent.MouseButtonPress,
-        QEvent.MouseButtonDblClick,
-        QEvent.Wheel,
-        QEvent.KeyPress,
+        QEvent.Type.MouseButtonPress,
+        QEvent.Type.MouseButtonDblClick,
+        QEvent.Type.Wheel,
+        QEvent.Type.KeyPress,
     )
 )
 
@@ -198,18 +198,18 @@ class TipWindow(QWidget):
     def __init__(self, parent=None):
         super().__init__(
             parent,
-            Qt.ToolTip
-            | Qt.FramelessWindowHint
-            | Qt.WindowTransparentForInput
-            | Qt.NoDropShadowWindowHint,
+            Qt.WindowType.ToolTip
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowTransparentForInput
+            | Qt.WindowType.NoDropShadowWindowHint,
         )
 
-        self.setAttribute(Qt.WA_ShowWithoutActivating)
-        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
         self._is_translucent = is_compositor_running()
         if self._is_translucent:
-            self.setAttribute(Qt.WA_TranslucentBackground)
+            self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         self._text = ""
         self._box = QSize(0, 0)
@@ -217,7 +217,7 @@ class TipWindow(QWidget):
         self._doc = QTextDocument(self)
         self._doc.setDocumentMargin(0)
         option = QTextOption()
-        option.setWrapMode(QTextOption.WrapAtWordBoundaryOrAnywhere)
+        option.setWrapMode(QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere)
         self._doc.setDefaultTextOption(option)
 
         self._opacity = 1.0
@@ -314,7 +314,7 @@ class TipWindow(QWidget):
         colors = current_colors()
 
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setOpacity(self._opacity)
 
         margins = self._margins()
@@ -339,7 +339,7 @@ class TipWindow(QWidget):
 
         context = QAbstractTextDocumentLayout.PaintContext()
         palette = QPalette(self.palette())
-        palette.setColor(QPalette.Text, QColor(colors["tooltip_text"]))
+        palette.setColor(QPalette.ColorRole.Text, QColor(colors["tooltip_text"]))
         context.palette = palette
         self._doc.documentLayout().draw(painter, context)
 
@@ -354,7 +354,7 @@ class TipWindow(QWidget):
         step_alpha = peak / (steps / 2)
 
         painter.save()
-        painter.setPen(Qt.NoPen)
+        painter.setPen(Qt.PenStyle.NoPen)
         shadow = box.translated(0, TIP_SHADOW_DROP)
         for ring in range(steps, 0, -1):
             color = QColor(0, 0, 0)
@@ -441,7 +441,7 @@ def _target_of(widget, pos: QPoint) -> _Target | None:
         if not index.isValid():
             return None
 
-        text = index.data(Qt.ToolTipRole)
+        text = index.data(Qt.ItemDataRole.ToolTipRole)
         if not isinstance(text, str) or not text:
             return None
 
@@ -498,7 +498,7 @@ class TooltipManager(QObject):
     def eventFilter(self, event_object, event):
         event_type = event.type()
 
-        if event_type == QEvent.ToolTip:
+        if event_type == QEvent.Type.ToolTip:
             if isinstance(event_object, QWidget):
                 return self._on_tooltip_event(event_object, event)
             return False

@@ -82,12 +82,12 @@ BIG_NUDGE = 10
 NUDGE_MS = 800
 
 ARROWS = {
-    Qt.Key_Left: (-1, 0),
-    Qt.Key_Right: (1, 0),
-    Qt.Key_Up: (0, -1),
-    Qt.Key_Down: (0, 1),
+    Qt.Key.Key_Left: (-1, 0),
+    Qt.Key.Key_Right: (1, 0),
+    Qt.Key.Key_Up: (0, -1),
+    Qt.Key.Key_Down: (0, 1),
 }
-OWN_KEYS = frozenset({*ARROWS, Qt.Key_Tab, Qt.Key_Backtab, Qt.Key_Delete})
+OWN_KEYS = frozenset({*ARROWS, Qt.Key.Key_Tab, Qt.Key.Key_Backtab, Qt.Key.Key_Delete})
 
 # how wide the popup with the snaps is, for them to wrap
 SNAPS_POPUP_WIDTH = 330
@@ -407,13 +407,16 @@ class TileEditor(LayoutEditor):
 
     def _move_to(self, point: QPoint, modifiers) -> None:
         drag = self._drag
-        is_snapping = not modifiers & Qt.AltModifier and self._settings.is_snapping()
-        keeps_shape = not modifiers & Qt.ShiftModifier
+        is_snapping = (
+            not modifiers & Qt.KeyboardModifier.AltModifier
+            and self._settings.is_snapping()
+        )
+        keeps_shape = not modifiers & Qt.KeyboardModifier.ShiftModifier
 
         self._apply(
             drag,
             drag.moved((point.x(), point.y()), is_snapping, keeps_shape),
-            is_pulled=drag.is_move and not modifiers & Qt.AltModifier,
+            is_pulled=drag.is_move and not modifiers & Qt.KeyboardModifier.AltModifier,
         )
 
         guides = drag.guides() if is_snapping else []
@@ -450,7 +453,7 @@ class TileEditor(LayoutEditor):
     def _start_swap(self, video_id: str, point: QPoint) -> None:
         self._swapping = video_id
         self._hint_done()
-        self.setCursor(Qt.ClosedHandCursor)
+        self.setCursor(Qt.CursorShape.ClosedHandCursor)
         self._swap_to(point)
 
     def _swap_to(self, point: QPoint) -> None:
@@ -502,10 +505,13 @@ class TileEditor(LayoutEditor):
         key = event.key()
         if key in ARROWS and self._picked is not None and not self.is_dragging():
             self._nudge(key, event.modifiers())
-        elif key in {Qt.Key_Tab, Qt.Key_Backtab} and self._rects:
-            is_back = key == Qt.Key_Backtab or event.modifiers() & Qt.ShiftModifier
+        elif key in {Qt.Key.Key_Tab, Qt.Key.Key_Backtab} and self._rects:
+            is_back = (
+                key == Qt.Key.Key_Backtab
+                or event.modifiers() & Qt.KeyboardModifier.ShiftModifier
+            )
             self._pick_next(-1 if is_back else 1)
-        elif key == Qt.Key_Delete and self._picked is not None:
+        elif key == Qt.Key.Key_Delete and self._picked is not None:
             self.close_requested.emit(self._picked)
         elif key in KEY_MODIFIERS and self._drag is not None:
             self._move_to(self.mapFromGlobal(QCursor.pos()), modifiers_after(event))
@@ -535,9 +541,9 @@ class TileEditor(LayoutEditor):
             return
 
         dx, dy = ARROWS[key]
-        step = BIG_NUDGE if modifiers & Qt.ShiftModifier else NUDGE
+        step = BIG_NUDGE if modifiers & Qt.KeyboardModifier.ShiftModifier else NUDGE
         handle = MOVE
-        if modifiers & Qt.ControlModifier:
+        if modifiers & Qt.KeyboardModifier.ControlModifier:
             handle = (1, 0) if dx else (0, 1)
 
         if not self._is_nudging:
@@ -570,13 +576,13 @@ class TileEditor(LayoutEditor):
         self._hover_button = self._button_at(point)
         self._hover = None
         if self._hover_button is not None:
-            self.setCursor(Qt.PointingHandCursor)
+            self.setCursor(Qt.CursorShape.PointingHandCursor)
         else:
             self._hover = self._tile_at(point) if self.rect().contains(point) else None
             if self._hover is None:
                 self.unsetCursor()
             elif self._is_locked(self._hover[0]):
-                self.setCursor(Qt.ArrowCursor)
+                self.setCursor(Qt.CursorShape.ArrowCursor)
             else:
                 self._set_cursor(self._hover[1])
 
@@ -596,7 +602,11 @@ class TileEditor(LayoutEditor):
 
     def _set_cursor(self, handle: Handle, is_dragging=False) -> None:
         if handle == MOVE:
-            self.setCursor(Qt.ClosedHandCursor if is_dragging else Qt.OpenHandCursor)
+            self.setCursor(
+                Qt.CursorShape.ClosedHandCursor
+                if is_dragging
+                else Qt.CursorShape.OpenHandCursor
+            )
         else:
             self.setCursor(SIZE_CURSORS[handle])
 
@@ -625,7 +635,7 @@ class TileEditor(LayoutEditor):
         return None
 
     def mousePressEvent(self, event) -> None:
-        if event.button() != Qt.LeftButton:
+        if event.button() != Qt.MouseButton.LeftButton:
             if self.is_dragging():
                 self.cancel_drag()
             return
@@ -676,7 +686,7 @@ class TileEditor(LayoutEditor):
             self._hover_at(event.pos())
 
     def mouseReleaseEvent(self, event) -> None:
-        if event.button() != Qt.LeftButton:
+        if event.button() != Qt.MouseButton.LeftButton:
             return
 
         if self._pressed_button is not None:
@@ -695,7 +705,7 @@ class TileEditor(LayoutEditor):
                 self.swap_requested.emit(video_id, other)
 
     def mouseDoubleClickEvent(self, event) -> None:
-        if event.button() != Qt.LeftButton:
+        if event.button() != Qt.MouseButton.LeftButton:
             return
 
         found = self._tile_at(event.pos())
@@ -889,7 +899,7 @@ class TileEditor(LayoutEditor):
         )
 
     def _help_rows(self) -> list[tuple[str, str]]:
-        shift = modifier_name(Qt.ShiftModifier)
+        shift = modifier_name(Qt.KeyboardModifier.ShiftModifier)
         swap = self._swap_key()
         swap_rows = []
         if swap is not None:
@@ -917,7 +927,7 @@ class TileEditor(LayoutEditor):
             ),
             (
                 translate("Edit Grid", "{} + drag").format(
-                    modifier_name(Qt.AltModifier)
+                    modifier_name(Qt.KeyboardModifier.AltModifier)
                 ),
                 translate("Edit Grid", "No snapping"),
             ),
@@ -927,7 +937,7 @@ class TileEditor(LayoutEditor):
             ),
             (
                 translate("Edit Grid", "{} while dragging").format(
-                    keys_text(Qt.Key_Escape)
+                    keys_text(Qt.Key.Key_Escape)
                 ),
                 translate("Edit Grid", "Put it back"),
             ),
@@ -945,7 +955,7 @@ class TileEditor(LayoutEditor):
             ),
             (
                 translate("Edit Grid", "{} + arrows").format(
-                    modifier_name(Qt.ControlModifier)
+                    modifier_name(Qt.KeyboardModifier.ControlModifier)
                 ),
                 translate("Edit Grid", "Resize it"),
             ),
@@ -954,7 +964,7 @@ class TileEditor(LayoutEditor):
                 translate("Edit Grid", "Pick the next or previous tile"),
             ),
             (
-                keys_text(Qt.Key_Delete),
+                keys_text(Qt.Key.Key_Delete),
                 translate("Edit Grid", "Close the picked video"),
             ),
         ]
@@ -963,7 +973,7 @@ class TileEditor(LayoutEditor):
 
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         self._paint_veil(painter)
 
         drag = self._drag
@@ -995,7 +1005,10 @@ class TileEditor(LayoutEditor):
             is_dim = dragged is not None and video_id not in lit
             color = DIM_COLOR if is_dim else LINE_COLOR
             self._outline(
-                painter, _rect_f(rect), QPen(color, 1.5, Qt.DashLine), OUTLINE_INSET
+                painter,
+                _rect_f(rect),
+                QPen(color, 1.5, Qt.PenStyle.DashLine),
+                OUTLINE_INSET,
             )
             painter.restore()
 
@@ -1003,7 +1016,7 @@ class TileEditor(LayoutEditor):
             self._outline(
                 painter,
                 _rect_f(drag.start),
-                QPen(LINE_COLOR, 1, Qt.DashLine),
+                QPen(LINE_COLOR, 1, Qt.PenStyle.DashLine),
                 OUTLINE_INSET,
             )
             landing = self._landing
@@ -1093,7 +1106,7 @@ class TileEditor(LayoutEditor):
         bubble = QRectF(rects[0].topLeft(), rects[-1].bottomRight()).adjusted(
             -TOOL_PADDING, -TOOL_PADDING, TOOL_PADDING, TOOL_PADDING
         )
-        painter.setPen(Qt.NoPen)
+        painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(NAME_BACK_COLOR)
         painter.drawRoundedRect(bubble, 6, 6)
 
@@ -1104,9 +1117,11 @@ class TileEditor(LayoutEditor):
             if is_lit:
                 back, color = LINE_COLOR, EDGE_COLOR
             else:
-                back = TOOL_LIT_COLOR if is_hovered else QColor(Qt.transparent)
+                back = (
+                    TOOL_LIT_COLOR if is_hovered else QColor(Qt.GlobalColor.transparent)
+                )
                 color = LINE_COLOR if is_on else TOOL_OFF_COLOR
-            painter.setPen(Qt.NoPen)
+            painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(back)
             painter.drawRoundedRect(rect, 4, 4)
 

@@ -24,7 +24,7 @@ def _cut(rect, shape):
 
 
 def scenario(d):
-    QDrag.exec = lambda _drag, *_args: Qt.IgnoreAction
+    QDrag.exec = lambda _drag, *_args: Qt.DropAction.IgnoreAction
 
     d.player.resize(WIDTH, HEIGHT)
     d.pump(0.3)

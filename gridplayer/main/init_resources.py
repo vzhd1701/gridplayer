@@ -11,7 +11,10 @@ def init_resources():
 
     fonts_dir = env.RESOURCES_DIR / "fonts"
     fonts = QDirIterator(
-        str(fonts_dir), ("*.ttf",), QDir.Files, QDirIterator.Subdirectories
+        str(fonts_dir),
+        ("*.ttf",),
+        QDir.Filter.Files,
+        QDirIterator.IteratorFlag.Subdirectories,
     )
 
     while fonts.hasNext():

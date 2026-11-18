@@ -31,9 +31,9 @@ class EmptyCell(QWidget):
 
         self._message = message
 
-        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setAutoFillBackground(True)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -49,10 +49,10 @@ class EmptyCell(QWidget):
                 self._message,
                 parent=self.parent(),
             )
-            self._message_label.setAlignment(Qt.AlignCenter)
+            self._message_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self._message_label.setWordWrap(True)
             self._message_label.setMargin(20)
-            font = QFont("Hack", FONT_SIZE_BIG_INFO, QFont.Bold)
+            font = QFont("Hack", FONT_SIZE_BIG_INFO, QFont.Weight.Bold)
             self._message_label.setFont(font)
 
             layout.addWidget(self._message_label)
@@ -96,7 +96,7 @@ class EmptyCell(QWidget):
 
     def changeEvent(self, event):
         super().changeEvent(event)
-        if event.type() == QEvent.PaletteChange:
+        if event.type() == QEvent.Type.PaletteChange:
             self._apply_colors()
 
     def _apply_colors(self):
@@ -142,5 +142,5 @@ class EmptyCell(QWidget):
             QRectF(cx - bar / 2, cy - plus, bar, plus * 2), cap, cap
         )
 
-        painter.setPen(Qt.NoPen)
+        painter.setPen(Qt.PenStyle.NoPen)
         painter.fillPath(horizontal.united(vertical), chrome_color(self))

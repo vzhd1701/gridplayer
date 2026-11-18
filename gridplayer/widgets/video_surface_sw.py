@@ -149,10 +149,10 @@ class SoftwareVideoSurface(VideoSurfaceView, QWidget):
         # the placeholder shown before the first frame, not one worth saving
         self._is_black = False
 
-        self.setAttribute(Qt.WA_OpaquePaintEvent)
-        self.setAttribute(Qt.WA_NoSystemBackground)
-        self.setAttribute(Qt.WA_TransparentForMouseEvents)
-        self.setWindowFlags(Qt.WindowTransparentForInput)
+        self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent)
+        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.setWindowFlags(Qt.WindowType.WindowTransparentForInput)
         self.setAutoFillBackground(False)
 
     def has_frame(self) -> bool:
@@ -175,7 +175,7 @@ class SoftwareVideoSurface(VideoSurfaceView, QWidget):
         return self._image.copy()
 
     def present_rgb32(
-        self, buf, width, height, image_format=QImage.Format_RGB32
+        self, buf, width, height, image_format=QImage.Format.Format_RGB32
     ) -> None:
         """A frame of 4 bytes a pixel, RGB32 as VLC's are and mostly MPV's, or
         RGBX8888 from OpenGL ES that only reads back RGBA: then so is the
@@ -201,24 +201,24 @@ class SoftwareVideoSurface(VideoSurfaceView, QWidget):
     def present_black(self, width, height) -> None:
         if not width or not height:
             return
-        image = QImage(width, height, QImage.Format_RGB32)
-        image.fill(Qt.black)
+        image = QImage(width, height, QImage.Format.Format_RGB32)
+        image.fill(Qt.GlobalColor.black)
         self._image = image
         self._is_black = True
         self.update()
 
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
 
         placement = self.placement() if self.has_frame() else None
 
         if placement is None:
-            painter.fillRect(self.rect(), Qt.black)
+            painter.fillRect(self.rect(), Qt.GlobalColor.black)
             return
 
         for bar in self._bars(placement.target):
-            painter.fillRect(bar, Qt.black)
+            painter.fillRect(bar, Qt.GlobalColor.black)
 
         self._draw_frame(painter, placement)
 

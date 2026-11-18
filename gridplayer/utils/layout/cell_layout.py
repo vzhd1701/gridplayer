@@ -64,7 +64,7 @@ class CellLayout(QLayout):
         self._glide.setDuration(GLIDE_MS)
         self._glide.setStartValue(0.0)
         self._glide.setEndValue(1.0)
-        self._glide.setEasingCurve(QEasingCurve.OutCubic)
+        self._glide.setEasingCurve(QEasingCurve.Type.OutCubic)
         self._glide.valueChanged.connect(self._glide_to)
         self._glide.finished.connect(self._glide_done)
 

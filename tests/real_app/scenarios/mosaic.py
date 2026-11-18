@@ -93,7 +93,7 @@ def _held_and_let_go(d, name, start, end, label):
 
 
 def scenario(d):
-    QDrag.exec = lambda _drag, *_args: Qt.IgnoreAction
+    QDrag.exec = lambda _drag, *_args: Qt.DropAction.IgnoreAction
 
     d.player.resize(WIDTH, HEIGHT)
     d.pump(0.3)
@@ -196,7 +196,7 @@ def scenario(d):
     d.act(d.cells[0], "Undo Grid Change")
     d.wait_until(lambda: _in_place(d), "undone, all in their places")
 
-    _drag(d, start, start + off_edge, modifiers=Qt.AltModifier)
+    _drag(d, start, start + off_edge, modifiers=Qt.KeyboardModifier.AltModifier)
     d.wait_until(lambda: _in_place(d), "let go with Alt, all in their places")
     free = _rects(d)["a.mp4"]
     d.check("let go with Alt: where it was let go", abs(free.left - 40) < 2, free)

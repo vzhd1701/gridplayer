@@ -138,7 +138,7 @@ class PlayerProcessSingleVLCSWSP(QThread, VlcPlayerBase, metaclass=QABC):
         self._instance_ready_event.set()
 
         # until cleanup() quits it
-        self.exec_()
+        self.exec()
 
         self._log.debug("Releasing player")
 
@@ -349,11 +349,13 @@ class VideoDriverVLCSWSP(VLCVideoDriver):
             (self.cmd_set_log_level_vlc, self.player.set_log_level_vlc),
         )
         # at once, on this thread, not queued behind a wait for VLC
-        self.cmd_cleanup.connect(self.player.cleanup, Qt.DirectConnection)
+        self.cmd_cleanup.connect(
+            self.player.cleanup, Qt.ConnectionType.DirectConnection
+        )
         # Unlock callback runs on a libvlc native thread. AutoConnection can
         # look like DirectConnection from ctypes and deadlock on the frame lock.
         self.player.process_image_signal.connect(
-            self.process_image, Qt.QueuedConnection
+            self.process_image, Qt.ConnectionType.QueuedConnection
         )
 
         self.player.start()

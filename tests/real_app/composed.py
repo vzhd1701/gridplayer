@@ -160,7 +160,7 @@ def _grab_composed(widget: QWidget) -> QImage:
 
     user32.PrintWindow(int(window.winId()), dc, _PW_CLIENTONLY | _PW_RENDERFULLCONTENT)
 
-    image = QImage(width, height, QImage.Format_RGB32)
+    image = QImage(width, height, QImage.Format.Format_RGB32)
     # BITMAPINFOHEADER: top-down, 32 bits a pixel
     header = (ctypes.c_int32 * 10)(40, width, -height, (32 << 16) | 1, _BI_RGB)
     gdi32.GetDIBits(dc, bitmap, 0, height, int(image.bits()), header, _DIB_RGB_COLORS)

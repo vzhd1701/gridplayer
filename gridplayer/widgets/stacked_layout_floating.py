@@ -9,11 +9,11 @@ class QStackedLayoutFloating(QStackedLayout):
     """
 
     def setGeometry(self, rect):
-        if self.stackingMode() == QStackedLayout.StackOne:
+        if self.stackingMode() == QStackedLayout.StackingMode.StackOne:
             widget = self.currentWidget()
             if widget:
                 widget.setGeometry(rect)
-        if self.stackingMode() == QStackedLayout.StackAll:
+        if self.stackingMode() == QStackedLayout.StackingMode.StackAll:
             for i in range(self.count()):
                 widget = self.itemAt(i).widget()
                 if widget:

@@ -30,7 +30,7 @@ class UnlinkListDialog(QDialog):
 
         icon = QLabel()
         icon.setPixmap(QIcon.fromTheme("question").pixmap(QSize(ICON_PX, ICON_PX)))
-        icon.setAlignment(Qt.AlignTop)
+        icon.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         if name:
             question_txt = translate(
@@ -65,9 +65,9 @@ class UnlinkListDialog(QDialog):
 
         buttons = QDialogButtonBox()
         unlink_button = buttons.addButton(
-            translate("Dialog - List", "Unlink"), QDialogButtonBox.AcceptRole
+            translate("Dialog - List", "Unlink"), QDialogButtonBox.ButtonRole.AcceptRole
         )
-        cancel_button = buttons.addButton(QDialogButtonBox.Cancel)
+        cancel_button = buttons.addButton(QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
 
@@ -95,7 +95,7 @@ class UnlinkListDialog(QDialog):
 
         dialog = cls(name, saved_bytes, parent)
 
-        is_unlinked = dialog.exec_() == QDialog.Accepted
+        is_unlinked = dialog.exec() == QDialog.DialogCode.Accepted
 
         dialog.deleteLater()
 

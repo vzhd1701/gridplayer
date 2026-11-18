@@ -32,7 +32,7 @@ def _gap_marks(d):
 
 
 def scenario(d):
-    QDrag.exec = lambda _drag, *_args: Qt.IgnoreAction
+    QDrag.exec = lambda _drag, *_args: Qt.DropAction.IgnoreAction
 
     d.player.resize(WIDTH, HEIGHT)
     d.pump(0.3)
@@ -55,7 +55,7 @@ def scenario(d):
         "not snapped to the gap", _near(rects["c.mp4"], (403, 120, 563, 200)), rects
     )
     d.check("no gaps marked", not _gap_marks(d), len(_gap_marks(d)))
-    QTest.keyClick(d.player.windowHandle(), Qt.Key_Escape)
+    QTest.keyClick(d.player.windowHandle(), Qt.Key.Key_Escape)
     d.pump(0.2)
     _mouse(d, "release", _at(d, 483, 163))
     d.pump(0.2)
@@ -84,11 +84,11 @@ def scenario(d):
         d,
         _at(d, 480, 160),
         _at(d, 485, 165),
-        modifiers=Qt.AltModifier,
+        modifiers=Qt.KeyboardModifier.AltModifier,
         release=False,
     )
     d.check("no marks with Alt", not _gap_marks(d), len(_gap_marks(d)))
-    QTest.keyClick(d.player.windowHandle(), Qt.Key_Escape)
+    QTest.keyClick(d.player.windowHandle(), Qt.Key.Key_Escape)
     d.pump(0.2)
     _mouse(d, "release", _at(d, 485, 165))
     d.pump(0.2)

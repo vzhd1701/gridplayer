@@ -28,7 +28,7 @@ HIGHLIGHT = SeekMark(50000, "Highlight", SeekMarkKind.HIGHLIGHT, color=HIGHLIGHT
 @pytest.fixture
 def overlay():
     overlay = OverlayBlock()
-    overlay.setAttribute(Qt.WA_DontShowOnScreen)
+    overlay.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen)
     overlay.resize(520, 200)
     overlay.set_color("#ffffff")
     # before any of the marks, so the progress is not under them

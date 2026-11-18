@@ -34,12 +34,12 @@ def _filter(window_size):
 def test_a_paint_at_the_size_the_window_has_goes_ahead():
     widget, new_size_first, flushes = _filter((400, 300))
 
-    new_size_first.eventFilter(widget, QEvent(QEvent.UpdateRequest))
+    new_size_first.eventFilter(widget, QEvent(QEvent.Type.UpdateRequest))
 
     assert flushes == []
 
 
-@pytest.mark.parametrize("kind", [QEvent.UpdateRequest, QEvent.Expose])
+@pytest.mark.parametrize("kind", [QEvent.Type.UpdateRequest, QEvent.Type.Expose])
 def test_a_paint_at_an_old_size_takes_the_new_one_first(kind):
     widget, new_size_first, flushes = _filter((400, 280))
 
@@ -51,7 +51,7 @@ def test_a_paint_at_an_old_size_takes_the_new_one_first(kind):
 def test_other_events_are_left_alone():
     widget, new_size_first, flushes = _filter((400, 280))
 
-    new_size_first.eventFilter(widget, QEvent(QEvent.MouseMove))
+    new_size_first.eventFilter(widget, QEvent(QEvent.Type.MouseMove))
 
     assert flushes == []
 
@@ -61,7 +61,7 @@ def test_the_window_is_put_together_at_most_once_a_refresh(monkeypatch):
     monkeypatch.setattr(gl_window_size, "paint_interval_s", lambda _s: 0.016)
     now = [100.0]
     monkeypatch.setattr(gl_window_size.time, "perf_counter", lambda: now[0])
-    request = QEvent(QEvent.UpdateRequest)
+    request = QEvent(QEvent.Type.UpdateRequest)
 
     assert not paints.eventFilter(widget, request)
 
@@ -77,9 +77,9 @@ def test_the_window_is_put_together_at_most_once_a_refresh(monkeypatch):
 def test_what_the_system_asks_for_is_never_held(monkeypatch):
     widget, paints, _ = _filter((400, 300))
     monkeypatch.setattr(gl_window_size.time, "perf_counter", lambda: 100.0)
-    paints.eventFilter(widget, QEvent(QEvent.UpdateRequest))
+    paints.eventFilter(widget, QEvent(QEvent.Type.UpdateRequest))
 
-    assert not paints.eventFilter(widget.windowHandle(), QEvent(QEvent.Expose))
+    assert not paints.eventFilter(widget.windowHandle(), QEvent(QEvent.Type.Expose))
 
 
 # GL output isn't offered on macOS
@@ -92,12 +92,14 @@ def test_what_is_painted_now_is_never_held(monkeypatch):
     widget, paints, _ = _filter((400, 300))
     widget._gl_window_paints = paints
     monkeypatch.setattr(gl_window_size.time, "perf_counter", lambda: 100.0)
-    paints.eventFilter(widget, QEvent(QEvent.UpdateRequest))
+    paints.eventFilter(widget, QEvent(QEvent.Type.UpdateRequest))
     held = []
     monkeypatch.setattr(
         widget,
         "repaint",
-        lambda: held.append(paints.eventFilter(widget, QEvent(QEvent.UpdateRequest))),
+        lambda: held.append(
+            paints.eventFilter(widget, QEvent(QEvent.Type.UpdateRequest))
+        ),
     )
 
     gl_window_size.repaint_now(widget)

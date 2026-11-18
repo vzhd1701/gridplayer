@@ -24,7 +24,7 @@ MARKS = (
 @pytest.fixture
 def overlay():
     overlay = OverlayBlock()
-    overlay.setAttribute(Qt.WA_DontShowOnScreen)
+    overlay.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen)
     overlay.resize(520, 200)
     overlay.set_color("#ffffff")
     overlay.set_position(27000, LENGTH)
@@ -199,7 +199,7 @@ def cell():
     """An overlay at any width, which a window of its own would not go down to."""
 
     holder = QWidget()
-    holder.setAttribute(Qt.WA_DontShowOnScreen)
+    holder.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen)
     holder.resize(1200, 300)
 
     overlay = OverlayBlock(holder)

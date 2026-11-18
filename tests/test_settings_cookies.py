@@ -58,7 +58,7 @@ def make_dialog(store):
         dialog.close()
         dialog.deleteLater()
 
-    QApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+    QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
 
 @pytest.fixture
@@ -76,7 +76,7 @@ class TestTheSwitchesOnThePage:
         assert dialog.form_of("cookies/allow_update") is dialog.forms["cookies"]
 
     def test_the_section_opens_the_cookies_page(self, dialog):
-        entry = dialog.section_index.findItems("Cookies", Qt.MatchExactly)[0]
+        entry = dialog.section_index.findItems("Cookies", Qt.MatchFlag.MatchExactly)[0]
 
         dialog.section_index.setCurrentItem(entry)
 

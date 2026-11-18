@@ -435,7 +435,7 @@ class SettingsDialog(PagedDialog):
             net_opts=self.network_opts_on_page,
         )
 
-        CheckupDialog(self, checkup).exec_()
+        CheckupDialog(self, checkup).exec()
 
     def run_network_checkup(self):
         """Try the network settings as the page has them now.
@@ -448,7 +448,7 @@ class SettingsDialog(PagedDialog):
         # slow to import for the same reason as the YouTube one
         from gridplayer.utils.network_checkup import NetworkCheckup
 
-        CheckupDialog(self, NetworkCheckup(self.network_opts_on_page)).exec_()
+        CheckupDialog(self, NetworkCheckup(self.network_opts_on_page)).exec()
 
     @property
     def network_opts_on_page(self):

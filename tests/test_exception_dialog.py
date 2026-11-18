@@ -15,7 +15,7 @@ def dialog():
     yield dialog
 
     dialog.deleteLater()
-    QApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+    QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
 
 def test_it_shows_the_traceback(dialog):
@@ -38,7 +38,7 @@ def test_copy_puts_the_traceback_on_the_clipboard(dialog):
 def test_close_rejects(dialog):
     dialog.show()
 
-    dialog.buttons.button(QDialogButtonBox.Close).click()
+    dialog.buttons.button(QDialogButtonBox.StandardButton.Close).click()
 
-    assert dialog.result() == QDialog.Rejected
+    assert dialog.result() == QDialog.DialogCode.Rejected
     assert not dialog.isVisible()

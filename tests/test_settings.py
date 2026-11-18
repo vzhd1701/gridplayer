@@ -13,13 +13,13 @@ from gridplayer.settings import _Settings
 def _make_settings(tmp_path, values):
     ini_path = tmp_path / "settings.ini"
 
-    writer = QSettings(str(ini_path), QSettings.IniFormat)
+    writer = QSettings(str(ini_path), QSettings.Format.IniFormat)
     for key, value in values.items():
         writer.setValue(key, value)
     writer.sync()
 
     settings = _Settings.__new__(_Settings)
-    settings.settings = QSettings(str(ini_path), QSettings.IniFormat)
+    settings.settings = QSettings(str(ini_path), QSettings.Format.IniFormat)
     return settings
 
 

@@ -48,7 +48,9 @@ def get_app_data_dir() -> Path:
     if is_portable():
         return Path(sys.executable).parent / PORTABLE_APP_DIR
 
-    app_dir = Path(QStandardPaths.writableLocation(QStandardPaths.AppDataLocation))
+    app_dir = Path(
+        QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppDataLocation)
+    )
 
     if not app_dir.is_dir():
         app_dir.mkdir(parents=True)
@@ -65,7 +67,9 @@ def get_app_cache_dir() -> Path:
     if get_user_data_dir_override() is not None or is_portable():
         return get_app_data_dir() / CACHE_DIR_NAME
 
-    cache_dir = QStandardPaths.writableLocation(QStandardPaths.CacheLocation)
+    cache_dir = QStandardPaths.writableLocation(
+        QStandardPaths.StandardLocation.CacheLocation
+    )
 
     if not cache_dir:
         return get_app_data_dir() / CACHE_DIR_NAME

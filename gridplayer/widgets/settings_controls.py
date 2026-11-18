@@ -51,11 +51,11 @@ CHIPS_SPACING = 6
 # the theme's colours, by the names gridplayer.params.theme gives them,
 # as it put them in the palette
 _ROLES = {
-    "text": QPalette.Text,
-    "base": QPalette.Base,
-    "window": QPalette.Window,
-    "button": QPalette.Button,
-    "highlight": QPalette.Highlight,
+    "text": QPalette.ColorRole.Text,
+    "base": QPalette.ColorRole.Base,
+    "window": QPalette.ColorRole.Window,
+    "button": QPalette.ColorRole.Button,
+    "highlight": QPalette.ColorRole.Highlight,
 }
 
 
@@ -67,7 +67,7 @@ def theme_color(widget: QWidget, name: str) -> QColor:
     Always the active colours: a greyed-out control fades as a whole.
     """
 
-    return widget.palette().color(QPalette.Active, _ROLES[name])
+    return widget.palette().color(QPalette.ColorGroup.Active, _ROLES[name])
 
 
 def _is_dark(widget: QWidget) -> bool:
@@ -90,7 +90,7 @@ def paint_card(widget: QWidget) -> QPainter:
     for what else goes on it."""
 
     painter = QPainter(widget)
-    painter.setRenderHint(QPainter.Antialiasing)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
     painter.setPen(theme_color(widget, "highlight"))
     painter.setBrush(theme_color(widget, "base"))
     painter.drawRoundedRect(
@@ -112,7 +112,7 @@ def fit_fields(card: QWidget):
 
     for field in card.findChildren((QLineEdit, QAbstractSpinBox)):
         palette = field.palette()
-        palette.setColor(QPalette.Base, fill)
+        palette.setColor(QPalette.ColorRole.Base, fill)
         field.setPalette(palette)
 
 
@@ -123,7 +123,7 @@ class RoundedBox(QWidget):
     def __init__(self, view: QFrame):
         super().__init__()
 
-        view.setFrameShape(QFrame.NoFrame)
+        view.setFrameShape(QFrame.Shape.NoFrame)
         self.setSizePolicy(view.sizePolicy())
         # by name in the theme's style sheet, which gives a table's header
         # no edges of its own, only a line under it
@@ -147,8 +147,8 @@ class Switch(QCheckBox):
         super().__init__(parent)
 
         # by the keyboard, not by a click, so the ring shows only for keys
-        self.setFocusPolicy(Qt.TabFocus)
-        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFocusPolicy(Qt.FocusPolicy.TabFocus)
+        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
     def sizeHint(self):
         return SWITCH_SIZE + QSize(2 * FOCUS_MARGIN, 2 * FOCUS_MARGIN)
@@ -161,7 +161,7 @@ class Switch(QCheckBox):
 
     def paintEvent(self, event):
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         if not self.isEnabled():
             painter.setOpacity(DISABLED_OPACITY)
@@ -176,13 +176,13 @@ class Switch(QCheckBox):
 
         if self.hasFocus():
             painter.setPen(theme_color(self, "text"))
-            painter.setBrush(Qt.NoBrush)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
             ring = track.adjusted(-1.5, -1.5, 1.5, 1.5)
             painter.drawRoundedRect(ring, radius + 1.5, radius + 1.5)
 
         is_on = self.isChecked()
 
-        painter.setPen(Qt.NoPen)
+        painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(theme_color(self, "text" if is_on else "highlight"))
         painter.drawRoundedRect(track, radius, radius)
 
@@ -208,7 +208,7 @@ class ToggleLabel(QLabel):
 
     def mouseReleaseEvent(self, event):
         if (
-            event.button() == Qt.LeftButton
+            event.button() == Qt.MouseButton.LeftButton
             and self.rect().contains(event.pos())
             and self._switch.isEnabled()
         ):
@@ -238,7 +238,7 @@ class FlowLayout(QLayout):
         return self._items.pop(index) if 0 <= index < len(self._items) else None
 
     def expandingDirections(self):
-        return Qt.Orientations()
+        return Qt.Orientation(0)
 
     def hasHeightForWidth(self):
         return True
@@ -291,7 +291,7 @@ class ToggleBox(QAbstractButton):
         super().__init__()
         self.setText(text)
         self.setCheckable(True)
-        self.setFocusPolicy(Qt.TabFocus)
+        self.setFocusPolicy(Qt.FocusPolicy.TabFocus)
 
     def sizeHint(self):
         width = self.fontMetrics().horizontalAdvance(self.text())
@@ -299,7 +299,7 @@ class ToggleBox(QAbstractButton):
 
     def paintEvent(self, event):
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         is_enabled = self.isEnabled()
         if not is_enabled:
@@ -323,7 +323,7 @@ class ToggleBox(QAbstractButton):
         painter.drawRoundedRect(box, radius, radius)
 
         painter.setPen(theme_color(self, "base" if is_on else "text"))
-        painter.drawText(self.rect(), Qt.AlignCenter, self.text())
+        painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, self.text())
 
     def enterEvent(self, event):
         self.update()
@@ -384,8 +384,8 @@ class SegmentedChoice(QWidget):
         self._hovered = -1
 
         self.setMouseTracking(True)
-        self.setFocusPolicy(Qt.TabFocus)
-        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setFocusPolicy(Qt.FocusPolicy.TabFocus)
+        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
     # what a combo answers
 
@@ -467,7 +467,7 @@ class SegmentedChoice(QWidget):
 
     def paintEvent(self, event):
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         is_enabled = self.isEnabled()
         if not is_enabled:
@@ -481,7 +481,7 @@ class SegmentedChoice(QWidget):
         shape = QPainterPath()
         shape.addRoundedRect(outline, SEGMENTS_RADIUS, SEGMENTS_RADIUS)
 
-        painter.setPen(Qt.NoPen)
+        painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(theme_color(self, "button"))
         painter.drawPath(shape)
 
@@ -495,7 +495,7 @@ class SegmentedChoice(QWidget):
         painter.restore()
 
         painter.setPen(theme_color(self, "highlight"))
-        painter.setBrush(Qt.NoBrush)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawPath(shape)
         for segment in segments[1:]:
             painter.drawLine(segment.topLeft(), segment.bottomLeft())
@@ -517,18 +517,18 @@ class SegmentedChoice(QWidget):
                 painter.drawPixmap(place.topLeft(), self._tinted(icon, color))
                 continue
             painter.setPen(color)
-            painter.drawText(segment, Qt.AlignCenter, text)
+            painter.drawText(segment, Qt.AlignmentFlag.AlignCenter, text)
 
     def _tinted(self, icon: QIcon, color: QColor) -> QPixmap:
         # an icon all in the color, as the text would be
         ratio = self.devicePixelRatioF()
         side = round(SEGMENT_ICON * ratio)
         tinted = QPixmap(side, side)
-        tinted.fill(Qt.transparent)
+        tinted.fill(Qt.GlobalColor.transparent)
         painter = QPainter(tinted)
-        painter.setRenderHint(QPainter.SmoothPixmapTransform)
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
         painter.drawPixmap(tinted.rect(), icon.pixmap(QSize(side, side)))
-        painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
+        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
         painter.fillRect(tinted.rect(), color)
         painter.end()
         tinted.setDevicePixelRatio(ratio)
@@ -537,7 +537,7 @@ class SegmentedChoice(QWidget):
     # picked
 
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             index = self._segment_at(event.pos())
             if index >= 0:
                 self.setCurrentIndex(index)
@@ -559,7 +559,7 @@ class SegmentedChoice(QWidget):
         super().leaveEvent(event)
 
     def keyPressEvent(self, event):
-        steps = {Qt.Key_Left: -1, Qt.Key_Right: 1}
+        steps = {Qt.Key.Key_Left: -1, Qt.Key.Key_Right: 1}
         if event.key() in steps and self._items:
             index = self._current + steps[event.key()]
             self.setCurrentIndex(max(0, min(index, len(self._items) - 1)))

@@ -18,8 +18,8 @@ class _FakeReply:
 
     def type(self):
         if self._error:
-            return QDBusMessage.ErrorMessage
-        return QDBusMessage.ReplyMessage
+            return QDBusMessage.MessageType.ErrorMessage
+        return QDBusMessage.MessageType.ReplyMessage
 
     def errorName(self):
         return self._error or ""

@@ -147,7 +147,7 @@ from gridplayer.utils.list_update import (
 from gridplayer.utils.misc import is_url
 from gridplayer.utils.next_file import natural_key
 from gridplayer.utils.off_thread import OffThread
-from gridplayer.utils.qt import count_txt, detach_modal_dialog, translate
+from gridplayer.utils.qt import count_txt, detach_modal_dialog, flag_value, translate
 from gridplayer.utils.screenshots import sanitize_filename
 from gridplayer.utils.show_in_folder import FolderRevealer
 from gridplayer.utils.thumbnails import ThumbnailLoader
@@ -241,14 +241,14 @@ DRAG_IMAGE_SHIFT_PX = 14
 DROP_LINE_PX = 2
 DROP_RING_RADIUS_PX = 3
 
-RENAME_KEY = Qt.Key_F2
-REMOVE_KEY = Qt.Key_Delete
-ADD_KEY = Qt.Key_Insert
+RENAME_KEY = Qt.Key.Key_F2
+REMOVE_KEY = Qt.Key.Key_Delete
+ADD_KEY = Qt.Key.Key_Insert
 
-KEY_ROLE = Qt.UserRole
-LOCATION_ROLE = Qt.UserRole + 1
-THUMBNAIL_ROLE = Qt.UserRole + 2
-DETAILS_ROLE = Qt.UserRole + 3
+KEY_ROLE = Qt.ItemDataRole.UserRole
+LOCATION_ROLE = Qt.ItemDataRole.UserRole + 1
+THUMBNAIL_ROLE = Qt.ItemDataRole.UserRole + 2
+DETAILS_ROLE = Qt.ItemDataRole.UserRole + 3
 
 
 class Column(IntEnum):
@@ -381,7 +381,7 @@ class ListItemsModel(QAbstractTableModel):
             "dim": secondary_text_color(),
         }
 
-        self._here_icon = here_icon(palette.color(QPalette.Text))
+        self._here_icon = here_icon(palette.color(QPalette.ColorRole.Text))
 
         self._here_font = QFont(font)
         self._here_font.setBold(True)
@@ -539,23 +539,23 @@ class ListItemsModel(QAbstractTableModel):
         return len(Column)
 
     def flags(self, index):
-        flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
+        flags = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
 
         if self._is_locked:
-            return flags if index.isValid() else Qt.NoItemFlags
+            return flags if index.isValid() else Qt.ItemFlag.NoItemFlags
 
         if not index.isValid():
-            return Qt.ItemIsDropEnabled
+            return Qt.ItemFlag.ItemIsDropEnabled
 
         if index.column() == Column.TITLE:
-            flags |= Qt.ItemIsEditable
+            flags |= Qt.ItemFlag.ItemIsEditable
 
         if not self.is_filtered and not self._is_linked:
-            flags |= Qt.ItemIsDragEnabled
+            flags |= Qt.ItemFlag.ItemIsDragEnabled
 
-        return flags | Qt.ItemIsDropEnabled
+        return flags | Qt.ItemFlag.ItemIsDropEnabled
 
-    def data(self, index, role=Qt.DisplayRole):
+    def data(self, index, role=Qt.ItemDataRole.DisplayRole):
         if not index.isValid():
             return None
 
@@ -564,7 +564,7 @@ class ListItemsModel(QAbstractTableModel):
         is_here = item.key == self._here_key
         is_missing = self.is_missing(item)
 
-        if role == Qt.DisplayRole:
+        if role == Qt.ItemDataRole.DisplayRole:
             if column == Column.NUMBER:
                 return str(self.place_at(index.row()) + 1)
             if column == Column.TITLE:
@@ -575,28 +575,30 @@ class ListItemsModel(QAbstractTableModel):
                 return translate("Dialog - List", "missing")
             return _length_txt(item)
 
-        if role == Qt.EditRole and column == Column.TITLE:
+        if role == Qt.ItemDataRole.EditRole and column == Column.TITLE:
             return self.name_of(item)
 
-        if role == Qt.DecorationRole and column == Column.NUMBER:
+        if role == Qt.ItemDataRole.DecorationRole and column == Column.NUMBER:
             return self._here_icon if is_here else self._blank_icon
 
-        if role == Qt.ForegroundRole:
+        if role == Qt.ItemDataRole.ForegroundRole:
             if is_missing or (column == Column.NUMBER and not is_here):
                 return self._colors.get("dim")
             return None
 
-        if role == Qt.FontRole:
+        if role == Qt.ItemDataRole.FontRole:
             if is_here:
                 return self._here_font
             if is_missing:
                 return self._missing_font
             return None
 
-        if role == Qt.TextAlignmentRole and column != Column.TITLE:
-            return int(Qt.AlignRight | Qt.AlignVCenter)
+        if role == Qt.ItemDataRole.TextAlignmentRole and column != Column.TITLE:
+            return flag_value(
+                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+            )
 
-        if role == Qt.ToolTipRole and column == Column.TITLE:
+        if role == Qt.ItemDataRole.ToolTipRole and column == Column.TITLE:
             return _item_tooltip(self.name_of(item), str(item.uri))
 
         if role == KEY_ROLE:
@@ -613,8 +615,8 @@ class ListItemsModel(QAbstractTableModel):
 
         return None
 
-    def setData(self, index, value, role=Qt.EditRole):
-        if role != Qt.EditRole or index.column() != Column.TITLE:
+    def setData(self, index, value, role=Qt.ItemDataRole.EditRole):
+        if role != Qt.ItemDataRole.EditRole or index.column() != Column.TITLE:
             return False
 
         self.renamed.emit(self.item_at(index.row()).key, str(value))
@@ -624,10 +626,10 @@ class ListItemsModel(QAbstractTableModel):
     # dragging about, and dropping in
 
     def supportedDropActions(self):
-        return Qt.MoveAction | Qt.CopyAction
+        return Qt.DropAction.MoveAction | Qt.DropAction.CopyAction
 
     def supportedDragActions(self):
-        return Qt.MoveAction
+        return Qt.DropAction.MoveAction
 
     def mimeTypes(self):
         return [KEYS_MIME, "text/uri-list", "text/plain"]
@@ -697,7 +699,7 @@ class _RowDelegate(QStyledItemDelegate):
     def initStyleOption(self, option, index):
         super().initStyleOption(option, index)
 
-        option.state &= ~QStyle.State_HasFocus
+        option.state &= ~QStyle.StateFlag.State_HasFocus
 
     def paint(self, painter, option, index):
         if self.view == ListView.TITLES_AND_LOCATIONS:
@@ -733,9 +735,12 @@ class _RowDelegate(QStyledItemDelegate):
         ground.text = ""
         ground.icon = QIcon()
         ground.features &= ~(
-            QStyleOptionViewItem.HasDisplay | QStyleOptionViewItem.HasDecoration
+            QStyleOptionViewItem.ViewItemFeature.HasDisplay
+            | QStyleOptionViewItem.ViewItemFeature.HasDecoration
         )
-        style.drawControl(QStyle.CE_ItemViewItem, ground, painter, widget)
+        style.drawControl(
+            QStyle.ControlElement.CE_ItemViewItem, ground, painter, widget
+        )
 
         return option
 
@@ -745,10 +750,12 @@ class _RowDelegate(QStyledItemDelegate):
 
         widget = option.widget
         style = widget.style() if widget is not None else QApplication.style()
-        is_picked = bool(option.state & QStyle.State_Selected)
+        is_picked = bool(option.state & QStyle.StateFlag.State_Selected)
 
         palette = option.palette
-        color = palette.color(QPalette.HighlightedText if is_picked else QPalette.Text)
+        color = palette.color(
+            QPalette.ColorRole.HighlightedText if is_picked else QPalette.ColorRole.Text
+        )
         _paint_line(style, option, _first_line(lines), color, painter)
 
         if index.column() != Column.TITLE:
@@ -758,14 +765,14 @@ class _RowDelegate(QStyledItemDelegate):
 
         under = QStyleOptionViewItem(option)
         under.icon = QIcon()
-        under.features &= ~QStyleOptionViewItem.HasDecoration
+        under.features &= ~QStyleOptionViewItem.ViewItemFeature.HasDecoration
 
         if details is not None and self.view == ListView.THUMBNAILS:
             under.text = details
         else:
             under.text = index.data(LOCATION_ROLE) or ""
             # the start of it, and the file's name or what tells a link apart
-            under.textElideMode = Qt.ElideMiddle
+            under.textElideMode = Qt.TextElideMode.ElideMiddle
 
         font = QFont(option.font)
         font.setBold(False)
@@ -785,8 +792,8 @@ class _RowDelegate(QStyledItemDelegate):
         picture = None if url is None or loader is None else loader.picture(url)
 
         painter.save()
-        painter.setRenderHint(QPainter.Antialiasing)
-        painter.setRenderHint(QPainter.SmoothPixmapTransform)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
 
         shape = QPainterPath()
         shape.addRoundedRect(QRectF(rect), THUMBNAIL_RADIUS_PX, THUMBNAIL_RADIUS_PX)
@@ -797,7 +804,7 @@ class _RowDelegate(QStyledItemDelegate):
         else:
             painter.fillPath(shape, _no_picture_color(palette))
 
-            sign = palette.color(QPalette.PlaceholderText)
+            sign = palette.color(QPalette.ColorRole.PlaceholderText)
 
             if url is not None and loader is not None and not loader.is_missing(url):
                 _paint_coming(painter, rect, sign)
@@ -865,7 +872,7 @@ def _no_picture_color(palette: QPalette) -> QColor:
     """A box a shade off the list's own ground, the way it goes: darker on
     a light one, lighter on a dark one."""
 
-    base = palette.color(QPalette.Base)
+    base = palette.color(QPalette.ColorRole.Base)
 
     return base.darker(108) if base.lightness() >= 128 else base.lighter(135)
 
@@ -877,7 +884,7 @@ def _paint_coming(painter, rect: QRect, color: QColor):
     step = rect.height() * 0.16
     center = QRectF(rect).center()
 
-    painter.setPen(Qt.NoPen)
+    painter.setPen(Qt.PenStyle.NoPen)
     painter.setBrush(color)
 
     for n in (-1, 0, 1):
@@ -895,7 +902,7 @@ def _paint_no_picture(painter, rect: QRect, color: QColor):
 
     pen = QPen(color, max(1.2, rect.height() / 40))
     painter.setPen(pen)
-    painter.setBrush(Qt.NoBrush)
+    painter.setBrush(Qt.BrushStyle.NoBrush)
     painter.drawRoundedRect(frame, 2, 2)
 
     play = QPainterPath()
@@ -904,7 +911,7 @@ def _paint_no_picture(painter, rect: QRect, color: QColor):
     play.lineTo(center + QPointF(-side * 0.22, side * 0.28))
     play.closeSubpath()
 
-    painter.setPen(Qt.NoPen)
+    painter.setPen(Qt.PenStyle.NoPen)
     painter.setBrush(color)
     painter.drawPath(play)
 
@@ -915,14 +922,16 @@ def _paint_line(style, option, rect, color, painter):
 
     line = QStyleOptionViewItem(option)
     line.rect = rect
-    line.state &= ~QStyle.State_Selected
+    line.state &= ~QStyle.StateFlag.State_Selected
     line.backgroundBrush = QBrush()
 
     palette = QPalette(option.palette)
-    palette.setColor(QPalette.Text, color)
+    palette.setColor(QPalette.ColorRole.Text, color)
     line.palette = palette
 
-    style.drawControl(QStyle.CE_ItemViewItem, line, painter, option.widget)
+    style.drawControl(
+        QStyle.ControlElement.CE_ItemViewItem, line, painter, option.widget
+    )
 
 
 _ROW_HEIGHTS = {
@@ -939,7 +948,7 @@ class _TagButton(QToolButton):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
+        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Expanding)
         self.setIconSize(QSize(UNLINK_ICON_PX, UNLINK_ICON_PX))
 
     def sizeHint(self):
@@ -972,8 +981,8 @@ class FittedButton(QToolButton):
         self._is_choosable = False
         self._is_restyling = False
 
-        self.setPopupMode(QToolButton.InstantPopup)
-        self.setToolButtonStyle(Qt.ToolButtonTextOnly)
+        self.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
 
         self._restyle()
 
@@ -1030,7 +1039,7 @@ class FittedButton(QToolButton):
         super().changeEvent(event)
 
         # the theme's changed; not its own style sheet's doing
-        if event.type() == event.PaletteChange and not self._is_restyling:
+        if event.type() == event.Type.PaletteChange and not self._is_restyling:
             self._restyle()
 
     def _said(self, text: str) -> str:
@@ -1048,8 +1057,8 @@ class FittedButton(QToolButton):
     def _restyle(self):
         # the theme's colours, not its own: its style sheet changes those
         palette = QApplication.palette()
-        dim = palette.color(QPalette.PlaceholderText).name()
-        text = palette.color(QPalette.Text).name()
+        dim = palette.color(QPalette.ColorRole.PlaceholderText).name()
+        text = palette.color(QPalette.ColorRole.Text).name()
 
         style = (
             f"QToolButton {{ color: {dim}; border: none; border-radius: 3px;"
@@ -1100,17 +1109,17 @@ class ItemList(QTableView):
         self.setTabKeyNavigation(False)
         self.horizontalHeader().hide()
         self.verticalHeader().hide()
-        self.verticalHeader().setSectionResizeMode(QHeaderView.Fixed)
+        self.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
         # rows as tall as they are told: Qt holds them to what the hidden
         # header's text would need, more than a row in a big system font
         self.verticalHeader().setMinimumSectionSize(ROW_HEIGHT)
         self.verticalHeader().setDefaultSectionSize(ROW_HEIGHT)
-        self.setSelectionMode(QAbstractItemView.ExtendedSelection)
-        self.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.setIconSize(QSize(HERE_ICON_PX, HERE_ICON_PX))
-        self.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setItemDelegate(_RowDelegate(self))
 
         # where a drop goes is marked by a line between the rows, see
@@ -1118,8 +1127,8 @@ class ItemList(QTableView):
         self.setDragEnabled(True)
         self.setAcceptDrops(True)
         self.setDropIndicatorShown(False)
-        self.setDragDropMode(QAbstractItemView.DragDrop)
-        self.setDefaultDropAction(Qt.MoveAction)
+        self.setDragDropMode(QAbstractItemView.DragDropMode.DragDrop)
+        self.setDefaultDropAction(Qt.DropAction.MoveAction)
         self.setDragDropOverwriteMode(False)
 
         # where the pointer is in a drag over the list it can be dropped in
@@ -1151,7 +1160,7 @@ class ItemList(QTableView):
         self.viewport().update()
 
     def keyPressEvent(self, event):
-        if self.state() == QAbstractItemView.EditingState:
+        if self.state() == QAbstractItemView.State.EditingState:
             super().keyPressEvent(event)
             return
 
@@ -1165,15 +1174,15 @@ class ItemList(QTableView):
         event.accept()
 
     def _signal_for_key(self, event):
-        if event.matches(QKeySequence.Copy):
+        if event.matches(QKeySequence.StandardKey.Copy):
             return self.copy_requested
 
-        if event.matches(QKeySequence.Paste):
+        if event.matches(QKeySequence.StandardKey.Paste):
             return self.paste_requested
 
-        modifiers = int(event.modifiers() & ~Qt.KeypadModifier)
+        modifiers = flag_value(event.modifiers() & ~Qt.KeyboardModifier.KeypadModifier)
 
-        if event.key() in {Qt.Key_Return, Qt.Key_Enter} and not modifiers:
+        if event.key() in {Qt.Key.Key_Return, Qt.Key.Key_Enter} and not modifiers:
             return self.play_requested
 
         return {
@@ -1184,7 +1193,7 @@ class ItemList(QTableView):
 
     def contextMenuEvent(self, event):
         # from the keyboard, for the current row, under it
-        if event.reason() == QContextMenuEvent.Keyboard:
+        if event.reason() == QContextMenuEvent.Reason.Keyboard:
             index = self.currentIndex()
             pos = self.visualRect(index).bottomLeft() if index.isValid() else QPoint()
         else:
@@ -1214,7 +1223,7 @@ class ItemList(QTableView):
         rows = [
             index
             for index in self.selectionModel().selectedRows()
-            if model.flags(index) & Qt.ItemIsDragEnabled
+            if model.flags(index) & Qt.ItemFlag.ItemIsDragEnabled
         ]
 
         if not rows:
@@ -1231,7 +1240,7 @@ class ItemList(QTableView):
         self._is_dragging_rows = True
         try:
             with dragging():
-                drag.exec_(supported_actions, Qt.MoveAction)
+                drag.exec(supported_actions, Qt.DropAction.MoveAction)
         finally:
             self._is_dragging_rows = False
 
@@ -1248,7 +1257,9 @@ class ItemList(QTableView):
 
         metrics = QFontMetrics(self.font())
         text = metrics.elidedText(
-            text, Qt.ElideRight, DRAG_IMAGE_MAX_PX - 2 * DRAG_IMAGE_PADDING_PX
+            text,
+            Qt.TextElideMode.ElideRight,
+            DRAG_IMAGE_MAX_PX - 2 * DRAG_IMAGE_PADDING_PX,
         )
         size = QSize(
             metrics.horizontalAdvance(text) + 2 * DRAG_IMAGE_PADDING_PX,
@@ -1260,14 +1271,14 @@ class ItemList(QTableView):
         pixmap.setDevicePixelRatio(ratio)
 
         palette = self.palette()
-        pixmap.fill(palette.color(QPalette.Base))
+        pixmap.fill(palette.color(QPalette.ColorRole.Base))
 
         painter = QPainter(pixmap)
-        painter.setPen(palette.color(QPalette.Mid))
+        painter.setPen(palette.color(QPalette.ColorRole.Mid))
         painter.drawRect(0, 0, size.width() - 1, size.height() - 1)
         painter.setFont(self.font())
-        painter.setPen(palette.color(QPalette.Text))
-        painter.drawText(QRect(QPoint(0, 0), size), Qt.AlignCenter, text)
+        painter.setPen(palette.color(QPalette.ColorRole.Text))
+        painter.drawText(QRect(QPoint(0, 0), size), Qt.AlignmentFlag.AlignCenter, text)
         painter.end()
 
         return pixmap
@@ -1294,7 +1305,7 @@ class ItemList(QTableView):
 
         action = self._drop_action(event)
 
-        if action == Qt.IgnoreAction:
+        if action == Qt.DropAction.IgnoreAction:
             event.ignore()
             return
 
@@ -1326,7 +1337,7 @@ class ItemList(QTableView):
     def _take_drag(self, event):
         action = self._drop_action(event)
 
-        if action == Qt.IgnoreAction:
+        if action == Qt.DropAction.IgnoreAction:
             event.ignore()
             self._mark_drop(None)
             return
@@ -1344,21 +1355,21 @@ class ItemList(QTableView):
         is_own = data.hasFormat(KEYS_MIME)
 
         if is_own and not self._is_dragging_rows:
-            return Qt.IgnoreAction
+            return Qt.DropAction.IgnoreAction
 
         if not self.model().canDropMimeData(
             data, event.proposedAction(), -1, -1, QModelIndex()
         ):
-            return Qt.IgnoreAction
+            return Qt.DropAction.IgnoreAction
 
         if is_own:
-            return Qt.MoveAction
+            return Qt.DropAction.MoveAction
 
-        for action in (Qt.CopyAction, Qt.LinkAction):
+        for action in (Qt.DropAction.CopyAction, Qt.DropAction.LinkAction):
             if event.possibleActions() & action:
                 return action
 
-        return Qt.IgnoreAction
+        return Qt.DropAction.IgnoreAction
 
     def _mark_drop(self, pos: QPoint | None):
         if pos == self._drop_pos:
@@ -1390,11 +1401,11 @@ class ItemList(QTableView):
         y = self._drop_line_y()
         right = self.viewport().width() - DROP_LINE_PX
 
-        painter.setRenderHint(QPainter.Antialiasing)
-        pen = QPen(self.palette().color(QPalette.Text), DROP_LINE_PX)
-        pen.setCapStyle(Qt.FlatCap)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        pen = QPen(self.palette().color(QPalette.ColorRole.Text), DROP_LINE_PX)
+        pen.setCapStyle(Qt.PenCapStyle.FlatCap)
         painter.setPen(pen)
-        painter.setBrush(Qt.NoBrush)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
 
         # a ring at its start, the line from it across the row
         radius = DROP_RING_RADIUS_PX
@@ -1619,7 +1630,7 @@ class MediaListDialog(QDialog):
 
         shared = QHBoxLayout()
         shared.setSpacing(8)
-        shared.addWidget(self._shared_icon, 0, Qt.AlignTop)
+        shared.addWidget(self._shared_icon, 0, Qt.AlignmentFlag.AlignTop)
         shared.addWidget(self._shared_label, 1)
 
         self._filter_edit = QLineEdit()
@@ -1627,7 +1638,9 @@ class MediaListDialog(QDialog):
             translate("Dialog - List", "Find on the list")
         )
         self._filter_edit.setClearButtonEnabled(True)
-        self._filter_edit.addAction(QIcon.fromTheme("zoom"), QLineEdit.LeadingPosition)
+        self._filter_edit.addAction(
+            QIcon.fromTheme("zoom"), QLineEdit.ActionPosition.LeadingPosition
+        )
 
         self._group_combo = ElidedComboBox()
         self._group_combo.setMinimumWidth(170)
@@ -1656,9 +1669,9 @@ class MediaListDialog(QDialog):
         header.setStretchLastSection(False)
         # sized for the longest number there is rather than by every row,
         # which for a channel list is a few hundred thousand to measure
-        header.setSectionResizeMode(Column.NUMBER, QHeaderView.Fixed)
-        header.setSectionResizeMode(Column.TITLE, QHeaderView.Stretch)
-        header.setSectionResizeMode(Column.LENGTH, QHeaderView.Fixed)
+        header.setSectionResizeMode(Column.NUMBER, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(Column.TITLE, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(Column.LENGTH, QHeaderView.ResizeMode.Fixed)
         header.resizeSection(Column.LENGTH, LENGTH_COLUMN_PX)
 
         # the count, or what was just done
@@ -1676,7 +1689,9 @@ class MediaListDialog(QDialog):
         self._lookup_button = QToolButton()
         self._lookup_button.setAutoRaise(True)
         self._lookup_button.setIconSize(QSize(LOOKUP_ICON_PX, LOOKUP_ICON_PX))
-        self._lookup_button.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self._lookup_button.setToolButtonStyle(
+            Qt.ToolButtonStyle.ToolButtonTextBesideIcon
+        )
 
         self._lookup_line = QWidget()
         lookup = QHBoxLayout(self._lookup_line)
@@ -1713,7 +1728,9 @@ class MediaListDialog(QDialog):
             translate("Dialog - List", "Save the list as an M3U file"),
         )
 
-        self._buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self._buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
 
         tools = QHBoxLayout()
         tools.setSpacing(6)
@@ -1814,7 +1831,7 @@ class MediaListDialog(QDialog):
 
         self._source_panel = QFrame()
         self._source_panel.setObjectName("sourcePanel")
-        self._source_panel.setContextMenuPolicy(Qt.CustomContextMenu)
+        self._source_panel.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self._source_panel.setStyleSheet(
             "#sourcePanel { border: 1px solid palette(mid); border-radius: 6px;"
             " background: palette(base); }"
@@ -1835,7 +1852,7 @@ class MediaListDialog(QDialog):
         bold and a quieter line under them, and Try Again and ✕ after."""
 
         self._error_icon = QLabel()
-        self._error_icon.setAlignment(Qt.AlignTop)
+        self._error_icon.setAlignment(Qt.AlignmentFlag.AlignTop)
         # level with the words' first line
         self._error_icon.setContentsMargins(0, 2, 0, 0)
 
@@ -1872,7 +1889,7 @@ class MediaListDialog(QDialog):
         title_row = QHBoxLayout()
         title_row.setSpacing(8)
         title_row.addWidget(self._error_title)
-        title_row.addWidget(self._error_tag, 0, Qt.AlignVCenter)
+        title_row.addWidget(self._error_tag, 0, Qt.AlignmentFlag.AlignVCenter)
         title_row.addStretch(1)
 
         words = QVBoxLayout()
@@ -1886,9 +1903,9 @@ class MediaListDialog(QDialog):
         layout.setSpacing(8)
         layout.addWidget(self._error_icon)
         layout.addLayout(words, 1)
-        layout.addWidget(self._error_details_button, 0, Qt.AlignVCenter)
-        layout.addWidget(self._error_again_button, 0, Qt.AlignVCenter)
-        layout.addWidget(self._error_hide_button, 0, Qt.AlignVCenter)
+        layout.addWidget(self._error_details_button, 0, Qt.AlignmentFlag.AlignVCenter)
+        layout.addWidget(self._error_again_button, 0, Qt.AlignmentFlag.AlignVCenter)
+        layout.addWidget(self._error_hide_button, 0, Qt.AlignmentFlag.AlignVCenter)
 
         box.hide()
 
@@ -1925,7 +1942,7 @@ class MediaListDialog(QDialog):
         button = QToolButton()
         button.setAutoRaise(True)
         button.setIconSize(QSize(SOURCE_ICON_PX, SOURCE_ICON_PX))
-        button.setToolButtonStyle(Qt.ToolButtonIconOnly)
+        button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
 
         return button
 
@@ -1965,9 +1982,9 @@ class MediaListDialog(QDialog):
 
         # edits are made once the editor or the drag they came from is
         # done: made at once, they would take the rows from under it
-        self._model.renamed.connect(self._rename, Qt.QueuedConnection)
-        self._model.moved.connect(self._move, Qt.QueuedConnection)
-        self._model.dropped.connect(self._add_uris, Qt.QueuedConnection)
+        self._model.renamed.connect(self._rename, Qt.ConnectionType.QueuedConnection)
+        self._model.moved.connect(self._move, Qt.ConnectionType.QueuedConnection)
+        self._model.dropped.connect(self._add_uris, Qt.ConnectionType.QueuedConnection)
 
         self._list.doubleClicked.connect(lambda _index: self._play())
         self._list.play_requested.connect(self._play)
@@ -2033,14 +2050,14 @@ class MediaListDialog(QDialog):
             return
 
         if event.type() in {
-            event.PaletteChange,
-            event.FontChange,
-            event.StyleChange,
+            event.Type.PaletteChange,
+            event.Type.FontChange,
+            event.Type.StyleChange,
         }:
             self._update_look()
 
         # cells opened and closed in the player meanwhile
-        if event.type() == event.ActivationChange and self.isActiveWindow():
+        if event.type() == event.Type.ActivationChange and self.isActiveWindow():
             self._show_shared()
 
     def resizeEvent(self, event):
@@ -2117,7 +2134,9 @@ class MediaListDialog(QDialog):
         # a path or a link alone: its start, and the file's name or what
         # tells a link apart
         self._list.setTextElideMode(
-            Qt.ElideMiddle if view == ListView.LOCATIONS else Qt.ElideRight
+            Qt.TextElideMode.ElideMiddle
+            if view == ListView.LOCATIONS
+            else Qt.TextElideMode.ElideRight
         )
 
     def _set_view(self, view: ListView):
@@ -2425,7 +2444,7 @@ class MediaListDialog(QDialog):
             text = translate("Dialog - List", "Updated {WHEN}").format(WHEN=short)
 
         when = QLocale().toString(
-            QDateTime.fromSecsSinceEpoch(read_at), QLocale.ShortFormat
+            QDateTime.fromSecsSinceEpoch(read_at), QLocale.FormatType.ShortFormat
         )
         lines = [translate("Dialog - List", "Last updated: {DATE}").format(DATE=when)]
 
@@ -2725,7 +2744,10 @@ class MediaListDialog(QDialog):
         for first, last in runs:
             picked.select(self._model.index(first, 0), self._model.index(last, 0))
 
-        selection.select(picked, selection.ClearAndSelect | selection.Rows)
+        selection.select(
+            picked,
+            selection.SelectionFlag.ClearAndSelect | selection.SelectionFlag.Rows,
+        )
 
         current_row = self._model.row_of_key(current_key)
         if current_row is None and rows:
@@ -2733,7 +2755,7 @@ class MediaListDialog(QDialog):
 
         if current_row is not None:
             index = self._model.index(current_row, 0)
-            selection.setCurrentIndex(index, selection.NoUpdate)
+            selection.setCurrentIndex(index, selection.SelectionFlag.NoUpdate)
             self._list.scrollTo(index)
 
     # edits
@@ -3138,7 +3160,7 @@ class MediaListDialog(QDialog):
 
     def _is_link_confirmed(self, added: int) -> bool:
         box = QCustomMessageBox(
-            QMessageBox.Warning,
+            QMessageBox.Icon.Warning,
             translate("Dialog - List", "Link to Source"),
             translate("Dialog - List", "Link the list to its source?"),
             parent=self,
@@ -3152,11 +3174,11 @@ class MediaListDialog(QDialog):
         )
 
         link_button = box.addButton(
-            translate("Dialog - List", "Link"), QMessageBox.DestructiveRole
+            translate("Dialog - List", "Link"), QMessageBox.ButtonRole.DestructiveRole
         )
-        box.setDefaultButton(box.addButton(QMessageBox.Cancel))
+        box.setDefaultButton(box.addButton(QMessageBox.StandardButton.Cancel))
 
-        box.exec_()
+        box.exec()
 
         return box.clickedButton() is link_button
 
@@ -3201,7 +3223,7 @@ class MediaListDialog(QDialog):
 
     def _is_reload_confirmed(self) -> bool:
         box = QCustomMessageBox(
-            QMessageBox.Warning,
+            QMessageBox.Icon.Warning,
             translate("Dialog - List", "Reload and Discard Changes"),
             translate(
                 "Dialog - List",
@@ -3218,11 +3240,11 @@ class MediaListDialog(QDialog):
         )
 
         reload_button = box.addButton(
-            translate("Dialog - List", "Reload"), QMessageBox.DestructiveRole
+            translate("Dialog - List", "Reload"), QMessageBox.ButtonRole.DestructiveRole
         )
-        box.setDefaultButton(box.addButton(QMessageBox.Cancel))
+        box.setDefaultButton(box.addButton(QMessageBox.StandardButton.Cancel))
 
-        box.exec_()
+        box.exec()
 
         return box.clickedButton() is reload_button
 
@@ -3476,7 +3498,7 @@ class MediaListDialog(QDialog):
             shown, list_error_rows(shown, self._media_list), parent=self
         )
         dialog.try_again.connect(self._try_again)
-        dialog.exec_()
+        dialog.exec()
         dialog.deleteLater()
 
     def _hide_read_error(self):
@@ -3853,7 +3875,7 @@ class MediaListDialog(QDialog):
             menu.addAction(
                 QIcon.fromTheme("play"),
                 with_key_txt(
-                    translate("Dialog - List", "Play in This Cell"), Qt.Key_Enter
+                    translate("Dialog - List", "Play in This Cell"), Qt.Key.Key_Enter
                 ),
                 self._play,
             ).setEnabled(len(picked) == 1)
@@ -3890,7 +3912,7 @@ class MediaListDialog(QDialog):
 
         menu.addAction(
             QIcon.fromTheme("copy"),
-            with_key_txt(_copy_txt(picked), QKeySequence.Copy),
+            with_key_txt(_copy_txt(picked), QKeySequence.StandardKey.Copy),
             self._copy,
         )
         menu.addAction(
@@ -3927,7 +3949,7 @@ class MediaListDialog(QDialog):
             self._remove,
         ).setEnabled(is_free)
 
-        menu.exec_(global_pos)
+        menu.exec(global_pos)
         menu.deleteLater()
 
     def _show_source_menu(self, pos):
@@ -3993,7 +4015,7 @@ class MediaListDialog(QDialog):
                 self._link,
             ).setEnabled(not self._is_reading)
 
-        menu.exec_(self._source_panel.mapToGlobal(pos))
+        menu.exec(self._source_panel.mapToGlobal(pos))
         menu.deleteLater()
 
     def _show_list_menu(self, global_pos):
@@ -4018,7 +4040,9 @@ class MediaListDialog(QDialog):
         ).setEnabled(is_free)
         menu.addAction(
             QIcon.fromTheme("paste"),
-            with_key_txt(translate("Dialog - List", "Paste"), QKeySequence.Paste),
+            with_key_txt(
+                translate("Dialog - List", "Paste"), QKeySequence.StandardKey.Paste
+            ),
             self._paste,
         ).setEnabled(is_free)
 
@@ -4038,7 +4062,7 @@ class MediaListDialog(QDialog):
                 self._get_missing_info,
             ).setEnabled(bool(self._media_list.items))
 
-        menu.exec_(global_pos)
+        menu.exec(global_pos)
         menu.deleteLater()
 
 

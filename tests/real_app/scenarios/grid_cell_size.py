@@ -102,7 +102,7 @@ def scenario(d):
     d.check("its button lit", overlay.cell_size_button.is_down)
     d.check(
         "a click outside only closes it",
-        picker.testAttribute(Qt.WA_NoMouseReplay),
+        picker.testAttribute(Qt.WidgetAttribute.WA_NoMouseReplay),
     )
     d.shot("2_picker", widget=picker)
 
@@ -110,11 +110,20 @@ def scenario(d):
     QApplication.sendEvent(
         picker,
         QMouseEvent(
-            QEvent.MouseMove, QPointF(at), Qt.NoButton, Qt.NoButton, Qt.NoModifier
+            QEvent.Type.MouseMove,
+            QPointF(at),
+            Qt.MouseButton.NoButton,
+            Qt.MouseButton.NoButton,
+            Qt.KeyboardModifier.NoModifier,
         ),
     )
     d.check("three by one shown", picker._pick == (1, 3), picker._pick)
-    QTest.mouseRelease(picker.windowHandle(), Qt.LeftButton, Qt.NoModifier, at)
+    QTest.mouseRelease(
+        picker.windowHandle(),
+        Qt.MouseButton.LeftButton,
+        Qt.KeyboardModifier.NoModifier,
+        at,
+    )
     d.pump(0.5)
     d.check("B three wide", _span(d, b) == (1, 3), _span(d, b))
     d.check("the picker gone", _picker() is None)

@@ -59,17 +59,17 @@ JOIN_RETRY_MS = 50
 # one of them or anything it's in
 _PLACE_EVENTS = frozenset(
     {
-        QEvent.Move,
-        QEvent.Resize,
-        QEvent.Show,
-        QEvent.Hide,
-        QEvent.ZOrderChange,
-        QEvent.ParentChange,
+        QEvent.Type.Move,
+        QEvent.Type.Resize,
+        QEvent.Type.Show,
+        QEvent.Type.Hide,
+        QEvent.Type.ZOrderChange,
+        QEvent.Type.ParentChange,
     }
 )
 
 # what has a cell's surface look for its window's grid surface
-_JOIN_EVENTS = frozenset({QEvent.Show, QEvent.ParentChange})
+_JOIN_EVENTS = frozenset({QEvent.Type.Show, QEvent.Type.ParentChange})
 
 logger = logging.getLogger(__name__)
 
@@ -167,7 +167,9 @@ class GLGridSurface(QOpenGLWidget):
 
     @staticmethod
     def of(window: QWidget) -> "GLGridSurface":
-        grid = window.findChild(GLGridSurface, "", Qt.FindDirectChildrenOnly)
+        grid = window.findChild(
+            GLGridSurface, "", Qt.FindChildOption.FindDirectChildrenOnly
+        )
 
         return grid if grid is not None else GLGridSurface(window)
 
@@ -181,8 +183,8 @@ class GLGridSurface(QOpenGLWidget):
         self._blitter: QOpenGLTextureBlitter | None = None
         self._gl = None
 
-        self.setAttribute(Qt.WA_TransparentForMouseEvents)
-        self.setFocusPolicy(Qt.NoFocus)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
         window.installEventFilter(self)
         self.setGeometry(window.rect())
@@ -222,7 +224,7 @@ class GLGridSurface(QOpenGLWidget):
         kind = event.type()
 
         if watched is self.parentWidget():
-            if kind == QEvent.Resize:
+            if kind == QEvent.Type.Resize:
                 self.setGeometry(watched.rect())
         elif kind in _PLACE_EVENTS:
             self.surfaces_moved()
@@ -348,7 +350,7 @@ class GLGridSurface(QOpenGLWidget):
             self._blitter.blit(
                 texture,
                 QOpenGLTextureBlitter.targetTransform(QRectF(whole), whole),
-                QOpenGLTextureBlitter.OriginTopLeft,
+                QOpenGLTextureBlitter.Origin.OriginTopLeft,
             )
             self._blitter.release()
 
@@ -357,7 +359,7 @@ class GLGridSurface(QOpenGLWidget):
         finally:
             self.doneCurrent()
 
-        return image.convertToFormat(QImage.Format_RGB32)
+        return image.convertToFormat(QImage.Format.Format_RGB32)
 
 
 class GLVideoSurface(VideoSurfaceView, QWidget):
@@ -394,8 +396,8 @@ class GLVideoSurface(VideoSurfaceView, QWidget):
         # held on to by the connection, as the surface is gone by then
         self.destroyed.connect(functools.partial(_KeptTexture.let_go, self._kept))
 
-        self.setAttribute(Qt.WA_TransparentForMouseEvents)
-        self.setAttribute(Qt.WA_NoSystemBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground)
 
         # a frame came before the cell was in a window
         self._join_retry = QTimer(self)
@@ -466,21 +468,21 @@ class GLVideoSurface(VideoSurfaceView, QWidget):
             return
 
         # see-through, as under a QOpenGLWidget, whatever is under it
-        painter.setCompositionMode(QPainter.CompositionMode_Source)
-        painter.fillRect(event.rect(), Qt.transparent)
+        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Source)
+        painter.fillRect(event.rect(), Qt.GlobalColor.transparent)
 
     def _paint_picture(self, painter: QPainter) -> None:
         placement = self.placement() if self.has_frame() else None
         image = self.frame_image() if placement is not None else None
         if image is None:
-            painter.fillRect(self.rect(), Qt.black)
+            painter.fillRect(self.rect(), Qt.GlobalColor.black)
             return
 
         for bar in self._bars(placement.target):
-            painter.fillRect(bar, Qt.black)
+            painter.fillRect(bar, Qt.GlobalColor.black)
 
         # the picture as shown, flips done
-        painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
         painter.drawImage(QRectF(*placement.target), image, QRectF(*placement.source))
 
     def frame_size(self) -> tuple[int, int]:
@@ -554,7 +556,7 @@ class GLVideoSurface(VideoSurfaceView, QWidget):
         source = QOpenGLTextureBlitter.sourceTransform(
             QRectF(source_x, source_y, source_w, source_h),
             QSize(self._frame_w, self._frame_h),
-            QOpenGLTextureBlitter.OriginTopLeft,
+            QOpenGLTextureBlitter.Origin.OriginTopLeft,
         )
 
         blitter.blit(self._texture, target, source)

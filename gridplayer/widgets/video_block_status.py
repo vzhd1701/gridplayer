@@ -116,7 +116,7 @@ class StatusControl(VideoBlockPart):
             error, self._error_rows(error), parent=self._block.window()
         )
         dialog.try_again.connect(self._block.reload)
-        dialog.exec_()
+        dialog.exec()
         dialog.deleteLater()
 
         # left as it was: on through the list, the count started over

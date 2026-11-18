@@ -160,7 +160,7 @@ def test_dialog_ok_commits_crop_loudly():
     dialog.accept()
 
     assert block.applied[-1] == (VideoCrop(0, 0, 0, 30), False)
-    assert dialog.result() == QDialog.Accepted
+    assert dialog.result() == QDialog.DialogCode.Accepted
 
 
 def test_dialog_cancel_restores_crop_without_changing_view_mode():
@@ -282,7 +282,7 @@ def test_get_crop_returns_value_on_accept(mocker):
         self.accept()
         return self.result()
 
-    mocker.patch.object(SetCropDialog, "exec_", fake_exec)
+    mocker.patch.object(SetCropDialog, "exec", fake_exec)
 
     assert SetCropDialog.get_crop(VideoCrop(0, 0, 0, 0)) == VideoCrop(7, 0, 0, 0)
 
@@ -292,7 +292,7 @@ def test_get_crop_returns_none_on_reject(mocker):
         self.reject()
         return self.result()
 
-    mocker.patch.object(SetCropDialog, "exec_", fake_exec)
+    mocker.patch.object(SetCropDialog, "exec", fake_exec)
 
     assert SetCropDialog.get_crop(VideoCrop(0, 0, 0, 0)) is None
 
@@ -318,14 +318,14 @@ def test_dialog_value_mode_edits_without_block():
 
     dialog.accept()
 
-    assert dialog.result() == QDialog.Accepted
+    assert dialog.result() == QDialog.DialogCode.Accepted
     assert dialog._spin_crop() == VideoCrop(1, 2, 3, 4)
 
 
 def _snapshot(width, height):
     snapshot = PauseSnapshot()
     pixmap = QPixmap(width, height)
-    pixmap.fill(Qt.black)
+    pixmap.fill(Qt.GlobalColor.black)
     snapshot._snapshot_pixmap = pixmap
     return snapshot
 

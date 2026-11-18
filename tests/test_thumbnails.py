@@ -20,13 +20,13 @@ from gridplayer.utils.thumbnails import (
 URL = "https://i.ytimg.com/vi/a/mqdefault.jpg"
 
 
-def _jpeg(width=320, height=180, color=Qt.red) -> bytes:
-    image = QImage(width, height, QImage.Format_RGB32)
+def _jpeg(width=320, height=180, color=Qt.GlobalColor.red) -> bytes:
+    image = QImage(width, height, QImage.Format.Format_RGB32)
     image.fill(QColor(color))
 
     data = QByteArray()
     buffer = QBuffer(data)
-    buffer.open(QIODevice.WriteOnly)
+    buffer.open(QIODevice.OpenModeFlag.WriteOnly)
     image.save(buffer, "JPG")
 
     return bytes(data)
@@ -116,19 +116,19 @@ class TestFetched:
 
 class TestMadeTheSizeShown:
     def test_a_wider_one_cut_at_the_sides(self):
-        image = QImage(400, 180, QImage.Format_RGB32)
-        image.fill(Qt.white)
+        image = QImage(400, 180, QImage.Format.Format_RGB32)
+        image.fill(Qt.GlobalColor.white)
 
         assert fitted(image, QSize(160, 90)).size() == QSize(160, 90)
 
     def test_a_4_3_one_loses_its_top_and_bottom(self):
-        image = QImage(480, 360, QImage.Format_RGB32)
-        image.fill(Qt.black)
+        image = QImage(480, 360, QImage.Format.Format_RGB32)
+        image.fill(Qt.GlobalColor.black)
         # bars, as a 4:3 picture of a 16:9 video has them
         for y in range(45):
             for x in range(480):
-                image.setPixelColor(x, y, QColor(Qt.white))
-                image.setPixelColor(x, 359 - y, QColor(Qt.white))
+                image.setPixelColor(x, y, QColor(Qt.GlobalColor.white))
+                image.setPixelColor(x, 359 - y, QColor(Qt.GlobalColor.white))
 
         cut = fitted(image, QSize(160, 90))
 

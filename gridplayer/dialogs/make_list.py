@@ -86,9 +86,10 @@ class MakeListDialog(QDialog):
 
         buttons = QDialogButtonBox()
         self._make_button = buttons.addButton(
-            translate("Dialog - Make list", "Make List"), QDialogButtonBox.AcceptRole
+            translate("Dialog - Make list", "Make List"),
+            QDialogButtonBox.ButtonRole.AcceptRole,
         )
-        buttons.addButton(QDialogButtonBox.Cancel)
+        buttons.addButton(QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
 
@@ -142,7 +143,7 @@ class MakeListDialog(QDialog):
     def ask(cls, folder, is_recursive, parent=None) -> MakeListChoice | None:
         dialog = cls(folder, is_recursive, parent=parent)
 
-        is_made = dialog.exec_() == QDialog.Accepted
+        is_made = dialog.exec() == QDialog.DialogCode.Accepted
         choice = dialog.choice()
 
         dialog.deleteLater()

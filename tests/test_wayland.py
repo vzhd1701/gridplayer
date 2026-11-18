@@ -16,7 +16,9 @@ CLIENT_FRAME = QMargins(3, 30, 3, 3)
 
 
 class _FakeWindow:
-    def __init__(self, *, flags=Qt.Window, visible=True, margins=CLIENT_FRAME):
+    def __init__(
+        self, *, flags=Qt.WindowType.Window, visible=True, margins=CLIENT_FRAME
+    ):
         self._flags = flags
         self._visible = visible
         self._margins = margins
@@ -52,12 +54,12 @@ def _run(monkeypatch, platform, windows):
 
 
 def test_frame_taken_off_and_put_back(monkeypatch):
-    flags = Qt.Window | Qt.WindowTitleHint
+    flags = Qt.WindowType.Window | Qt.WindowType.WindowTitleHint
     window = _FakeWindow(flags=flags)
 
     _run(monkeypatch, "wayland", [window])
 
-    assert window.set_flags_calls == [flags | Qt.FramelessWindowHint, flags]
+    assert window.set_flags_calls == [flags | Qt.WindowType.FramelessWindowHint, flags]
     assert window.flags() == flags
 
 
@@ -71,7 +73,9 @@ def test_left_alone_off_wayland(monkeypatch):
 
 def test_skips_windows_without_client_frame(monkeypatch):
     hidden = _FakeWindow(visible=False)
-    frameless = _FakeWindow(flags=Qt.Tool | Qt.FramelessWindowHint)
+    frameless = _FakeWindow(
+        flags=Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint
+    )
     # the compositor's own frame (KDE), or fullscreen
     server_frame = _FakeWindow(margins=QMargins())
 

@@ -118,14 +118,14 @@ class ActiveBlockManager(ManagerBase):
     @property
     def event_map(self):
         return {
-            QEvent.MouseMove: self.update_active_under_mouse,
-            QEvent.MouseButtonPress: self.update_active_pressed,
-            QEvent.MouseButtonRelease: self.update_active_under_mouse,
-            QEvent.NonClientAreaMouseMove: self.update_active_reset,
-            QEvent.NonClientAreaMouseButtonPress: self.update_active_reset,
-            QEvent.DragEnter: self.update_active_from_drag,
-            QEvent.DragMove: self.update_active_from_drag,
-            QEvent.Drop: self.update_active_from_drag,
+            QEvent.Type.MouseMove: self.update_active_under_mouse,
+            QEvent.Type.MouseButtonPress: self.update_active_pressed,
+            QEvent.Type.MouseButtonRelease: self.update_active_under_mouse,
+            QEvent.Type.NonClientAreaMouseMove: self.update_active_reset,
+            QEvent.Type.NonClientAreaMouseButtonPress: self.update_active_reset,
+            QEvent.Type.DragEnter: self.update_active_from_drag,
+            QEvent.Type.DragMove: self.update_active_from_drag,
+            QEvent.Type.Drop: self.update_active_from_drag,
         }
 
     @property
@@ -214,7 +214,7 @@ class ActiveBlockManager(ManagerBase):
             self._ctx.active_block, parent=self.parent()
         )
 
-        dialog.exec_()
+        dialog.exec()
 
     def cmd_position_dialog(self):
         if self.is_no_active_block or not self.is_active_has_video():
@@ -222,7 +222,7 @@ class ActiveBlockManager(ManagerBase):
 
         dialog = SetPositionDialog(self._ctx.active_block, parent=self.parent())
 
-        dialog.exec_()
+        dialog.exec()
 
     def is_active_initialized(self):
         if self.is_no_active_block:
@@ -1339,7 +1339,7 @@ class ActiveBlockManager(ManagerBase):
         # click, though another comes under the pointer, one shown big in
         # its place, say.
         if (
-            QApplication.mouseButtons() != Qt.NoButton
+            QApplication.mouseButtons() != Qt.MouseButton.NoButton
             and self._ctx.active_block is not None
         ):
             self._let_go_timer.start()
@@ -1358,7 +1358,7 @@ class ActiveBlockManager(ManagerBase):
         self.cmd_active("show_overlay")
 
     def _check_let_go(self):
-        if QApplication.mouseButtons() != Qt.NoButton:
+        if QApplication.mouseButtons() != Qt.MouseButton.NoButton:
             return
 
         self._let_go_timer.stop()

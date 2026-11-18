@@ -22,9 +22,9 @@ class PageScrollArea(QScrollArea):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWidgetResizable(True)
-        self.setFrameShape(QFrame.NoFrame)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setFrameShape(QFrame.Shape.NoFrame)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.setContentsMargins(0, 1, 1, 1)
 
     def setWidget(self, widget):
@@ -33,14 +33,14 @@ class PageScrollArea(QScrollArea):
         # A field the pointer passes over while the page scrolls would take
         # the wheel and change its value. It only gets it once clicked.
         for field in widget.findChildren(_WHEEL_FIELDS):
-            field.setFocusPolicy(Qt.StrongFocus)
+            field.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
             field.installEventFilter(self)
 
     def eventFilter(self, obj, event):
         # The scroll bars are filtered here too, and handing them their own
         # wheel back would go round forever.
         if (
-            event.type() == QEvent.Wheel
+            event.type() == QEvent.Type.Wheel
             and isinstance(obj, _WHEEL_FIELDS)
             and not obj.hasFocus()
         ):

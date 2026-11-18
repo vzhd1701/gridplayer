@@ -42,11 +42,11 @@ def test_a_drag_is_a_mouse_sequence_of_its_own():
     assert seq.is_drag
     assert not seq.is_click
     assert not seq.is_wheel
-    assert seq.drag_button == Qt.MiddleButton
+    assert seq.drag_button == Qt.MouseButton.MiddleButton
     assert seq.modifiers == ["Ctrl"]
 
     assert MouseButtonSequence("Middle-Click").drag_button is None
-    assert MouseButtonSequence("Drag-4").drag_button == Qt.ExtraButton4
+    assert MouseButtonSequence("Drag-4").drag_button == Qt.MouseButton.ExtraButton4
 
     with pytest.raises(ValueError, match="Bad mouse sequence"):
         MouseButtonSequence("Double Drag")
@@ -59,7 +59,8 @@ def test_the_keys_are_put_in_one_order():
 
 def test_a_press_makes_the_drag_with_the_keys_held():
     drag = MouseButtonSequence.from_drag_press(
-        Qt.BackButton, Qt.ShiftModifier | Qt.ControlModifier
+        Qt.MouseButton.BackButton,
+        Qt.KeyboardModifier.ShiftModifier | Qt.KeyboardModifier.ControlModifier,
     )
 
     assert drag.sequence == "Ctrl+Shift+Back-Drag"
@@ -67,11 +68,11 @@ def test_a_press_makes_the_drag_with_the_keys_held():
 
 def test_a_click_event_is_never_a_drag():
     event = QMouseEvent(
-        QEvent.MouseButtonRelease,
+        QEvent.Type.MouseButtonRelease,
         QPointF(0, 0),
-        Qt.MiddleButton,
-        Qt.NoButton,
-        Qt.NoModifier,
+        Qt.MouseButton.MiddleButton,
+        Qt.MouseButton.NoButton,
+        Qt.KeyboardModifier.NoModifier,
     )
 
     assert MouseButtonSequence.from_event(event).sequence == "Middle-Click"
@@ -162,10 +163,12 @@ def test_a_drag_two_gestures_claim_goes_to_the_one_set_to_it():
 
 
 def test_the_drop_switch_key_is_a_qt_modifier():
-    assert drop_switch_modifier(KeymapOverrides({})) == Qt.ShiftModifier
+    assert (
+        drop_switch_modifier(KeymapOverrides({})) == Qt.KeyboardModifier.ShiftModifier
+    )
     assert (
         drop_switch_modifier(KeymapOverrides({GESTURE_DROP_SWITCH: ["Hold Ctrl"]}))
-        == Qt.ControlModifier
+        == Qt.KeyboardModifier.ControlModifier
     )
     assert drop_switch_modifier(KeymapOverrides({GESTURE_DROP_SWITCH: []})) is None
 
@@ -185,11 +188,15 @@ def test_gestures_are_read_from_the_settings(monkeypatch):
 @pytest.mark.parametrize(
     ("button", "keys", "is_press"),
     [
-        (Qt.LeftButton, Qt.ControlModifier, True),
-        (Qt.LeftButton, Qt.ControlModifier | Qt.ShiftModifier, False),
-        (Qt.LeftButton, Qt.NoModifier, False),
-        (Qt.MiddleButton, Qt.ControlModifier, False),
-        (Qt.RightButton, Qt.ControlModifier, False),
+        (Qt.MouseButton.LeftButton, Qt.KeyboardModifier.ControlModifier, True),
+        (
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.ControlModifier | Qt.KeyboardModifier.ShiftModifier,
+            False,
+        ),
+        (Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, False),
+        (Qt.MouseButton.MiddleButton, Qt.KeyboardModifier.ControlModifier, False),
+        (Qt.MouseButton.RightButton, Qt.KeyboardModifier.ControlModifier, False),
     ],
 )
 def test_a_press_is_a_gesture_with_its_very_keys(monkeypatch, button, keys, is_press):
@@ -200,9 +207,13 @@ def test_a_press_is_a_gesture_with_its_very_keys(monkeypatch, button, keys, is_p
             get=lambda _key: KeymapOverrides({GESTURE_PAN: ["Ctrl+Drag"]})
         ),
     )
-    monkeypatch.setattr(QApplication, "queryKeyboardModifiers", lambda: Qt.NoModifier)
+    monkeypatch.setattr(
+        QApplication, "queryKeyboardModifiers", lambda: Qt.KeyboardModifier.NoModifier
+    )
 
-    event = QMouseEvent(QEvent.MouseButtonPress, QPointF(0, 0), button, button, keys)
+    event = QMouseEvent(
+        QEvent.Type.MouseButtonPress, QPointF(0, 0), button, button, keys
+    )
 
     assert is_gesture_press(GESTURE_PAN, event) is is_press
 

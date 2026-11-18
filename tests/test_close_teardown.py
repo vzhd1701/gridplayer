@@ -222,7 +222,9 @@ def cell(mocker, tmp_path):
 
     settings = Settings()
     real_settings = settings.settings
-    settings.settings = QSettings(str(tmp_path / "test.ini"), QSettings.IniFormat)
+    settings.settings = QSettings(
+        str(tmp_path / "test.ini"), QSettings.Format.IniFormat
+    )
 
     context = MagicMock()
     context.is_overlay_hide_on_timeout = False

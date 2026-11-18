@@ -3,6 +3,7 @@ from itertools import starmap
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
+    QApplication,
     QDialog,
     QDialogButtonBox,
     QLabel,
@@ -10,7 +11,6 @@ from PyQt5.QtWidgets import (
     QLineEdit,
     QTextEdit,
     QVBoxLayout,
-    qApp,
 )
 
 from gridplayer.utils.qt import translate
@@ -36,9 +36,12 @@ class QAddURLsDialog(QDialog):
 
         self._buttons = self._init_buttons()
 
-        self._expand_button = self._buttons.addButton("+", QDialogButtonBox.ResetRole)
+        self._expand_button = self._buttons.addButton(
+            "+", QDialogButtonBox.ButtonRole.ResetRole
+        )
         self._paste_button = self._buttons.addButton(
-            translate("Dialog - Add URLs", "Paste"), QDialogButtonBox.ResetRole
+            translate("Dialog - Add URLs", "Paste"),
+            QDialogButtonBox.ButtonRole.ResetRole,
         )
         self._expand_button.clicked.connect(self._switch_multiline)
         self._paste_button.clicked.connect(self._paste)
@@ -83,7 +86,7 @@ class QAddURLsDialog(QDialog):
         return []
 
     def timerEvent(self, event) -> None:
-        is_clipboard_empty = qApp.clipboard().text().strip() == ""
+        is_clipboard_empty = QApplication.clipboard().text().strip() == ""
         self._paste_button.setEnabled(not is_clipboard_empty)
 
     def _init_info(self, schemas: Iterable[str], supported_urls: dict[str, str]):
@@ -97,8 +100,8 @@ class QAddURLsDialog(QDialog):
 
     def _init_buttons(self):
         buttons = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Cancel,
-            Qt.Horizontal,
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
+            Qt.Orientation.Horizontal,
             self,
         )
 
@@ -109,14 +112,14 @@ class QAddURLsDialog(QDialog):
 
     def _ui_setup(self):
         main_layout = QVBoxLayout(self)
-        main_layout.setSizeConstraint(QLayout.SetFixedSize)
+        main_layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
 
         self._supported_info.setOpenExternalLinks(True)
 
         self._input_single.setMinimumWidth(DIALOG_WIDTH)
 
         self._input_multiline.setMinimumSize(DIALOG_WIDTH, MULTILINE_HEIGHT)
-        self._input_multiline.setLineWrapMode(QTextEdit.NoWrap)
+        self._input_multiline.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
         self._input_multiline.setAcceptRichText(False)
         self._input_multiline.hide()
 
@@ -149,7 +152,7 @@ class QAddURLsDialog(QDialog):
         self._is_expanded = not self._is_expanded
 
     def _paste(self):
-        paste_text = qApp.clipboard().text().strip()
+        paste_text = QApplication.clipboard().text().strip()
 
         is_multiline_paste = paste_text.count("\n") > 0
 

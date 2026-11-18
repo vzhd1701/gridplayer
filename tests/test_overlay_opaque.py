@@ -18,7 +18,7 @@ LENGTH = 60000
 @pytest.fixture
 def overlay():
     holder = QWidget()
-    holder.setAttribute(Qt.WA_DontShowOnScreen)
+    holder.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen)
     holder.resize(640, 360)
 
     overlay = OverlayBlockFloating(holder)

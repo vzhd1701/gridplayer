@@ -12,16 +12,16 @@ class MouseHideManager(ManagerBase):
     mouse_shown = pyqtSignal()
 
     move_events = {
-        QEvent.ShortcutOverride,
-        QEvent.NonClientAreaMouseMove,
-        QEvent.NonClientAreaMouseButtonPress,
-        QEvent.ContextMenu,
-        QEvent.HoverMove,
-        QEvent.KeyPress,
-        QEvent.MouseMove,
-        QEvent.Wheel,
-        QEvent.MouseButtonPress,
-        QEvent.MouseButtonRelease,
+        QEvent.Type.ShortcutOverride,
+        QEvent.Type.NonClientAreaMouseMove,
+        QEvent.Type.NonClientAreaMouseButtonPress,
+        QEvent.Type.ContextMenu,
+        QEvent.Type.HoverMove,
+        QEvent.Type.KeyPress,
+        QEvent.Type.MouseMove,
+        QEvent.Type.Wheel,
+        QEvent.Type.MouseButtonPress,
+        QEvent.Type.MouseButtonRelease,
     }
 
     def __init__(self, **kwargs):
@@ -49,12 +49,12 @@ class MouseHideManager(ManagerBase):
             return
 
         if QApplication.overrideCursor() is None:
-            QApplication.setOverrideCursor(Qt.BlankCursor)
+            QApplication.setOverrideCursor(Qt.CursorShape.BlankCursor)
 
             self.mouse_hidden.emit()
 
     def show_cursor(self):
-        if QApplication.overrideCursor() == Qt.BlankCursor:
+        if QApplication.overrideCursor() == Qt.CursorShape.BlankCursor:
             QApplication.restoreOverrideCursor()
 
             self.mouse_shown.emit()

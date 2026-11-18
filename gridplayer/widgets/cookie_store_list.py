@@ -77,16 +77,26 @@ class CookieStoreList(QtWidgets.QWidget):
             ]
         )
 
-        table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        table.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
-        table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
+        table.setSelectionMode(
+            QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection
+        )
+        table.setSelectionBehavior(
+            QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
+        )
         table.verticalHeader().hide()
 
         header = table.horizontalHeader()
-        header.setDefaultAlignment(Qt.AlignLeft)
-        header.setSectionResizeMode(DOMAIN_COLUMN, QtWidgets.QHeaderView.Stretch)
-        header.setSectionResizeMode(COUNT_COLUMN, QtWidgets.QHeaderView.Fixed)
-        header.setSectionResizeMode(EXPIRES_COLUMN, QtWidgets.QHeaderView.Fixed)
+        header.setDefaultAlignment(Qt.AlignmentFlag.AlignLeft)
+        header.setSectionResizeMode(
+            DOMAIN_COLUMN, QtWidgets.QHeaderView.ResizeMode.Stretch
+        )
+        header.setSectionResizeMode(
+            COUNT_COLUMN, QtWidgets.QHeaderView.ResizeMode.Fixed
+        )
+        header.setSectionResizeMode(
+            EXPIRES_COLUMN, QtWidgets.QHeaderView.ResizeMode.Fixed
+        )
         header.resizeSection(COUNT_COLUMN, COUNT_COLUMN_WIDTH)
         header.resizeSection(EXPIRES_COLUMN, EXPIRES_COLUMN_WIDTH)
 

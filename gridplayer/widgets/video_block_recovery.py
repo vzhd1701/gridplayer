@@ -95,14 +95,14 @@ class RecoveryControl(VideoBlockPart):
 
         self._skip_timer = QTimer(block)
         self._skip_timer.setSingleShot(True)
-        self._skip_timer.setTimerType(Qt.PreciseTimer)
+        self._skip_timer.setTimerType(Qt.TimerType.PreciseTimer)
         self._skip_timer.timeout.connect(self._skip)
 
         # the note under a failed item's card counting down to the next one;
         # precise, as the wait it counts down: a coarse timer on Linux runs
         # up to 5% long, and 2 s left said "3 s"
         self._note_timer = QTimer(block)
-        self._note_timer.setTimerType(Qt.PreciseTimer)
+        self._note_timer.setTimerType(Qt.TimerType.PreciseTimer)
         self._note_timer.setInterval(1000)
         self._note_timer.timeout.connect(self.refresh_skip_note)
 

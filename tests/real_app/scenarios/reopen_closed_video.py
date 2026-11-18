@@ -47,12 +47,20 @@ def _click_in_editor(d, point: QPoint):
     QApplication.sendEvent(
         editor,
         QMouseEvent(
-            QEvent.MouseMove, QPointF(point), Qt.NoButton, Qt.NoButton, Qt.NoModifier
+            QEvent.Type.MouseMove,
+            QPointF(point),
+            Qt.MouseButton.NoButton,
+            Qt.MouseButton.NoButton,
+            Qt.KeyboardModifier.NoModifier,
         ),
     )
-    QTest.mousePress(window, Qt.LeftButton, Qt.NoModifier, point)
+    QTest.mousePress(
+        window, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, point
+    )
     d.pump(0.05)
-    QTest.mouseRelease(window, Qt.LeftButton, Qt.NoModifier, point)
+    QTest.mouseRelease(
+        window, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, point
+    )
     d.pump(0.05)
 
 

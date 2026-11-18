@@ -66,17 +66,17 @@ THEME_DARK = MappingProxyType(
 _applying_theme = False
 
 _DIALOG_ICON_ROLES = (
-    QStyle.SP_DialogOkButton,
-    QStyle.SP_DialogCancelButton,
-    QStyle.SP_DialogHelpButton,
-    QStyle.SP_DialogOpenButton,
-    QStyle.SP_DialogSaveButton,
-    QStyle.SP_DialogCloseButton,
-    QStyle.SP_DialogApplyButton,
-    QStyle.SP_DialogResetButton,
-    QStyle.SP_DialogDiscardButton,
-    QStyle.SP_DialogYesButton,
-    QStyle.SP_DialogNoButton,
+    QStyle.StandardPixmap.SP_DialogOkButton,
+    QStyle.StandardPixmap.SP_DialogCancelButton,
+    QStyle.StandardPixmap.SP_DialogHelpButton,
+    QStyle.StandardPixmap.SP_DialogOpenButton,
+    QStyle.StandardPixmap.SP_DialogSaveButton,
+    QStyle.StandardPixmap.SP_DialogCloseButton,
+    QStyle.StandardPixmap.SP_DialogApplyButton,
+    QStyle.StandardPixmap.SP_DialogResetButton,
+    QStyle.StandardPixmap.SP_DialogDiscardButton,
+    QStyle.StandardPixmap.SP_DialogYesButton,
+    QStyle.StandardPixmap.SP_DialogNoButton,
 )
 
 
@@ -109,26 +109,34 @@ def fusion_palette() -> QPalette:
     def color(key: str) -> QColor:
         return QColor(colors[key])
 
-    palette.setColor(QPalette.Window, color("window"))
-    palette.setColor(QPalette.WindowText, color("text"))
-    palette.setColor(QPalette.Base, color("base"))
-    palette.setColor(QPalette.AlternateBase, color("alternate"))
-    palette.setColor(QPalette.ToolTipBase, color("tooltip_base"))
-    palette.setColor(QPalette.ToolTipText, color("tooltip_text"))
-    palette.setColor(QPalette.Text, color("text"))
-    palette.setColor(QPalette.Button, color("button"))
-    palette.setColor(QPalette.ButtonText, color("button_text"))
-    palette.setColor(QPalette.BrightText, QColor("#ff4444"))
-    palette.setColor(QPalette.Link, color("link"))
-    palette.setColor(QPalette.Highlight, color("highlight"))
-    palette.setColor(QPalette.HighlightedText, color("highlighted_text"))
-    palette.setColor(QPalette.PlaceholderText, color("text_disabled"))
+    palette.setColor(QPalette.ColorRole.Window, color("window"))
+    palette.setColor(QPalette.ColorRole.WindowText, color("text"))
+    palette.setColor(QPalette.ColorRole.Base, color("base"))
+    palette.setColor(QPalette.ColorRole.AlternateBase, color("alternate"))
+    palette.setColor(QPalette.ColorRole.ToolTipBase, color("tooltip_base"))
+    palette.setColor(QPalette.ColorRole.ToolTipText, color("tooltip_text"))
+    palette.setColor(QPalette.ColorRole.Text, color("text"))
+    palette.setColor(QPalette.ColorRole.Button, color("button"))
+    palette.setColor(QPalette.ColorRole.ButtonText, color("button_text"))
+    palette.setColor(QPalette.ColorRole.BrightText, QColor("#ff4444"))
+    palette.setColor(QPalette.ColorRole.Link, color("link"))
+    palette.setColor(QPalette.ColorRole.Highlight, color("highlight"))
+    palette.setColor(QPalette.ColorRole.HighlightedText, color("highlighted_text"))
+    palette.setColor(QPalette.ColorRole.PlaceholderText, color("text_disabled"))
 
     disabled_text = color("text_disabled")
-    for role in (QPalette.Text, QPalette.WindowText, QPalette.ButtonText):
-        palette.setColor(QPalette.Disabled, role, disabled_text)
-    palette.setColor(QPalette.Disabled, QPalette.Highlight, QColor("#666666"))
-    palette.setColor(QPalette.Disabled, QPalette.HighlightedText, disabled_text)
+    for role in (
+        QPalette.ColorRole.Text,
+        QPalette.ColorRole.WindowText,
+        QPalette.ColorRole.ButtonText,
+    ):
+        palette.setColor(QPalette.ColorGroup.Disabled, role, disabled_text)
+    palette.setColor(
+        QPalette.ColorGroup.Disabled, QPalette.ColorRole.Highlight, QColor("#666666")
+    )
+    palette.setColor(
+        QPalette.ColorGroup.Disabled, QPalette.ColorRole.HighlightedText, disabled_text
+    )
 
     return palette
 
@@ -286,7 +294,7 @@ def _recolor_document_anchors(document, color: QColor) -> None:
                 cursor.setPosition(fragment.position())
                 cursor.setPosition(
                     fragment.position() + fragment.length(),
-                    QTextCursor.KeepAnchor,
+                    QTextCursor.MoveMode.KeepAnchor,
                 )
                 cursor.mergeCharFormat(fmt)
             iterator += 1

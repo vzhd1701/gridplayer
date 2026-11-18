@@ -24,7 +24,9 @@ def settings(tmp_path, monkeypatch):
     """An ini of our own, so no test writes the one the user has."""
 
     store = _Settings.__new__(_Settings)
-    store.settings = QSettings(str(tmp_path / "settings.ini"), QSettings.IniFormat)
+    store.settings = QSettings(
+        str(tmp_path / "settings.ini"), QSettings.Format.IniFormat
+    )
 
     monkeypatch.setattr(settings_dialog, "Settings", lambda: store)
 
@@ -56,7 +58,7 @@ def make_dialog(settings, root):
         dialog.close()
         dialog.deleteLater()
 
-    QApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+    QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
 
 def _put(root, size, name="a"):
@@ -162,7 +164,7 @@ class TestClear:
         dialog = make_dialog()
         assert _said(dialog, "1.0 MB")
 
-        QTest.mouseClick(dialog.cacheClear, Qt.LeftButton)
+        QTest.mouseClick(dialog.cacheClear, Qt.MouseButton.LeftButton)
 
         assert _said(dialog, "Nothing")
         assert not path.exists()

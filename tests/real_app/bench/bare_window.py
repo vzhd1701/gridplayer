@@ -12,7 +12,7 @@ app = QApplication(["bare", "-platform", "xcb"])
 
 images = []
 for shade in (40, 80):
-    image = QImage(1920, 1080, QImage.Format_RGB32)
+    image = QImage(1920, 1080, QImage.Format.Format_RGB32)
     image.fill(QColor(shade, shade, shade))
     images.append(image)
 
@@ -28,15 +28,15 @@ class Window(QWidget):
 
 
 window = Window()
-window.setAttribute(Qt.WA_OpaquePaintEvent)
+window.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent)
 window.resize(1920, 1080)
 window.show()
 
 timer = QTimer()
-timer.setTimerType(Qt.PreciseTimer)
+timer.setTimerType(Qt.TimerType.PreciseTimer)
 timer.setInterval(16)
 timer.timeout.connect(window.update)
 timer.start()
 
 QTimer.singleShot(int(seconds * 1000), app.quit)
-app.exec_()
+app.exec()

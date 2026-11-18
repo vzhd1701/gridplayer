@@ -338,7 +338,7 @@ class _Settings:
     def __init__(self):
         settings_path = get_app_data_dir() / "settings.ini"
 
-        self.settings = QSettings(str(settings_path), QSettings.IniFormat)
+        self.settings = QSettings(str(settings_path), QSettings.Format.IniFormat)
 
         logging.getLogger("Settings").debug(f"Settings path: {settings_path}")
 

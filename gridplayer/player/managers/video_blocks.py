@@ -867,7 +867,7 @@ class VideoBlocksManager(ManagerBase):
             parent=self.parent(),
         )
 
-        vb.setAttribute(Qt.WA_DeleteOnClose)
+        vb.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
 
         qt_connect(
             (vb.about_to_close, self.close_single),

@@ -39,13 +39,13 @@ def _painted(surface, ratio=1.0) -> QImage:
     image = QImage(
         math.floor(surface.width() * ratio),
         math.floor(surface.height() * ratio),
-        QImage.Format_RGB32,
+        QImage.Format.Format_RGB32,
     )
     image.setDevicePixelRatio(ratio)
     image.fill(STALE)
 
     # the widget's own painting only, as on screen, where it's opaque
-    surface.render(image, QPoint(), QRegion(), QWidget.DrawChildren)
+    surface.render(image, QPoint(), QRegion(), QWidget.RenderFlag.DrawChildren)
 
     return image
 

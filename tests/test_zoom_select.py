@@ -88,7 +88,9 @@ def _pointer(monkeypatch):
         "Settings",
         lambda: SimpleNamespace(get=lambda _key: KeymapOverrides(dict(_KEYMAP))),
     )
-    monkeypatch.setattr(QApplication, "queryKeyboardModifiers", lambda: Qt.NoModifier)
+    monkeypatch.setattr(
+        QApplication, "queryKeyboardModifiers", lambda: Qt.KeyboardModifier.NoModifier
+    )
 
     yield
 
@@ -123,45 +125,52 @@ def manager(player, block):
     return ZoomSelectManager(context=context, parent=player)
 
 
-def _window_move(manager, x, y, buttons=Qt.NoButton):
+def _window_move(manager, x, y, buttons=Qt.MouseButton.NoButton):
     """A move as the window has it, before Qt picks a widget for it."""
 
     _Cursor.at = QPoint(x, y)
 
     return manager.eventFilter(
-        QWindow(), _event(QEvent.MouseMove, Qt.NoButton, buttons)
+        QWindow(), _event(QEvent.Type.MouseMove, Qt.MouseButton.NoButton, buttons)
     )
 
 
-def _event(kind, button, buttons, keys=Qt.NoModifier):
+def _event(kind, button, buttons, keys=Qt.KeyboardModifier.NoModifier):
     return QMouseEvent(kind, QPointF(0, 0), button, buttons, keys)
 
 
-def _press(manager, pressed, button=Qt.LeftButton, keys=Qt.ControlModifier):
-    event = _event(QEvent.MouseButtonPress, button, button, keys)
+def _press(
+    manager,
+    pressed,
+    button=Qt.MouseButton.LeftButton,
+    keys=Qt.KeyboardModifier.ControlModifier,
+):
+    event = _event(QEvent.Type.MouseButtonPress, button, button, keys)
 
     return manager.mouse_press(event, pressed)
 
 
-def _move_to(manager, x, y, buttons=Qt.LeftButton):
+def _move_to(manager, x, y, buttons=Qt.MouseButton.LeftButton):
     _Cursor.at = QPoint(x, y)
 
-    return manager.mouse_move(_event(QEvent.MouseMove, Qt.NoButton, buttons))
+    return manager.mouse_move(
+        _event(QEvent.Type.MouseMove, Qt.MouseButton.NoButton, buttons)
+    )
 
 
-def _release(manager, button=Qt.LeftButton):
+def _release(manager, button=Qt.MouseButton.LeftButton):
     """As Qt has it: to the window first, then to the widget, if any."""
 
-    event = _event(QEvent.MouseButtonRelease, button, Qt.NoButton)
+    event = _event(QEvent.Type.MouseButtonRelease, button, Qt.MouseButton.NoButton)
     manager.window_release(event)
 
     return manager.mouse_release(event)
 
 
-def _key(manager, kind, key=Qt.Key_Escape):
-    event = QKeyEvent(kind, key, Qt.NoModifier)
+def _key(manager, kind, key=Qt.Key.Key_Escape):
+    event = QKeyEvent(kind, key, Qt.KeyboardModifier.NoModifier)
 
-    if kind == QEvent.ShortcutOverride:
+    if kind == QEvent.Type.ShortcutOverride:
         event.ignore()
         return manager.shortcut_override(event), event.isAccepted()
 
@@ -169,7 +178,9 @@ def _key(manager, kind, key=Qt.Key_Escape):
 
 
 def _context_menu(manager):
-    return manager.context_menu(QContextMenuEvent(QContextMenuEvent.Mouse, QPoint()))
+    return manager.context_menu(
+        QContextMenuEvent(QContextMenuEvent.Reason.Mouse, QPoint())
+    )
 
 
 def _cursor_shape():
@@ -184,7 +195,7 @@ class TestWithTheKey:
 
         assert _move_to(manager, 300, 250) is True
         assert _move_to(manager, 400, 300) is True
-        assert _cursor_shape() == Qt.CrossCursor
+        assert _cursor_shape() == Qt.CursorShape.CrossCursor
 
         assert _release(manager) is True
 
@@ -235,9 +246,9 @@ class TestWithTheKey:
     @pytest.mark.parametrize(
         ("trigger", "keys"),
         [
-            ("Ctrl+Drag", Qt.ControlModifier),
-            ("Shift+Drag", Qt.ShiftModifier),
-            ("Alt+Drag", Qt.AltModifier),
+            ("Ctrl+Drag", Qt.KeyboardModifier.ControlModifier),
+            ("Shift+Drag", Qt.KeyboardModifier.ShiftModifier),
+            ("Alt+Drag", Qt.KeyboardModifier.AltModifier),
         ],
     )
     def test_the_left_button_selects_with_the_key_it_is_set_to(
@@ -248,27 +259,45 @@ class TestWithTheKey:
         assert _press(manager, block, keys=keys) is True
 
     def test_without_the_key_a_press_is_left_alone(self, manager, block):
-        assert _press(manager, block, keys=Qt.ShiftModifier) is None
+        assert _press(manager, block, keys=Qt.KeyboardModifier.ShiftModifier) is None
         assert _move_to(manager, 300, 300) is None
 
     def test_a_key_held_down_is_seen_where_the_press_does_not_say(
         self, manager, block, monkeypatch
     ):
         monkeypatch.setattr(
-            QApplication, "queryKeyboardModifiers", lambda: Qt.ControlModifier
+            QApplication,
+            "queryKeyboardModifiers",
+            lambda: Qt.KeyboardModifier.ControlModifier,
         )
 
-        assert _press(manager, block, keys=Qt.NoModifier) is True
+        assert _press(manager, block, keys=Qt.KeyboardModifier.NoModifier) is True
 
     def test_set_to_the_middle_button_it_selects_with_that(self, manager, block):
         _trigger("Middle-Drag", pan=("Ctrl+Drag",))
 
-        assert _press(manager, block, Qt.LeftButton, Qt.ControlModifier) is None
-        assert _press(manager, block, Qt.MiddleButton, Qt.NoModifier) is True
+        assert (
+            _press(
+                manager,
+                block,
+                Qt.MouseButton.LeftButton,
+                Qt.KeyboardModifier.ControlModifier,
+            )
+            is None
+        )
+        assert (
+            _press(
+                manager,
+                block,
+                Qt.MouseButton.MiddleButton,
+                Qt.KeyboardModifier.NoModifier,
+            )
+            is True
+        )
 
-        _move_to(manager, 300, 300, buttons=Qt.MiddleButton)
+        _move_to(manager, 300, 300, buttons=Qt.MouseButton.MiddleButton)
 
-        assert _release(manager, Qt.MiddleButton) is True
+        assert _release(manager, Qt.MouseButton.MiddleButton) is True
         assert block.zooms == [QRect(100, 100, 200, 200)]
 
     def test_by_default_it_is_a_left_drag_with_ctrl(self, manager, block):
@@ -278,14 +307,30 @@ class TestWithTheKey:
 
         _trigger(*default_keymap()[GESTURE_ZOOM_SELECT])
 
-        assert _press(manager, block, Qt.MiddleButton, Qt.NoModifier) is None
-        assert _press(manager, block, keys=Qt.ControlModifier) is True
+        assert (
+            _press(
+                manager,
+                block,
+                Qt.MouseButton.MiddleButton,
+                Qt.KeyboardModifier.NoModifier,
+            )
+            is None
+        )
+        assert _press(manager, block, keys=Qt.KeyboardModifier.ControlModifier) is True
 
     def test_set_to_nothing_nothing_selects(self, manager, block):
         _trigger()
 
-        assert _press(manager, block, keys=Qt.ControlModifier) is None
-        assert _press(manager, block, Qt.MiddleButton, Qt.NoModifier) is None
+        assert _press(manager, block, keys=Qt.KeyboardModifier.ControlModifier) is None
+        assert (
+            _press(
+                manager,
+                block,
+                Qt.MouseButton.MiddleButton,
+                Qt.KeyboardModifier.NoModifier,
+            )
+            is None
+        )
 
     def test_what_moves_the_picture_about_does_not_select(self, manager, block):
         """The shortcuts editor does not let the two be the same; set so
@@ -319,12 +364,12 @@ class TestWithTheKey:
     def test_a_window_over_the_video_keeps_its_press(self, manager, block, player):
         """Such as the bookmarks of the video, which belong to it."""
 
-        window = QWidget(block, Qt.Window)
+        window = QWidget(block, Qt.WindowType.Window)
 
         assert _press(manager, window) is None
 
     def test_the_overlay_s_own_window_is_the_video_s(self, manager, block):
-        overlay = QWidget(block, Qt.Window)
+        overlay = QWidget(block, Qt.WindowType.Window)
         block.overlay.is_control_at = lambda _pos: False
         inside = QWidget(overlay)
         block.overlay = overlay
@@ -350,7 +395,9 @@ class TestWithTheKey:
         _press(manager, block)
         _move_to(manager, 300, 300)
 
-        made_up = _event(QEvent.MouseMove, Qt.NoButton, Qt.NoButton)
+        made_up = _event(
+            QEvent.Type.MouseMove, Qt.MouseButton.NoButton, Qt.MouseButton.NoButton
+        )
 
         assert manager.eventFilter(block, made_up) is True
 
@@ -367,14 +414,18 @@ class TestWithTheKey:
         _move_to(manager, 300, 300)
 
         manager.window_release(
-            _event(QEvent.MouseButtonRelease, Qt.LeftButton, Qt.NoButton)
+            _event(
+                QEvent.Type.MouseButtonRelease,
+                Qt.MouseButton.LeftButton,
+                Qt.MouseButton.NoButton,
+            )
         )
 
         assert block.zooms == [QRect(100, 100, 200, 200)]
         assert _cursor_shape() is None
 
         # nor is the next click lost to it
-        _press(manager, block, keys=Qt.NoModifier)
+        _press(manager, block, keys=Qt.KeyboardModifier.NoModifier)
 
         assert _release(manager) is None
 
@@ -382,7 +433,7 @@ class TestWithTheKey:
         _press(manager, block)
         _move_to(manager, 300, 300)
 
-        assert _move_to(manager, 350, 350, buttons=Qt.NoButton) is None
+        assert _move_to(manager, 350, 350, buttons=Qt.MouseButton.NoButton) is None
         assert block.shown[-1] is None
         assert block.zooms == []
         assert _cursor_shape() is None
@@ -405,8 +456,8 @@ class TestLettingGo:
         _press(manager, block)
         _move_to(manager, 300, 300)
 
-        assert _key(manager, QEvent.ShortcutOverride) == (True, True)
-        assert _key(manager, QEvent.KeyPress) is True
+        assert _key(manager, QEvent.Type.ShortcutOverride) == (True, True)
+        assert _key(manager, QEvent.Type.KeyPress) is True
 
         assert block.shown[-1] is None
         assert _cursor_shape() is None
@@ -419,21 +470,32 @@ class TestLettingGo:
         _press(manager, block)
         _move_to(manager, 300, 300)
 
-        assert _key(manager, QEvent.ShortcutOverride, Qt.Key_Space) == (None, False)
-        assert _key(manager, QEvent.KeyPress, Qt.Key_Space) is None
+        assert _key(manager, QEvent.Type.ShortcutOverride, Qt.Key.Key_Space) == (
+            None,
+            False,
+        )
+        assert _key(manager, QEvent.Type.KeyPress, Qt.Key.Key_Space) is None
 
     def test_esc_with_nothing_going_on_is_left_alone(self, manager):
-        assert _key(manager, QEvent.ShortcutOverride) == (None, False)
-        assert _key(manager, QEvent.KeyPress) is None
+        assert _key(manager, QEvent.Type.ShortcutOverride) == (None, False)
+        assert _key(manager, QEvent.Type.KeyPress) is None
 
     def test_the_right_button_lets_go_of_it_with_no_menu(self, manager, block):
         _press(manager, block)
         _move_to(manager, 300, 300)
 
-        assert _press(manager, block, Qt.RightButton, Qt.NoModifier) is True
+        assert (
+            _press(
+                manager,
+                block,
+                Qt.MouseButton.RightButton,
+                Qt.KeyboardModifier.NoModifier,
+            )
+            is True
+        )
         assert block.shown[-1] is None
 
-        assert _release(manager, Qt.RightButton) is True
+        assert _release(manager, Qt.MouseButton.RightButton) is True
         assert _context_menu(manager) is True
         assert _release(manager) is True
         assert block.zooms == []
@@ -445,10 +507,12 @@ class TestLettingGo:
     def test_a_release_let_go_of_elsewhere_is_not_waited_for(self, manager, block):
         _press(manager, block)
         _move_to(manager, 300, 300)
-        _key(manager, QEvent.KeyPress)
+        _key(manager, QEvent.Type.KeyPress)
 
         # the left button's release never came: it is up at the next press
-        _press(manager, block, Qt.RightButton, Qt.NoModifier)
+        _press(
+            manager, block, Qt.MouseButton.RightButton, Qt.KeyboardModifier.NoModifier
+        )
 
         assert _release(manager) is None
 
@@ -496,7 +560,7 @@ class TestTheHint:
 
     def test_the_selecting_started_the_outline_says_it(self, manager, block):
         manager.arm()
-        _press(manager, block, keys=Qt.NoModifier)
+        _press(manager, block, keys=Qt.KeyboardModifier.NoModifier)
 
         assert block.hints == [True]
 
@@ -509,7 +573,7 @@ class TestTheHint:
         "let_go",
         [
             lambda manager: manager.arm(),
-            lambda manager: _key(manager, QEvent.KeyPress),
+            lambda manager: _key(manager, QEvent.Type.KeyPress),
             lambda manager: _context_menu(manager),
         ],
     )
@@ -542,8 +606,8 @@ class TestPickedFromTheMenu:
 
         manager.arm()
 
-        assert _cursor_shape() == Qt.CrossCursor
-        assert _press(manager, block, keys=Qt.NoModifier) is True
+        assert _cursor_shape() == Qt.CursorShape.CrossCursor
+        assert _press(manager, block, keys=Qt.KeyboardModifier.NoModifier) is True
 
         _move_to(manager, 300, 300)
 
@@ -555,24 +619,24 @@ class TestPickedFromTheMenu:
         _trigger()
 
         manager.arm()
-        _press(manager, block, keys=Qt.NoModifier)
+        _press(manager, block, keys=Qt.KeyboardModifier.NoModifier)
         _move_to(manager, 300, 300)
         _release(manager)
 
-        assert _press(manager, block, keys=Qt.NoModifier) is None
+        assert _press(manager, block, keys=Qt.KeyboardModifier.NoModifier) is None
 
     def test_over_the_overlay_s_controls_too(self, manager, block):
         block.is_control_pressed = True
 
         manager.arm()
 
-        assert _press(manager, block, keys=Qt.NoModifier) is True
+        assert _press(manager, block, keys=Qt.KeyboardModifier.NoModifier) is True
 
     def test_a_click_is_not_a_click_then_but_not_a_selection_either(
         self, manager, block
     ):
         manager.arm()
-        _press(manager, block, keys=Qt.NoModifier)
+        _press(manager, block, keys=Qt.KeyboardModifier.NoModifier)
 
         assert _release(manager) is True
         assert block.zooms == []
@@ -588,16 +652,24 @@ class TestPickedFromTheMenu:
     def test_esc_lets_go_of_it(self, manager):
         manager.arm()
 
-        assert _key(manager, QEvent.ShortcutOverride) == (True, True)
-        assert _key(manager, QEvent.KeyPress) is True
+        assert _key(manager, QEvent.Type.ShortcutOverride) == (True, True)
+        assert _key(manager, QEvent.Type.KeyPress) is True
         assert _cursor_shape() is None
 
     def test_the_right_button_lets_go_of_it_with_no_menu(self, manager, block):
         manager.arm()
 
-        assert _press(manager, block, Qt.RightButton, Qt.NoModifier) is True
+        assert (
+            _press(
+                manager,
+                block,
+                Qt.MouseButton.RightButton,
+                Qt.KeyboardModifier.NoModifier,
+            )
+            is True
+        )
         assert _context_menu(manager) is True
-        assert _release(manager, Qt.RightButton) is True
+        assert _release(manager, Qt.MouseButton.RightButton) is True
         assert _cursor_shape() is None
 
     def test_a_press_with_no_picture_lets_go_of_it(self, manager, block):
@@ -605,16 +677,16 @@ class TestPickedFromTheMenu:
 
         manager.arm()
 
-        assert _press(manager, block, keys=Qt.NoModifier) is True
+        assert _press(manager, block, keys=Qt.KeyboardModifier.NoModifier) is True
         assert _release(manager) is True
         assert _cursor_shape() is None
 
     def test_a_press_in_a_window_over_the_player_goes_to_it(self, manager, block):
-        window = QWidget(block, Qt.Window)
+        window = QWidget(block, Qt.WindowType.Window)
 
         manager.arm()
 
-        assert _press(manager, window, keys=Qt.NoModifier) is None
+        assert _press(manager, window, keys=Qt.KeyboardModifier.NoModifier) is None
         assert _cursor_shape() is None
 
     def test_the_menu_s_key_lets_go_of_it(self, manager):
@@ -632,16 +704,18 @@ class _Recorder(QWidget):
         self.seen = []
 
     def mousePressEvent(self, event):
-        self.seen.append(QEvent.MouseButtonPress)
+        self.seen.append(QEvent.Type.MouseButtonPress)
 
     def mouseMoveEvent(self, event):
-        self.seen.append(QEvent.MouseMove)
+        self.seen.append(QEvent.Type.MouseMove)
 
     def mouseReleaseEvent(self, event):
-        self.seen.append(QEvent.MouseButtonRelease)
+        self.seen.append(QEvent.Type.MouseButtonRelease)
 
 
-def _to_window(widget, kind, x, y, button, buttons, keys=Qt.NoModifier):
+def _to_window(
+    widget, kind, x, y, button, buttons, keys=Qt.KeyboardModifier.NoModifier
+):
     """As the platform delivers it: to the window, which finds the widget."""
 
     local = QPoint(x, y)
@@ -676,7 +750,10 @@ class _ThenTheDrag(QObject):
         if self.manager.eventFilter(event_object, event):
             return True
 
-        if event.type() == QEvent.MouseMove and event.buttons() & Qt.LeftButton:
+        if (
+            event.type() == QEvent.Type.MouseMove
+            and event.buttons() & Qt.MouseButton.LeftButton
+        ):
             self.drag_saw.append(type(event_object).__name__)
 
         return False
@@ -727,12 +804,12 @@ def real_player():
 def _ctrl_press(player, x, y):
     _to_window(
         player,
-        QEvent.MouseButtonPress,
+        QEvent.Type.MouseButtonPress,
         x,
         y,
-        Qt.LeftButton,
-        Qt.LeftButton,
-        Qt.ControlModifier,
+        Qt.MouseButton.LeftButton,
+        Qt.MouseButton.LeftButton,
+        Qt.KeyboardModifier.ControlModifier,
     )
 
 
@@ -745,32 +822,80 @@ def test_a_selection_is_nothing_else_s_and_then_the_pointer_is_heard_again(
     r = real_player
 
     _ctrl_press(r.player, 50, 50)
-    _to_window(r.player, QEvent.MouseMove, 52, 51, Qt.NoButton, Qt.LeftButton)
-    _to_window(r.player, QEvent.MouseMove, 150, 120, Qt.NoButton, Qt.LeftButton)
     _to_window(
-        r.player, QEvent.MouseButtonRelease, 150, 120, Qt.LeftButton, Qt.NoButton
+        r.player,
+        QEvent.Type.MouseMove,
+        52,
+        51,
+        Qt.MouseButton.NoButton,
+        Qt.MouseButton.LeftButton,
+    )
+    _to_window(
+        r.player,
+        QEvent.Type.MouseMove,
+        150,
+        120,
+        Qt.MouseButton.NoButton,
+        Qt.MouseButton.LeftButton,
+    )
+    _to_window(
+        r.player,
+        QEvent.Type.MouseButtonRelease,
+        150,
+        120,
+        Qt.MouseButton.LeftButton,
+        Qt.MouseButton.NoButton,
     )
 
-    _to_window(r.other, QEvent.MouseMove, 20, 160, Qt.NoButton, Qt.NoButton)
+    _to_window(
+        r.other,
+        QEvent.Type.MouseMove,
+        20,
+        160,
+        Qt.MouseButton.NoButton,
+        Qt.MouseButton.NoButton,
+    )
 
     assert r.block.zooms == [QRect(50, 50, 100, 70)]
     assert r.video.seen == []
     # the drag saw the press at the window, and would go from there
     assert r.filters.drag_saw == []
-    assert r.bar.seen == [QEvent.MouseMove]
+    assert r.bar.seen == [QEvent.Type.MouseMove]
 
 
 def test_let_go_of_the_button_held_is_still_not_a_drag(real_player):
     r = real_player
 
     _ctrl_press(r.player, 50, 50)
-    _to_window(r.player, QEvent.MouseMove, 150, 120, Qt.NoButton, Qt.LeftButton)
-    QApplication.sendEvent(
-        r.player, QKeyEvent(QEvent.KeyPress, Qt.Key_Escape, Qt.NoModifier)
-    )
-    _to_window(r.player, QEvent.MouseMove, 250, 220, Qt.NoButton, Qt.LeftButton)
     _to_window(
-        r.player, QEvent.MouseButtonRelease, 250, 220, Qt.LeftButton, Qt.NoButton
+        r.player,
+        QEvent.Type.MouseMove,
+        150,
+        120,
+        Qt.MouseButton.NoButton,
+        Qt.MouseButton.LeftButton,
+    )
+    QApplication.sendEvent(
+        r.player,
+        QKeyEvent(
+            QEvent.Type.KeyPress, Qt.Key.Key_Escape, Qt.KeyboardModifier.NoModifier
+        ),
+    )
+    _to_window(
+        r.player,
+        QEvent.Type.MouseMove,
+        250,
+        220,
+        Qt.MouseButton.NoButton,
+        Qt.MouseButton.LeftButton,
+    )
+    _to_window(
+        r.player,
+        QEvent.Type.MouseButtonRelease,
+        250,
+        220,
+        Qt.MouseButton.LeftButton,
+        Qt.MouseButton.NoButton,
     )
 
     assert r.block.zooms == []

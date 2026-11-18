@@ -20,7 +20,7 @@ def _qapp():
 
 
 def _shown(overlay, holder):
-    holder.setAttribute(Qt.WA_DontShowOnScreen)
+    holder.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen)
     holder.resize(640, 360)
     overlay.resize(640, 360)
     overlay.set_color("#ffffff")

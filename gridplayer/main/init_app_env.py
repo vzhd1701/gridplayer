@@ -102,10 +102,10 @@ def init_app_env():
     if env.MPV_GL_OUTPUT:
         # MPV's frames drawn in the window: the render thread's textures go to
         # every QOpenGLWidget through Qt's one share group
-        QApplication.setAttribute(Qt.AA_ShareOpenGLContexts)
+        QApplication.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts)
         if env.IS_WINDOWS:
             # not ANGLE, which has no NVDEC and can't share with WGL
-            QApplication.setAttribute(Qt.AA_UseDesktopOpenGL)
+            QApplication.setAttribute(Qt.ApplicationAttribute.AA_UseDesktopOpenGL)
             # before Qt makes its first context, which every other shares with
             if gl_line_fix() != GLLineFix.OFF:
                 set_gl_alpha(8)
@@ -135,8 +135,8 @@ def init_app_env():
     if env.IS_MACOS:
         start_resource_tracker()
 
-    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
-    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
+    QApplication.setAttribute(Qt.ApplicationAttribute.AA_EnableHighDpiScaling)
+    QApplication.setAttribute(Qt.ApplicationAttribute.AA_UseHighDpiPixmaps)
 
     QGuiApplication.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough

@@ -269,8 +269,8 @@ def _never_activated(place) -> None:
             real_show(self)
             return
 
-        self.setAttribute(Qt.WA_ShowWithoutActivating)
-        self.setWindowFlag(Qt.WindowDoesNotAcceptFocus)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+        self.setWindowFlag(Qt.WindowType.WindowDoesNotAcceptFocus)
         place(self, lambda: real_show(self))
         self._context.commands.activate_window = _ignore
 
@@ -315,7 +315,7 @@ def _grab(path: Path, width: int, height: int, draw) -> None:
     old = gdi32.SelectObject(dc, bitmap)
     draw(dc, screen)
 
-    image = QImage(width, height, QImage.Format_RGB32)
+    image = QImage(width, height, QImage.Format.Format_RGB32)
     header = (ctypes.c_int32 * 10)(40, width, -height, 0x200001)
     pixels = ctypes.c_void_p(int(image.bits()))
     gdi32.GetDIBits(dc, bitmap, 0, height, pixels, header, 0)

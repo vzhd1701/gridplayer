@@ -12,6 +12,7 @@ from gridplayer.models.keymap_overrides import KeymapOverrides
 from gridplayer.params.actions import ACTIONS
 from gridplayer.params.gestures import GESTURE_DROP_SWITCH, GESTURES, GestureKind
 from gridplayer.settings import Settings
+from gridplayer.utils.qt import flag_value
 
 
 class WheelDirection(Enum):
@@ -52,7 +53,7 @@ class WheelNotches:
         delta = event.angleDelta()
         is_vertical = delta.y() != 0
         turn = delta.y() if is_vertical else delta.x()
-        turned = (is_vertical, turn > 0, int(event.modifiers()))
+        turned = (is_vertical, turn > 0, flag_value(event.modifiers()))
 
         ms = event.timestamp()
         is_paused = self._last_ms is not None and ms - self._last_ms > WHEEL_PAUSE_MS
@@ -73,9 +74,9 @@ class WheelNotches:
 # keymap stores it. Meta is not one: the desktop has it, and on macOS it is
 # the Control key, with which a click is a right click.
 HOLD_KEYS = {
-    "Hold Shift": Qt.ShiftModifier,
-    "Hold Ctrl": Qt.ControlModifier,
-    "Hold Alt": Qt.AltModifier,
+    "Hold Shift": Qt.KeyboardModifier.ShiftModifier,
+    "Hold Ctrl": Qt.KeyboardModifier.ControlModifier,
+    "Hold Alt": Qt.KeyboardModifier.AltModifier,
 }
 
 
@@ -93,40 +94,40 @@ class DragProblem(Enum):
 
 class MouseButtonSequence:
     modifier_map = {
-        Qt.ControlModifier: "Ctrl",
-        Qt.AltModifier: "Alt",
-        Qt.ShiftModifier: "Shift",
-        Qt.MetaModifier: "Meta",
+        Qt.KeyboardModifier.ControlModifier: "Ctrl",
+        Qt.KeyboardModifier.AltModifier: "Alt",
+        Qt.KeyboardModifier.ShiftModifier: "Shift",
+        Qt.KeyboardModifier.MetaModifier: "Meta",
     }
 
     click_map = {
-        Qt.LeftButton: "Click",
-        Qt.RightButton: "Right-Click",
-        Qt.MiddleButton: "Middle-Click",
-        Qt.BackButton: "Back-Click",
-        Qt.ForwardButton: "Forward-Click",
-        Qt.TaskButton: "Task-Click",
-        Qt.ExtraButton4: "Click-4",
-        Qt.ExtraButton5: "Click-5",
-        Qt.ExtraButton6: "Click-6",
-        Qt.ExtraButton7: "Click-7",
-        Qt.ExtraButton8: "Click-8",
-        Qt.ExtraButton9: "Click-9",
-        Qt.ExtraButton10: "Click-10",
-        Qt.ExtraButton11: "Click-11",
-        Qt.ExtraButton12: "Click-12",
-        Qt.ExtraButton13: "Click-13",
-        Qt.ExtraButton14: "Click-14",
-        Qt.ExtraButton15: "Click-15",
-        Qt.ExtraButton16: "Click-16",
-        Qt.ExtraButton17: "Click-17",
-        Qt.ExtraButton18: "Click-18",
-        Qt.ExtraButton19: "Click-19",
-        Qt.ExtraButton20: "Click-20",
-        Qt.ExtraButton21: "Click-21",
-        Qt.ExtraButton22: "Click-22",
-        Qt.ExtraButton23: "Click-23",
-        Qt.ExtraButton24: "Click-24",
+        Qt.MouseButton.LeftButton: "Click",
+        Qt.MouseButton.RightButton: "Right-Click",
+        Qt.MouseButton.MiddleButton: "Middle-Click",
+        Qt.MouseButton.BackButton: "Back-Click",
+        Qt.MouseButton.ForwardButton: "Forward-Click",
+        Qt.MouseButton.TaskButton: "Task-Click",
+        Qt.MouseButton.ExtraButton4: "Click-4",
+        Qt.MouseButton.ExtraButton5: "Click-5",
+        Qt.MouseButton.ExtraButton6: "Click-6",
+        Qt.MouseButton.ExtraButton7: "Click-7",
+        Qt.MouseButton.ExtraButton8: "Click-8",
+        Qt.MouseButton.ExtraButton9: "Click-9",
+        Qt.MouseButton.ExtraButton10: "Click-10",
+        Qt.MouseButton.ExtraButton11: "Click-11",
+        Qt.MouseButton.ExtraButton12: "Click-12",
+        Qt.MouseButton.ExtraButton13: "Click-13",
+        Qt.MouseButton.ExtraButton14: "Click-14",
+        Qt.MouseButton.ExtraButton15: "Click-15",
+        Qt.MouseButton.ExtraButton16: "Click-16",
+        Qt.MouseButton.ExtraButton17: "Click-17",
+        Qt.MouseButton.ExtraButton18: "Click-18",
+        Qt.MouseButton.ExtraButton19: "Click-19",
+        Qt.MouseButton.ExtraButton20: "Click-20",
+        Qt.MouseButton.ExtraButton21: "Click-21",
+        Qt.MouseButton.ExtraButton22: "Click-22",
+        Qt.MouseButton.ExtraButton23: "Click-23",
+        Qt.MouseButton.ExtraButton24: "Click-24",
     }
 
     wheel_direction_map = {
@@ -208,7 +209,10 @@ class MouseButtonSequence:
     @classmethod
     def from_event(cls, event):
         # Press (capture UI) and Release (video actions) both map to Click
-        if event.type() in (QEvent.MouseButtonPress, QEvent.MouseButtonRelease):
+        if event.type() in (
+            QEvent.Type.MouseButtonPress,
+            QEvent.Type.MouseButtonRelease,
+        ):
             return cls._convert_button(
                 button=event.button(),
                 is_double=False,
@@ -216,7 +220,7 @@ class MouseButtonSequence:
                 modifiers=event.modifiers(),
             )
 
-        if event.type() == QEvent.MouseButtonDblClick:
+        if event.type() == QEvent.Type.MouseButtonDblClick:
             return cls._convert_button(
                 button=event.button(),
                 is_double=True,
@@ -224,7 +228,7 @@ class MouseButtonSequence:
                 modifiers=event.modifiers(),
             )
 
-        if isinstance(event, QWheelEvent) or event.type() == QEvent.Wheel:
+        if isinstance(event, QWheelEvent) or event.type() == QEvent.Type.Wheel:
             delta = event.angleDelta()
             if delta.y() > 0:
                 wheel_direction = WheelDirection.UP
@@ -302,8 +306,8 @@ def normalize_shortcut(shortcut: str) -> str | None:
     if MouseButtonSequence.is_mouse_sequence(text):
         return str(MouseButtonSequence(text))
 
-    seq = QKeySequence(text, QKeySequence.PortableText)
-    portable = seq.toString(QKeySequence.PortableText)
+    seq = QKeySequence(text, QKeySequence.SequenceFormat.PortableText)
+    portable = seq.toString(QKeySequence.SequenceFormat.PortableText)
     if not portable:
         # e.g. unknown key names → count may be >0 but string is empty
         return None
@@ -333,13 +337,13 @@ def qkeysequences_for_shortcut(shortcut: str) -> list[QKeySequence]:
     result: list[QKeySequence] = []
     seen_codes: set[int] = set()
     for variant in variants:
-        seq = QKeySequence(variant, QKeySequence.PortableText)
+        seq = QKeySequence(variant, QKeySequence.SequenceFormat.PortableText)
         if not seq.count():
             continue
         code = int(seq[0])
         if code in seen_codes:
             continue
-        if not seq.toString(QKeySequence.PortableText):
+        if not seq.toString(QKeySequence.SequenceFormat.PortableText):
             continue
         seen_codes.add(code)
         result.append(seq)
@@ -423,10 +427,10 @@ def drag_problem(shortcut: str) -> DragProblem | None:
     if "Meta" in sequence.modifiers:
         return DragProblem.META
 
-    if sequence.drag_button == Qt.RightButton:
+    if sequence.drag_button == Qt.MouseButton.RightButton:
         return DragProblem.RIGHT_BUTTON
 
-    if sequence.drag_button == Qt.LeftButton and not sequence.modifiers:
+    if sequence.drag_button == Qt.MouseButton.LeftButton and not sequence.modifiers:
         return DragProblem.MOVES_VIDEO
 
     return None
@@ -524,14 +528,14 @@ def is_gesture_press(gesture_id: str, event) -> bool:
 
 # the modifier each modifier key is
 KEY_MODIFIERS = {
-    Qt.Key_Shift: Qt.ShiftModifier,
-    Qt.Key_Control: Qt.ControlModifier,
-    Qt.Key_Alt: Qt.AltModifier,
-    Qt.Key_Meta: Qt.MetaModifier,
+    Qt.Key.Key_Shift: Qt.KeyboardModifier.ShiftModifier,
+    Qt.Key.Key_Control: Qt.KeyboardModifier.ControlModifier,
+    Qt.Key.Key_Alt: Qt.KeyboardModifier.AltModifier,
+    Qt.Key.Key_Meta: Qt.KeyboardModifier.MetaModifier,
 }
 
 
-def modifiers_after(event) -> Qt.KeyboardModifiers:
+def modifiers_after(event) -> Qt.KeyboardModifier:
     """The modifiers held once a key is pressed or let go of: the event of
     a modifier's own key may still have them as they were before it."""
 
@@ -539,7 +543,7 @@ def modifiers_after(event) -> Qt.KeyboardModifiers:
     modifier = KEY_MODIFIERS.get(event.key())
     if modifier is None:
         return modifiers
-    if event.type() == QEvent.KeyRelease:
+    if event.type() == QEvent.Type.KeyRelease:
         return modifiers & ~modifier
     return modifiers | modifier
 
@@ -634,7 +638,7 @@ def sparse_overrides(
 
 def normalize_key_sequence(seq: QKeySequence) -> str:
     """Portable single-chord string matching ACTIONS style."""
-    text = seq.toString(QKeySequence.PortableText)
+    text = seq.toString(QKeySequence.SequenceFormat.PortableText)
     if not text:
         return ""
     text = text.split(", ")[0]
@@ -646,23 +650,25 @@ def key_sequence_from_event(event) -> str | None:
     """Build a single portable shortcut string from a key event, or None if incomplete."""
     key = event.key()
     if key in (
-        Qt.Key_Control,
-        Qt.Key_Shift,
-        Qt.Key_Alt,
-        Qt.Key_Meta,
-        Qt.Key_AltGr,
-        Qt.Key_unknown,
+        Qt.Key.Key_Control,
+        Qt.Key.Key_Shift,
+        Qt.Key.Key_Alt,
+        Qt.Key.Key_Meta,
+        Qt.Key.Key_AltGr,
+        Qt.Key.Key_unknown,
     ):
         return None
 
     modifiers = event.modifiers()
-    modifiers &= ~(Qt.KeypadModifier | Qt.GroupSwitchModifier)
+    modifiers &= ~(
+        Qt.KeyboardModifier.KeypadModifier | Qt.KeyboardModifier.GroupSwitchModifier
+    )
 
-    if key == Qt.Key_Backtab:
-        key = Qt.Key_Tab
-        modifiers |= Qt.ShiftModifier
+    if key == Qt.Key.Key_Backtab:
+        key = Qt.Key.Key_Tab
+        modifiers |= Qt.KeyboardModifier.ShiftModifier
 
-    return normalize_key_sequence(QKeySequence(int(modifiers) | key))
+    return normalize_key_sequence(QKeySequence(flag_value(modifiers) | key))
 
 
 def split_shortcuts(shortcuts: list[str]) -> tuple[list[str], list[str]]:

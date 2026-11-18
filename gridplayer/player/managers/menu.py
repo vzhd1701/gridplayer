@@ -19,7 +19,7 @@ class MenuManager(ManagerBase):
     @property
     def event_map(self):
         return {
-            QEvent.ContextMenu: self.contextMenuEvent,
+            QEvent.Type.ContextMenu: self.contextMenuEvent,
         }
 
     def contextMenuEvent(self, event):
@@ -35,7 +35,7 @@ class MenuManager(ManagerBase):
 
         self._ctx.context_menu_pos = event.globalPos()
         try:
-            menu.exec_(event.globalPos())
+            menu.exec(event.globalPos())
         finally:
             self._ctx.context_menu_pos = None
 

@@ -66,7 +66,7 @@ def _is_picture(data: bytes) -> bool:
 
     buffer = QBuffer()
     buffer.setData(data)
-    buffer.open(QIODevice.ReadOnly)
+    buffer.open(QIODevice.OpenModeFlag.ReadOnly)
 
     return QImageReader(buffer).canRead()
 
@@ -228,7 +228,11 @@ def fitted(image: QImage, size: QSize) -> QImage:
     """A picture filling a box of this size, cut to its shape in the middle
     rather than squeezed: a 4:3 one in a 16:9 box loses its top and bottom."""
 
-    scaled = image.scaled(size, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
+    scaled = image.scaled(
+        size,
+        Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+        Qt.TransformationMode.SmoothTransformation,
+    )
 
     cut = QRect(
         (scaled.width() - size.width()) // 2,

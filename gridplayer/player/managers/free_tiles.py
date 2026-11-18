@@ -136,7 +136,7 @@ class FreeTilesManager(LayoutDragManager):
 
     def mouse_move(self, event):
         if self._drag is not None:
-            if not event.buttons() & Qt.LeftButton:
+            if not event.buttons() & Qt.MouseButton.LeftButton:
                 # let go of somewhere the release never came from
                 self._finish()
                 return None
@@ -144,10 +144,10 @@ class FreeTilesManager(LayoutDragManager):
             self._move_to(QCursor.pos(), event.modifiers())
             return True
 
-        if self._pressed is not None and event.buttons() & Qt.LeftButton:
+        if self._pressed is not None and event.buttons() & Qt.MouseButton.LeftButton:
             return self._move_if_far(event) or None
 
-        if event.buttons() == Qt.NoButton:
+        if event.buttons() == Qt.MouseButton.NoButton:
             self._pressed = None
             self._hover_under_pointer()
         return None
@@ -157,7 +157,7 @@ class FreeTilesManager(LayoutDragManager):
         return super().mouse_release(event)
 
     def mouse_double_click(self, event):
-        if event.button() != Qt.LeftButton:
+        if event.button() != Qt.MouseButton.LeftButton:
             return None
 
         # the second press of it took the edge
@@ -182,7 +182,7 @@ class FreeTilesManager(LayoutDragManager):
 
     def _press(self, event):
         self._pressed = None
-        if event.button() != Qt.LeftButton:
+        if event.button() != Qt.MouseButton.LeftButton:
             return None
 
         pointed = self._tile_under_pointer()
@@ -331,7 +331,7 @@ class FreeTilesManager(LayoutDragManager):
 
         self._start(drag, page)
         # the press was the video's: its release no click of it
-        self._swallowed_buttons.add(Qt.LeftButton)
+        self._swallowed_buttons.add(Qt.MouseButton.LeftButton)
         self._move_to(pos, event.modifiers())
         return True
 
@@ -354,7 +354,7 @@ class FreeTilesManager(LayoutDragManager):
         self._page = page
         self._begin_drag()
 
-        self._set_cursor(SIZE_CURSORS.get(drag.handle, Qt.SizeAllCursor))
+        self._set_cursor(SIZE_CURSORS.get(drag.handle, Qt.CursorShape.SizeAllCursor))
         self._locks.show([_on_screen(rect, page) for rect in drag.locked])
 
     def _move_to(self, global_pos: QPoint, modifiers):
@@ -366,13 +366,16 @@ class FreeTilesManager(LayoutDragManager):
         drag = self._drag
         local = global_pos - self._page.topLeft()
         is_snapping = (
-            not modifiers & Qt.AltModifier and self._ctx.commands.is_grid_line_snap()
+            not modifiers & Qt.KeyboardModifier.AltModifier
+            and self._ctx.commands.is_grid_line_snap()
         )
-        keeps_shape = not modifiers & Qt.ShiftModifier
+        keeps_shape = not modifiers & Qt.KeyboardModifier.ShiftModifier
 
         rect = drag.moved((local.x(), local.y()), is_snapping, keeps_shape)
         self._set_tiles(
-            drag, rect, is_pulled=drag.is_move and not modifiers & Qt.AltModifier
+            drag,
+            rect,
+            is_pulled=drag.is_move and not modifiers & Qt.KeyboardModifier.AltModifier,
         )
         if drag.is_over:
             # over the others it goes, not under them

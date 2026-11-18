@@ -57,10 +57,10 @@ WM_LBUTTONDBLCLK = 0x203
 WM_MBUTTONUP = 0x208
 
 _NOTE_ICONS = {
-    QSystemTrayIcon.NoIcon: 0,
-    QSystemTrayIcon.Information: 1,
-    QSystemTrayIcon.Warning: 2,
-    QSystemTrayIcon.Critical: 3,
+    QSystemTrayIcon.MessageIcon.NoIcon: 0,
+    QSystemTrayIcon.MessageIcon.Information: 1,
+    QSystemTrayIcon.MessageIcon.Warning: 2,
+    QSystemTrayIcon.MessageIcon.Critical: 3,
 }
 
 
@@ -172,7 +172,7 @@ class WindowsTrayIcon(QObject):
         self,
         title: str,
         text: str,
-        icon=QSystemTrayIcon.Information,
+        icon=QSystemTrayIcon.MessageIcon.Information,
         msecs: int = 10000,
     ) -> None:
         if not self._is_added:
@@ -203,15 +203,15 @@ class WindowsTrayIcon(QObject):
             if self._is_skipping_select:
                 self._is_skipping_select = False
             else:
-                self.activated.emit(QSystemTrayIcon.Trigger)
+                self.activated.emit(QSystemTrayIcon.ActivationReason.Trigger)
         elif event == WM_LBUTTONDBLCLK:
             self._is_skipping_select = True
-            self.activated.emit(QSystemTrayIcon.DoubleClick)
+            self.activated.emit(QSystemTrayIcon.ActivationReason.DoubleClick)
         elif event == WM_CONTEXTMENU:
-            self.activated.emit(QSystemTrayIcon.Context)
+            self.activated.emit(QSystemTrayIcon.ActivationReason.Context)
             self._show_menu(anchor)
         elif event == WM_MBUTTONUP:
-            self.activated.emit(QSystemTrayIcon.MiddleClick)
+            self.activated.emit(QSystemTrayIcon.ActivationReason.MiddleClick)
         elif event == NIN_BALLOONUSERCLICK:
             self.messageClicked.emit()
 
@@ -318,7 +318,12 @@ def _hicon(icon: QIcon) -> int | None:
         return None
 
     if pixmap.width() != size or pixmap.height() != size:
-        pixmap = pixmap.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        pixmap = pixmap.scaled(
+            size,
+            size,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
 
     hicon = QtWin.toHICON(pixmap)
     return int(hicon) if hicon else None

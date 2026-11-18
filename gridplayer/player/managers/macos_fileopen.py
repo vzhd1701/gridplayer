@@ -13,7 +13,7 @@ class MacOSFileOpenManager(ManagerBase):
 
     @property
     def event_map(self):
-        return {QEvent.FileOpen: self.handle_macos_fileopen}
+        return {QEvent.Type.FileOpen: self.handle_macos_fileopen}
 
     def handle_macos_fileopen(self, event):
         input_file = event.file()

@@ -68,7 +68,9 @@ def _isolated_settings(tmp_path):
     settings = Settings()
     real_settings = settings.settings
 
-    settings.settings = QSettings(str(tmp_path / "test.ini"), QSettings.IniFormat)
+    settings.settings = QSettings(
+        str(tmp_path / "test.ini"), QSettings.Format.IniFormat
+    )
 
     yield
 
@@ -392,7 +394,7 @@ class TestWhichItemItSays:
         block = make_cell(file_list)
         block.overlay.set_list_place("1/3")
 
-        QTest.mouseClick(block.overlay.list_place_button, Qt.LeftButton)
+        QTest.mouseClick(block.overlay.list_place_button, Qt.MouseButton.LeftButton)
 
         block._ctx.commands.list_window_for.assert_called_once_with(block)
 

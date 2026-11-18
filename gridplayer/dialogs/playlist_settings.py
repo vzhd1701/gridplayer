@@ -282,7 +282,7 @@ class PlaylistSettingsDialog(PagedDialog):
         names = ", ".join(FIELDS[key].label for key in changes)
 
         box = QCustomMessageBox(
-            QMessageBox.Question,
+            QMessageBox.Icon.Question,
             translate("SettingsDialog", "New Videos"),
             translate("SettingsDialog", "Change the videos already here too?"),
             parent=self,
@@ -294,16 +294,16 @@ class PlaylistSettingsDialog(PagedDialog):
             ).format(SETTINGS=names)
         )
         all_button = box.addButton(
-            translate("SettingsDialog", "All videos"), QMessageBox.AcceptRole
+            translate("SettingsDialog", "All videos"), QMessageBox.ButtonRole.AcceptRole
         )
         new_button = box.addButton(
-            translate("SettingsDialog", "Only new"), QMessageBox.RejectRole
+            translate("SettingsDialog", "Only new"), QMessageBox.ButtonRole.RejectRole
         )
         # Cancel, and Escape, back to the window
-        box.addButton(QMessageBox.Cancel)
+        box.addButton(QMessageBox.StandardButton.Cancel)
         box.setDefaultButton(all_button)
 
-        box.exec_()
+        box.exec()
 
         clicked = box.clickedButton()
         box.deleteLater()

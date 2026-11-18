@@ -10,7 +10,10 @@ def _scrolls(page) -> bool:
     # right under the page, where the dialog puts it: asked on every layout,
     # a search of the whole page would go through every row of a table
     return isinstance(page, PageScrollArea) or (
-        page.findChild(PageScrollArea, options=Qt.FindDirectChildrenOnly) is not None
+        page.findChild(
+            PageScrollArea, options=Qt.FindChildOption.FindDirectChildrenOnly
+        )
+        is not None
     )
 
 
@@ -26,7 +29,7 @@ class CurrentPageStackedWidget(QStackedWidget):
     def __init__(self, parent=None, *, min_width: int = 0):
         super().__init__(parent)
         self._min_width = min_width
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
     def sizeHint(self):
         current = self.currentWidget()

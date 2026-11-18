@@ -94,7 +94,7 @@ class _Piece(FloatingMark):
 
         self._is_translucent = is_compositor_running()
         if self._is_translucent:
-            self.setAttribute(Qt.WA_TranslucentBackground)
+            self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         self._path = QPainterPath()
         self._pen = QPen()
@@ -140,7 +140,7 @@ class _Piece(FloatingMark):
 
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
         if not self._is_translucent:
             painter.fillRect(self.rect(), EDGE_COLOR)
@@ -152,7 +152,7 @@ class _Piece(FloatingMark):
             for extra, alpha in SHADOW:
                 shadow = QPen(QColor(0, 0, 0, alpha), width + extra)
                 shadow.setCapStyle(self._pen.capStyle())
-                shadow.setJoinStyle(Qt.RoundJoin)
+                shadow.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
                 painter.strokePath(self._path, shadow)
             painter.restore()
 
@@ -256,9 +256,11 @@ def _lit(rect: QRect, handle: Handle) -> list[QPainterPath]:
 
 def _pen(color: QColor, width: float, dashes=None) -> QPen:
     pen = QPen(color, width)
-    pen.setCapStyle(Qt.FlatCap if width == OUTLINE else Qt.RoundCap)
+    pen.setCapStyle(
+        Qt.PenCapStyle.FlatCap if width == OUTLINE else Qt.PenCapStyle.RoundCap
+    )
     # a square corner filled to its last pixel; a round one is rounded anyway
-    pen.setJoinStyle(Qt.MiterJoin)
+    pen.setJoinStyle(Qt.PenJoinStyle.MiterJoin)
     if dashes is not None:
         pen.setDashPattern(list(dashes))
     return pen
@@ -363,8 +365,8 @@ def _lock(disc: QRectF) -> QPainterPath:
 
     stroker = QPainterPathStroker()
     stroker.setWidth(stroke)
-    stroker.setCapStyle(Qt.FlatCap)
-    stroker.setJoinStyle(Qt.RoundJoin)
+    stroker.setCapStyle(Qt.PenCapStyle.FlatCap)
+    stroker.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
 
     body = QPainterPath()
     body.addRoundedRect(QRectF(at(-0.4, -0.02), at(0.4, 0.52)), stroke, stroke)
@@ -388,11 +390,11 @@ class _LockBadge(FloatingMark):
 
         self._is_translucent = is_compositor_running()
         if self._is_translucent:
-            self.setAttribute(Qt.WA_TranslucentBackground)
+            self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
     def resizeEvent(self, event) -> None:
         if not self._is_translucent:
-            self.setMask(QRegion(self.rect(), QRegion.Ellipse))
+            self.setMask(QRegion(self.rect(), QRegion.RegionType.Ellipse))
 
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
@@ -403,8 +405,8 @@ class _LockBadge(FloatingMark):
 
     def _paint_disc(self, painter: QPainter) -> None:
         disc = QRectF(self.rect())
-        painter.setRenderHint(QPainter.Antialiasing)
-        painter.setPen(Qt.NoPen)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(DISC_COLOR)
         painter.drawEllipse(disc)
         painter.fillPath(_lock(disc), GLYPH_COLOR)

@@ -205,7 +205,7 @@ def _reference(transform, file_turn=VideoTransform.NONE):
     the frame as stored, and the file's turn after that, as the VLC drivers have
     it. A flip on a file on its side comes out the other way on screen."""
 
-    image = QImage(2, 2, QImage.Format_RGB32)
+    image = QImage(2, 2, QImage.Format.Format_RGB32)
     image.setPixelColor(0, 0, QColor("red"))
     image.setPixelColor(1, 0, QColor("green"))
     image.setPixelColor(0, 1, QColor("blue"))

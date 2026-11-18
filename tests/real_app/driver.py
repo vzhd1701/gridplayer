@@ -55,7 +55,7 @@ class Driver:
 
         deadline = time.monotonic() + seconds
         while True:
-            self.app.processEvents(QEventLoop.AllEvents, 20)
+            self.app.processEvents(QEventLoop.ProcessEventsFlag.AllEvents, 20)
             left = deadline - time.monotonic()
             if left <= 0:
                 return

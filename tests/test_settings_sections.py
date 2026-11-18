@@ -53,7 +53,7 @@ def dialog():
     # the garbage collector to drop in the middle of some later test
     dialog.close()
     dialog.deleteLater()
-    QApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+    QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
 
 def _rows(dialog):
@@ -63,7 +63,7 @@ def _rows(dialog):
 
 
 def _is_heading(item):
-    return not (item.flags() & Qt.ItemIsSelectable)
+    return not (item.flags() & Qt.ItemFlag.ItemIsSelectable)
 
 
 def _as_groups(dialog):
@@ -264,7 +264,11 @@ def test_nothing_flashes_up_as_a_window_while_it_is_made():
 
     class _Spy(QObject):
         def eventFilter(self, obj, event):
-            if event.type() == QEvent.Show and obj.isWidgetType() and obj.isWindow():
+            if (
+                event.type() == QEvent.Type.Show
+                and obj.isWidgetType()
+                and obj.isWindow()
+            ):
                 shown.append(type(obj).__name__)
             return False
 
@@ -278,7 +282,7 @@ def test_nothing_flashes_up_as_a_window_while_it_is_made():
     assert shown == []
 
     dialog.deleteLater()
-    QApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+    QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
 
 def test_no_row_is_painted_squeezed_as_it_opens():
@@ -291,7 +295,7 @@ def test_no_row_is_painted_squeezed_as_it_opens():
     class _Spy(QObject):
         def eventFilter(self, obj, event):
             if (
-                event.type() == QEvent.Paint
+                event.type() == QEvent.Type.Paint
                 and isinstance(obj, _FormRow)
                 and obj.height() < obj.minimumSizeHint().height()
             ):
@@ -312,7 +316,7 @@ def test_no_row_is_painted_squeezed_as_it_opens():
 
     dialog.close()
     dialog.deleteLater()
-    QApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+    QApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
 
 
 def test_a_page_scrolls_by_a_thin_handle_with_no_arrows(themed, dialog):

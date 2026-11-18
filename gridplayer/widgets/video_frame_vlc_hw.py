@@ -175,8 +175,8 @@ class VideoFrameVLCHW(VideoFrameVLCProcess):
 
         video_surface = QWidget(self.video_clip)
         video_surface.setMouseTracking(True)
-        video_surface.setWindowFlags(Qt.WindowTransparentForInput)
-        video_surface.setAttribute(Qt.WA_TransparentForMouseEvents)
+        video_surface.setWindowFlags(Qt.WindowType.WindowTransparentForInput)
+        video_surface.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
         return video_surface
 

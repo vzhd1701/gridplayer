@@ -52,7 +52,9 @@ def _isolated_settings(tmp_path):
     settings = Settings()
     real_settings = settings.settings
 
-    settings.settings = QSettings(str(tmp_path / "test.ini"), QSettings.IniFormat)
+    settings.settings = QSettings(
+        str(tmp_path / "test.ini"), QSettings.Format.IniFormat
+    )
 
     yield
 
@@ -705,7 +707,7 @@ class TestTheWindow:
         dialog = window(registry, media_list)
 
         model = dialog._model
-        assert not model.flags(model.index(0, 1)) & Qt.ItemIsDragEnabled
+        assert not model.flags(model.index(0, 1)) & Qt.ItemFlag.ItemIsDragEnabled
 
     def test_sorted_it_says_how(self, window):
         registry = MediaListsRegistry()
@@ -822,7 +824,7 @@ class TestTheWindow:
         )
         shown = []
         mocker.patch(
-            "gridplayer.dialogs.media_list.ErrorDetailsDialog.exec_",
+            "gridplayer.dialogs.media_list.ErrorDetailsDialog.exec",
             lambda details_dialog: shown.append(details_dialog),
         )
 
@@ -1101,7 +1103,11 @@ class TestNothingAdded:
 
         model = dialog._model
         assert not model.canDropMimeData(
-            _uris_mime("http://mine/1"), Qt.CopyAction, -1, -1, model.index(-1, -1)
+            _uris_mime("http://mine/1"),
+            Qt.DropAction.CopyAction,
+            -1,
+            -1,
+            model.index(-1, -1),
         )
 
     def test_but_into_a_list_kept_whole(self, window):
@@ -1111,7 +1117,11 @@ class TestNothingAdded:
 
         model = dialog._model
         assert model.canDropMimeData(
-            _uris_mime("http://mine/1"), Qt.CopyAction, -1, -1, model.index(-1, -1)
+            _uris_mime("http://mine/1"),
+            Qt.DropAction.CopyAction,
+            -1,
+            -1,
+            model.index(-1, -1),
         )
 
     def test_says_how_to_have_it_when_empty(self, window):
@@ -1283,7 +1293,7 @@ class TestTheQuestion:
 
         default = next(button for button in buttons.buttons() if button.isDefault())
 
-        assert buttons.buttonRole(default) == QDialogButtonBox.RejectRole
+        assert buttons.buttonRole(default) == QDialogButtonBox.ButtonRole.RejectRole
         dialog.deleteLater()
 
 
@@ -1983,14 +1993,14 @@ class TestTheUpdateButton:
         media_list = registry.add(_linked(*_channels(1)))
         dialog = window(registry, media_list)
         shown = []
-        plain_exec = custom_menu.CustomMenu.exec_
-        custom_menu.CustomMenu.exec_ = lambda menu, *args: shown.append(
+        plain_exec = custom_menu.CustomMenu.exec
+        custom_menu.CustomMenu.exec = lambda menu, *args: shown.append(
             [action.text() for action in menu.actions()]
         )
         try:
             dialog._show_source_menu(QPoint(10, 10))
         finally:
-            custom_menu.CustomMenu.exec_ = plain_exec
+            custom_menu.CustomMenu.exec = plain_exec
 
         (texts,) = shown
         assert texts.index("Update") == texts.index("Unlink") - 1

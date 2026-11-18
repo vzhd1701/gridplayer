@@ -416,7 +416,7 @@ class TestIcon:
         image = grid_template_icon(GRID_TEMPLATES["2 + 8"]).pixmap(32).toImage()
         disabled = (
             grid_template_icon(GRID_TEMPLATES["2 + 8"])
-            .pixmap(32, QIcon.Disabled)
+            .pixmap(32, QIcon.Mode.Disabled)
             .toImage()
         )
 

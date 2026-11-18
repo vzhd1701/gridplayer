@@ -150,8 +150,8 @@ def test_the_dialog_is_gone_before_the_settings_are_applied(mocker):
             super().__init__(parent)
             made.append(self)
 
-        def exec_(self):
-            return QDialog.Accepted
+        def exec(self):
+            return QDialog.DialogCode.Accepted
 
     mocker.patch.object(settings_manager, "SettingsDialog", Dialog)
     manager = _manager(mocker.Mock())

@@ -42,7 +42,7 @@ class TimeAhead(VideoBlockPart):
 
         self._timer = QTimer(block)
         self._timer.setSingleShot(True)
-        self._timer.setTimerType(Qt.PreciseTimer)
+        self._timer.setTimerType(Qt.TimerType.PreciseTimer)
         self._timer.timeout.connect(self._reached)
 
         self._due_ms: int | None = None

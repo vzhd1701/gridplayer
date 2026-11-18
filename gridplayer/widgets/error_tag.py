@@ -40,8 +40,8 @@ def paint_tag(
     where_width, code_width = widths
 
     painter.save()
-    painter.setRenderHint(QPainter.Antialiasing)
-    painter.setPen(Qt.NoPen)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    painter.setPen(Qt.PenStyle.NoPen)
 
     if where:
         where_rect = QRectF(rect.left(), rect.top(), where_width, rect.height())
@@ -52,18 +52,18 @@ def paint_tag(
         painter.setClipping(False)
 
         painter.setPen(where_color)
-        painter.drawText(where_rect, Qt.AlignCenter, where)
+        painter.drawText(where_rect, Qt.AlignmentFlag.AlignCenter, where)
 
     if code:
         painter.setPen(code_color)
         painter.drawText(
             QRectF(rect.left() + where_width, rect.top(), code_width, rect.height()),
-            Qt.AlignCenter,
+            Qt.AlignmentFlag.AlignCenter,
             code,
         )
 
     painter.setPen(QPen(fill, 1))
-    painter.setBrush(Qt.NoBrush)
+    painter.setBrush(Qt.BrushStyle.NoBrush)
     painter.drawRoundedRect(rect.adjusted(0.5, 0.5, -0.5, -0.5), radius, radius)
     painter.restore()
 
@@ -75,7 +75,7 @@ class ErrorTag(QWidget):
         self._where = ""
         self._code = ""
 
-        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
     def set_tag(self, where: str, code: str):
         self._where = where

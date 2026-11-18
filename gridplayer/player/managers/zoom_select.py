@@ -29,7 +29,7 @@ class ZoomSelectManager(ManagerBase):
         super().__init__(**kwargs)
 
         self._block = None
-        self._button = Qt.LeftButton
+        self._button = Qt.MouseButton.LeftButton
         self._press_pos: QPoint | None = None
         self._is_selecting = False
 
@@ -51,12 +51,12 @@ class ZoomSelectManager(ManagerBase):
     @property
     def event_map(self):
         return {
-            QEvent.MouseButtonPress: self.mouse_press,
-            QEvent.MouseMove: self.widget_move,
-            QEvent.MouseButtonRelease: self.mouse_release,
-            QEvent.ShortcutOverride: self.shortcut_override,
-            QEvent.KeyPress: self.key_press,
-            QEvent.ContextMenu: self.context_menu,
+            QEvent.Type.MouseButtonPress: self.mouse_press,
+            QEvent.Type.MouseMove: self.widget_move,
+            QEvent.Type.MouseButtonRelease: self.mouse_release,
+            QEvent.Type.ShortcutOverride: self.shortcut_override,
+            QEvent.Type.KeyPress: self.key_press,
+            QEvent.Type.ContextMenu: self.context_menu,
         }
 
     def eventFilter(self, event_object, event) -> bool:
@@ -79,11 +79,11 @@ class ZoomSelectManager(ManagerBase):
         does reach one, it is nothing of that one's (see mouse_release).
         """
 
-        if event.type() == QEvent.MouseButtonRelease:
+        if event.type() == QEvent.Type.MouseButtonRelease:
             self.window_release(event)
             return False
 
-        if event.type() != QEvent.MouseMove:
+        if event.type() != QEvent.Type.MouseMove:
             return False
 
         if self._block is not None:
@@ -216,7 +216,7 @@ class ZoomSelectManager(ManagerBase):
         return None
 
     def shortcut_override(self, event):
-        if not self._is_busy() or event.key() != Qt.Key_Escape:
+        if not self._is_busy() or event.key() != Qt.Key.Key_Escape:
             return None
 
         # not what Esc is bound to: the key comes as a press, see key_press
@@ -224,7 +224,7 @@ class ZoomSelectManager(ManagerBase):
         return True
 
     def key_press(self, event):
-        if not self._is_busy() or event.key() != Qt.Key_Escape:
+        if not self._is_busy() or event.key() != Qt.Key.Key_Escape:
             return None
 
         self._cancel()
@@ -248,7 +248,7 @@ class ZoomSelectManager(ManagerBase):
             self._stop()
             return None
 
-        if event.button() != Qt.LeftButton:
+        if event.button() != Qt.MouseButton.LeftButton:
             self._cancel(event.button())
             return True
 
@@ -337,7 +337,7 @@ class ZoomSelectManager(ManagerBase):
 
         self._swallowed_buttons.update(buttons)
 
-        if Qt.RightButton in buttons:
+        if Qt.MouseButton.RightButton in buttons:
             self._is_context_menu_swallowed = True
 
         self._stop()
@@ -405,7 +405,7 @@ class ZoomSelectManager(ManagerBase):
 
     def _set_cursor(self):
         if not self._is_cursor_set:
-            QApplication.setOverrideCursor(Qt.CrossCursor)
+            QApplication.setOverrideCursor(Qt.CursorShape.CrossCursor)
             self._is_cursor_set = True
 
 

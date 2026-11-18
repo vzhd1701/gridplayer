@@ -14,7 +14,7 @@ DARK_PICTURE = QColor("#101010")
 
 
 def _over_dark_picture(bar):
-    image = QImage(bar.size(), QImage.Format_RGB32)
+    image = QImage(bar.size(), QImage.Format.Format_RGB32)
     image.fill(DARK_PICTURE)
 
     painter = QPainter(image)
@@ -53,9 +53,9 @@ def _assert_only_progress_and_picture(pixels, progress):
 @pytest.fixture
 def seek_bar():
     bar = OverlayProgressBar()
-    bar.setAttribute(Qt.WA_DontShowOnScreen)
+    bar.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen)
     bar.resize(200, 23)
-    bar.color = QColor(Qt.white)
+    bar.color = QColor(Qt.GlobalColor.white)
 
     yield bar
 
@@ -65,9 +65,9 @@ def seek_bar():
 @pytest.fixture
 def volume_bar():
     bar = OverlayVolumeBar()
-    bar.setAttribute(Qt.WA_DontShowOnScreen)
+    bar.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen)
     bar.resize(23, 100)
-    bar.color = QColor(Qt.white)
+    bar.color = QColor(Qt.GlobalColor.white)
 
     yield bar
 
