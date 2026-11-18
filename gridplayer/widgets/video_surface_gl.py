@@ -247,8 +247,14 @@ class GLGridSurface(QOpenGLWidget):
         # the window is put together with GL from now on
         set_up_gl_window(self.window())
 
-        # once Qt is done starting it
-        QTimer.singleShot(0, self.ready.emit)
+        # Once Qt is done starting it. By a timer of its own, which goes with
+        # it: QTimer.singleShot(0, self.ready.emit) is a call queued apart
+        # from it, which crashes on its signal should it be gone first.
+        ready = QTimer(self)
+        ready.setSingleShot(True)
+        ready.timeout.connect(self.ready)
+        ready.timeout.connect(ready.deleteLater)
+        ready.start(0)
 
     def _on_context_going(self) -> None:
         # Not as the surface itself goes: PyQt has cut it off by then.

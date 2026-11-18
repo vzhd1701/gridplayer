@@ -214,10 +214,48 @@ def test_the_blitter_lasts_as_long_as_its_context(monkeypatch):
     gc.collect()
     assert blitter() is None
 
+    # its grid surface, set up on a context that is gone, isn't left for a
+    # later test's events to reach
+    sip.delete(window)
+
 
 class _Blitter:
     def create(self):
         pass
+
+
+def _started_grid(monkeypatch):
+    monkeypatch.setattr(video_surface_gl, "QOpenGLTextureBlitter", _Blitter)
+    monkeypatch.setattr(video_surface_gl, "set_up_gl_window", lambda _w: None)
+    context = _Context()
+    window = QWidget()
+    grid = video_surface_gl.GLGridSurface(window)
+    monkeypatch.setattr(grid, "context", lambda: context)
+    grid.initializeGL()
+    return window, grid, context
+
+
+def test_a_started_grid_says_it_is_ready_once_qt_is_done(monkeypatch):
+    window, grid, context = _started_grid(monkeypatch)
+    said = []
+    grid.ready.connect(lambda: said.append(True))
+
+    assert said == []
+    QApplication.processEvents()
+
+    assert said == [True]
+    sip.delete(window)
+    sip.delete(context)
+
+
+def test_a_grid_gone_before_it_is_ready_says_nothing(monkeypatch):
+    window, _grid, context = _started_grid(monkeypatch)
+
+    sip.delete(window)
+    # its ready signal no longer there to be emitted: this crashed
+    QApplication.processEvents()
+
+    sip.delete(context)
 
 
 def test_a_grab_through_any_surface_class_paints_the_picture():
@@ -241,6 +279,9 @@ def test_a_surface_put_in_another_window_leaves_the_old_one_s_grid():
     assert surface not in grid._surfaces
     surface._join()
     assert surface._grid is video_surface_gl.GLGridSurface.of(other)
+
+    sip.delete(window)
+    sip.delete(other)
 
 
 class _OpenGLESContext:
