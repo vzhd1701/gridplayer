@@ -168,11 +168,12 @@ class _GLWindowPaints(QObject):
             self._is_now = False
 
     def _paint_held(self) -> None:
-        # Qt asks for no other until this one is done
+        # Qt asks for no other until this one is done. PyQt6 takes the
+        # priority as an int only.
         QCoreApplication.postEvent(
             self._widget,
             QEvent(QEvent.Type.UpdateRequest),
-            Qt.EventPriority.LowEventPriority,
+            Qt.EventPriority.LowEventPriority.value,
         )
 
 

@@ -4,6 +4,7 @@ from threading import Thread
 from types import MappingProxyType, SimpleNamespace
 
 import pytest
+from PyQt6.QtCore import QLocale
 from PyQt6.QtWidgets import QApplication
 from requests.cookies import RequestsCookieJar
 
@@ -171,7 +172,14 @@ def _qapp_session():
     application.
     """
 
-    return QApplication.instance() or QApplication([])
+    app = QApplication.instance() or QApplication([])
+
+    # Numbers as the tests write them (1,200), whatever the machine's
+    # language is. Qt 6's C locale, which a container or CI runner often
+    # has, writes them without the comma.
+    QLocale.setDefault(QLocale("en_US"))
+
+    return app
 
 
 @pytest.fixture(autouse=True)

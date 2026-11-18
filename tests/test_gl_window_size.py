@@ -6,7 +6,7 @@ import sys
 from unittest.mock import MagicMock
 
 import pytest
-from PyQt6.QtCore import QEvent, QSize
+from PyQt6.QtCore import QEvent, QObject, QSize
 from PyQt6.QtWidgets import QApplication, QWidget
 
 from gridplayer.utils import gl_window_size
@@ -72,6 +72,26 @@ def test_the_window_is_put_together_at_most_once_a_refresh(monkeypatch):
     now[0] += 0.012
     assert not paints.eventFilter(widget, request)
     paints._held_paint.stop()
+
+
+def test_a_held_paint_is_asked_for_once_its_time_comes():
+    widget, paints, _ = _filter((400, 300))
+    seen = []
+
+    class _Seen(QObject):
+        def eventFilter(self, watched, event):
+            if event.type() == QEvent.Type.UpdateRequest:
+                seen.append(watched)
+            return False
+
+    # the last filter installed hears it first
+    seen_filter = _Seen()
+    widget.installEventFilter(seen_filter)
+
+    paints._paint_held()
+    QApplication.sendPostedEvents(widget, QEvent.Type.UpdateRequest)
+
+    assert seen == [widget]
 
 
 def test_what_the_system_asks_for_is_never_held(monkeypatch):

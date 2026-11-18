@@ -8,6 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from gridplayer import mpv_player
 from gridplayer.mpv_player import libmpv
 from gridplayer.params import env
 from gridplayer.params.static import VideoDriver
@@ -406,6 +407,9 @@ def test_a_file_that_isnt_a_library(monkeypatch, tmp_path):
 
     monkeypatch.setenv("GP_LIBMPV_PATH", str(junk))
     monkeypatch.delitem(sys.modules, "gridplayer.mpv_player.mpv", raising=False)
+    # imported by an earlier test, where libmpv loads (Linux): "from package
+    # import mpv" would take it from the package, not load it again
+    monkeypatch.delattr(mpv_player, "mpv", raising=False)
     libmpv.load_mpv.cache_clear()
 
     assert media_libs.load_lib(MediaLib.MPV) is False
