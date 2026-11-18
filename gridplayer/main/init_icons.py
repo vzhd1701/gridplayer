@@ -11,7 +11,7 @@ def init_icon(app):
         app.setWindowIcon(QIcon(str(icons_dir / "main_ico_mac.icns")))
     elif env.IS_WINDOWS:
         app.setWindowIcon(QIcon(str(icons_dir / "main_ico_win.ico")))
-    elif app.desktop().devicePixelRatio() == 1:
+    elif (screen := app.primaryScreen()) is None or screen.devicePixelRatio() == 1:
         app.setWindowIcon(QIcon(str(icons_dir / "main_ico_48.png")))
     else:
         app.setWindowIcon(QIcon(str(icons_dir / "main_ico_svg.svg")))

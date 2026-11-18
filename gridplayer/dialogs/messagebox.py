@@ -158,16 +158,21 @@ class QCustomMessageBox(QDialog):
         return added
 
     def button(self, which) -> QPushButton | None:
-        return self._button_box.button(QDialogButtonBox.StandardButton(int(which)))
+        return self._button_box.button(
+            QDialogButtonBox.StandardButton(flag_value(which))
+        )
 
     def buttons(self) -> list[QAbstractButton]:
         return self._button_box.buttons()
 
-    def buttonRole(self, button) -> int:
-        return self._button_box.buttonRole(button)
+    def buttonRole(self, button) -> QMessageBox.ButtonRole:
+        # the box's own roles are another enum in PyQt6, never equal to these
+        return QMessageBox.ButtonRole(flag_value(self._button_box.buttonRole(button)))
 
-    def standardButton(self, button) -> int:
-        return int(self._button_box.standardButton(button))
+    def standardButton(self, button) -> QMessageBox.StandardButton:
+        return QMessageBox.StandardButton(
+            flag_value(self._button_box.standardButton(button))
+        )
 
     def defaultButton(self) -> QPushButton | None:
         if self._default is not None:
@@ -381,7 +386,9 @@ class QCustomMessageBox(QDialog):
         return is_confirmed
 
     @classmethod
-    def _asked(cls, icon, parent, title, text, buttons, info) -> int:
+    def _asked(
+        cls, icon, parent, title, text, buttons, info
+    ) -> QMessageBox.StandardButton:
         """The standard button the answer was given with."""
 
         box = cls(icon, title, text, buttons, parent)
@@ -400,7 +407,7 @@ class QCustomMessageBox(QDialog):
         return answer
 
 
-def _standard_buttons(buttons) -> list[int]:
+def _standard_buttons(buttons) -> list[QMessageBox.StandardButton]:
     """The standard buttons of a set of their flags, one by one."""
 
     buttons = flag_value(buttons)

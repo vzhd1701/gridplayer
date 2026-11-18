@@ -6,6 +6,8 @@ of data would be handed that bool instead.
 """
 
 import pytest
+from PyQt6.QtCore import QMimeData, QPointF, Qt
+from PyQt6.QtGui import QDropEvent
 
 from gridplayer.models.resolver_patterns import (
     ResolverPattern,
@@ -152,3 +154,38 @@ class TestChangesAreToldOnceMade:
         combo.setCurrentIndex(combo.findData(URLResolver.DIRECT))
 
         assert [rows[0].resolver for rows in told] == [URLResolver.DIRECT]
+
+
+class TestDroppingARow:
+    """Where a row dragged onto another lands: before it from its upper
+    half, after it from its lower half."""
+
+    @staticmethod
+    def _dropped_at(table, y):
+        event = QDropEvent(
+            QPointF(10, y),
+            Qt.DropAction.MoveAction,
+            QMimeData(),
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
+        )
+        return table._drop_on(event)
+
+    @pytest.fixture
+    def table(self, patterns):
+        patterns.setDataRows(
+            ResolverPatterns([_pattern("one.example"), _pattern("two.example")])
+        )
+        patterns.resize(600, 300)
+        patterns.show()
+        return patterns.table
+
+    def test_on_the_upper_half_it_goes_before(self, table):
+        rect = table.visualRect(table.model().index(1, 0))
+
+        assert self._dropped_at(table, rect.top() + rect.height() // 4) == 1
+
+    def test_on_the_lower_half_it_goes_after(self, table):
+        rect = table.visualRect(table.model().index(0, 0))
+
+        assert self._dropped_at(table, rect.bottom() - rect.height() // 4) == 1

@@ -340,7 +340,7 @@ def qkeysequences_for_shortcut(shortcut: str) -> list[QKeySequence]:
         seq = QKeySequence(variant, QKeySequence.SequenceFormat.PortableText)
         if not seq.count():
             continue
-        code = int(seq[0])
+        code = seq[0].toCombined()
         if code in seen_codes:
             continue
         if not seq.toString(QKeySequence.SequenceFormat.PortableText):

@@ -9,7 +9,7 @@ and how each step is checked. Tick an item only once it has been seen working.
 |---|---|---|
 | 0 | Baseline on PyQt5: tests, scenarios, benches, screenshots | **done 2026-11-18** but the Macs (before stage 5) and benches (stage 3) |
 | 1 | Rewrites that work on both: full enum names, `exec()`, flag values | **done 2026-11-18** |
-| 2 | The switch: PyQt6 6.12, imports, removed APIs, events; tests pass | not started |
+| 2 | The switch: PyQt6 6.12, imports, removed APIs, events; tests pass | **done 2026-11-18**, uncommitted |
 | 3 | Windows: DPI, native windows, GL, look, input | not started |
 | 4 | Linux: X11, Wayland, D-Bus | not started |
 | 5 | macOS | not started |
@@ -101,7 +101,7 @@ calls in the code.
 | `main/init_app.py:67` | `AA_DisableWindowContextHelpButton` | nothing: no "?" button by default |
 | `main/init_translator.py:23` | `QLibraryInfo.location` | `QLibraryInfo.path` |
 | `mpv_player/gl_context.py:677` | `QOpenGLContext.versionFunctions` | `QOpenGLVersionFunctionsFactory.get` |
-| `widgets/video_surface_sw.py:138` | `QRegion.rects()` | iterate the region |
+| `widgets/video_surface_sw.py:138` | `QRegion.rects()` | the bands worked out (PyQt6 can't list a region's rects; see 2.3) |
 | `params/settings_fields/choices.py:499` | `QFontDatabase().families()` | `QFontDatabase.families()` |
 | `utils/drag_n_drop.py`, `utils/keymap.py`, `widgets/settings_controls.py:241` | `Qt.KeyboardModifiers`, `Qt.Orientations` | `Qt.KeyboardModifier`, `Qt.Orientation` |
 
@@ -232,16 +232,62 @@ Done when: tests, ruff and the scenarios pass on PyQt5. **All as the baseline, 2
 One step, as both bindings can't run in one process. Done when the app starts on Windows with VLC and MPV, and
 `uv run pytest` passes.
 
-- 2.1 `pyproject.toml`: `PyQt6==6.12.1`, `PyQt6-Qt6==6.12.0`, PyQt5 pins gone; `uv.lock`.
-- 2.2 Imports `PyQt5` → `PyQt6` (script), the moved classes, `sip`.
-- 2.3 The "Gone" table.
-- 2.4 Events: `position()`/`globalPosition()`, drop events' `buttons()`/`modifiers()`, `enterEvent(QEnterEvent)`.
-- 2.5 Keys: `QKeyCombination` where ints were built (`keymap.py`, `bookmarks.py`, `layout_editor.py`, `media_list.py`).
-- 2.6 Native: the two `nativeEventFilter` returns; `gl_window_size.py`'s library names.
-- 2.7 GL: `QOpenGLVersionFunctionsFactory`; `AA_UseDesktopOpenGL` stays (Qt 6 has no ANGLE to choose instead).
-- 2.8 Tests: event constructors, `horizontalAdvance`, `sizeInBytes`, `setTimestamp`.
+- 2.1 `pyproject.toml`: `PyQt6==6.12.1`, `PyQt6-Qt6==6.12.0`, PyQt5 pins gone; `uv.lock` (sip 13.13.1). **Done.**
+- 2.2 Imports: **done** by `scripts/qt6_port/switch_imports.py`, which looks every imported name up in PyQt6 and moves
+  it to the module that has it; it changes imports and module paths in strings only, so comments about PyQt5 are left
+  for 8.1. By hand: `log_config.py`'s `QtCore.QtDebugMsg` and kin (`QtCore.QtMsgType.QtDebugMsg`, enum members
+  reached through the module).
+- 2.3 The "Gone" table: **done.** App ID through `shell32.SetCurrentProcessExplicitAppUserModelID`; the tray's HICON
+  from `pixmap.toImage().toHICON()`; MPRIS with `@pyqtClassInfo`; VLC's view on macOS a plain native `QWidget` (to see
+  in 5.1); `app.primaryScreen()`; `styleHints().colorSchemeChanged` for `paletteChanged`, which our own `setPalette`
+  doesn't fire; `QLibraryInfo.path(LibraryPath.TranslationsPath)` and the package's `PyQt6/Qt6/translations` (from
+  6.2, as the old call is gone); `QOpenGLVersionFunctionsFactory.get`; `QFontDatabase.families()`; the two removed
+  attributes gone. **The review was wrong on `QRegion`:** PyQt6 can't list a region's rectangles at all (no
+  `rects()`, not iterable), so `video_surface_sw.py`'s black bars are worked out as the four bands around the picture,
+  checked against the region's own subtraction.
+- 2.4 Events: **done.** Six calls: drop and drag-move positions (`position().toPoint()`) in `media_list.py`,
+  `active_block.py`, `drag_n_drop.py`, `resolver_patterns_list.py`; mouse `globalPos()` in `drag_n_drop.py` and
+  `keymap_tree_view.py`. Context menu, tooltip (`QHelpEvent`) and move events keep `globalPos()`/`oldPos()`. No
+  `enterEvent` reads a position.
+- 2.5 Keys: **nothing more needed.** Keys built with `flag_value()` stay ints, which `QKeySequence(int)` takes;
+  `QKeySequence[i]` is a `QKeyCombination`, so `keymap.py` takes `.toCombined()`.
+- 2.6 Native: **done.** `nativeEventFilter` returning `(False, 0)` is accepted as it is (checked);
+  `gl_window_size.py` on `Qt6Gui.dll`, `libQt6Gui.so.6` and `Versions/A`, and the flush symbol resolves on Windows.
+- 2.7 GL: **done**, see 2.3.
+- 2.8 Tests: **done.** Event constructors take `QPointF`; the wheel tests use a `QWheelEvent` subclass that answers
+  `timestamp()` (no `setTimestamp`); `horizontalAdvance`; `sizeInBytes` (`live.py`).
+- **Found on the way, not in the review:**
+  - **An enum through an int signal.** A plain `Enum`/`Flag` value emitted by a `pyqtSignal(int)` arrives as a
+    memory address, silently. `WindowsTrayIcon.activated` was one: tray clicks would have done nothing. Declared with
+    `QSystemTrayIcon.ActivationReason` now; every other int signal's emits checked, none carries a Qt enum.
+  - **`QDBusArgument` takes the type id as an int**: `QMetaType.Type.QStringList.value` (MPRIS, show in folder,
+    keep-awake).
+  - **`QMessageBox.ButtonRole` and `QDialogButtonBox.ButtonRole` are two enums**, never equal: `QCustomMessageBox`
+    gives back `QMessageBox`'s roles and buttons.
+  - **Objects tests leave behind live longer.** A test that drops a `QWidget` parent, or calls `deleteLater()` with
+    no event loop running, leaves its children's timers firing into later tests, which raise in a slot and abort the
+    run (exit 127, no output). `test_managers_playlist.py` and `test_sync.py` delete theirs at once now
+    (`sip.delete`).
+  - Qt 6's offscreen screen has a device pixel ratio of 1.0, Qt 5's 1.04, so stage 0's screenshots are 4% bigger.
+  - `test_ubuntu` got `libxcb-cursor0`, without which Qt 6's xcb plugin doesn't load.
+- **Results, 2026-11-18:** tests 8,838 passed, 7 skipped (as PyQt5); ruff clean. The app, offscreen, through every
+  menu, settings page and dialog of `look.py` with nothing in its log. Scenarios, Windows (VLC and MPV) and
+  `test_ubuntu`: 76 passed, 1 xfailed, 7 failed, all in the drag helpers of `free_tiles.py` and `grid_lines.py`
+  (mouse events made from `QPoint`); fixed, the ten that use them pass on both. `mpv_audio` and `marks` passed this
+  time.
 - 2.9 `/code-review` of the stage's hand-made changes, the scripted import rename left out: events, native filters, GL,
   keys and `winId()` can run and still be wrong, which tests often miss.
+  **Done 2026-11-18**, 21 files. Fixed:
+  - a bug, `int()` on `Qt.ItemFlag` in the patterns list's drop (a row dropped on another raised): flags compared as
+    flags, and a test of dropping a row there;
+  - Qt's `colorSchemeChanged` now only where we have no theme watcher of our own (macOS), as on Windows and Linux it
+    made a second repaint of the whole app on every switch, reading the system's answer too early;
+  - QtOpenGL's import inside the fallback's `try` (some distributions package it apart);
+  - no screen at all at start (`primaryScreen()` is None);
+  - the message box's return types, and the GL fallback's docstring.
+
+  Left: VLC's view on macOS as a plain native widget, to check in 5.1; `QMouseEvent.pos()`, which PyQt6 still has, as
+  it is all over the code (8.4 can take it).
 
 ## Stage 3: Windows
 

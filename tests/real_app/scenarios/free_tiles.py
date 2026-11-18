@@ -17,7 +17,7 @@ kept are as they were. Rows First takes the videos in the order the tiles are
 read in.
 """
 
-from PyQt6.QtCore import QEvent, QPoint, Qt
+from PyQt6.QtCore import QEvent, QPoint, QPointF, Qt
 from PyQt6.QtGui import QCursor, QDrag, QMouseEvent
 from PyQt6.QtTest import QTest
 from PyQt6.QtWidgets import QApplication
@@ -83,8 +83,8 @@ def _mouse(d, kind, pos, modifiers=Qt.KeyboardModifier.NoModifier):
         buttons = QApplication.mouseButtons()
         event = QMouseEvent(
             QEvent.Type.MouseMove,
-            local,
-            pos,
+            QPointF(local),
+            QPointF(pos),
             Qt.MouseButton.NoButton,
             buttons,
             modifiers,

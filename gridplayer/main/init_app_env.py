@@ -1,3 +1,4 @@
+import ctypes
 import multiprocessing
 import os
 
@@ -93,6 +94,16 @@ def start_resource_tracker() -> None:
     ensure_running()
 
 
+def set_app_user_model_id(app_id: str) -> None:
+    """Windows: the taskbar groups the app's windows, and finds its icon and
+    jump list, by this ID rather than by python.exe's."""
+
+    shell32 = ctypes.WinDLL("shell32")
+    shell32.SetCurrentProcessExplicitAppUserModelID.argtypes = [ctypes.c_wchar_p]
+    shell32.SetCurrentProcessExplicitAppUserModelID.restype = ctypes.c_long
+    shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
+
+
 def init_app_env():
     # first: where the settings are kept goes by these
     init_app_env_id()
@@ -128,15 +139,10 @@ def init_app_env():
         os.environ.setdefault("QT_XCB_GL_INTEGRATION", "none")
 
     if env.IS_WINDOWS:
-        from PyQt6.QtWinExtras import QtWin
-
-        QtWin.setCurrentProcessExplicitAppUserModelID(__app_id__)
+        set_app_user_model_id(__app_id__)
 
     if env.IS_MACOS:
         start_resource_tracker()
-
-    QApplication.setAttribute(Qt.ApplicationAttribute.AA_EnableHighDpiScaling)
-    QApplication.setAttribute(Qt.ApplicationAttribute.AA_UseHighDpiPixmaps)
 
     QGuiApplication.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough

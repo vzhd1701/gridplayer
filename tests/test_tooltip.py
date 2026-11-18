@@ -185,7 +185,8 @@ class TestTipWindow:
         # the time only, left of the marker and its rim
         text = QColor(tooltip_module.current_colors()["tooltip_text"])
         time_box = QRect(
-            box.topLeft(), QSize(tip.fontMetrics().width("00:30"), box.height())
+            box.topLeft(),
+            QSize(tip.fontMetrics().horizontalAdvance("00:30"), box.height()),
         )
         digits = _rows(image, time_box, lambda c: _near(c, text))
         markers = _rows(image, box, lambda c: c.name() == MARKER_COLOR)

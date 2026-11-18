@@ -14,18 +14,14 @@ from gridplayer.params.static import (
 from gridplayer.settings import Settings
 from gridplayer.utils.glibc_malloc import give_back_freed_memory
 from gridplayer.utils.qt import MILLISECONDS, QABC, qt_connect
-from gridplayer.widgets.video_frame_vlc_base import (
-    NATIVE_VIEW_RESIZE_INTERVAL_MS,
-    VideoFrameVLC,
-)
-
-if env.IS_MACOS:
-    from PyQt6.QtWidgets import QMacCocoaViewContainer
-
 from gridplayer.vlc_player.instance import InstanceVLC
 from gridplayer.vlc_player.player_base import VlcPlayerBase
 from gridplayer.vlc_player.static import Media, MediaInput
 from gridplayer.vlc_player.video_driver_base import VLCVideoDriver
+from gridplayer.widgets.video_frame_vlc_base import (
+    NATIVE_VIEW_RESIZE_INTERVAL_MS,
+    VideoFrameVLC,
+)
 
 
 class PlayerProcessSingleVLCHWSP(QThread, VlcPlayerBase, metaclass=QABC):
@@ -386,10 +382,9 @@ class VideoFrameVLCHWSP(VideoFrameVLC):
         )
 
     def ui_video_surface(self):
-        if env.IS_MACOS:
-            video_surface = QMacCocoaViewContainer(0, self.video_clip)
-        else:
-            video_surface = QWidget(self.video_clip)
+        # a native widget: its winId() is the HWND, X11 window or NSView VLC
+        # draws into
+        video_surface = QWidget(self.video_clip)
 
         video_surface.setMouseTracking(True)
         video_surface.setWindowFlags(Qt.WindowType.WindowTransparentForInput)

@@ -17,10 +17,12 @@ def init_translator(app):
 
     if env.IS_PYINSTALLER and env.IS_WINDOWS:
         qt_translations_path = str(
-            env.PYINSTALLER_LIB_ROOT / "PyQt5" / "Qt5" / "translations"
+            env.PYINSTALLER_LIB_ROOT / "PyQt6" / "Qt6" / "translations"
         )
     else:
-        qt_translations_path = QLibraryInfo.location(QLibraryInfo.TranslationsPath)
+        qt_translations_path = QLibraryInfo.path(
+            QLibraryInfo.LibraryPath.TranslationsPath
+        )
     log.debug(f"QT translations path: {qt_translations_path}")
 
     translator_qt = QTranslator(app)

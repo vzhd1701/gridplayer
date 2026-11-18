@@ -22,7 +22,7 @@ def _qapp():
 def _mouse_move():
     return QMouseEvent(
         QEvent.Type.MouseMove,
-        QPoint(1, 1),
+        QPointF(1, 1),
         Qt.MouseButton.NoButton,
         Qt.MouseButton.LeftButton,
         Qt.KeyboardModifier.NoModifier,
@@ -375,7 +375,7 @@ def _file_drag_event():
             formats=lambda: ["text/uri-list"],
         ),
         acceptProposedAction=lambda: None,
-        pos=lambda: QPoint(1, 1),
+        position=lambda: QPointF(1, 1),
         keyboardModifiers=lambda: Qt.KeyboardModifier.NoModifier,
         proposedAction=lambda: Qt.DropAction.CopyAction,
         possibleActions=lambda: Qt.DropAction.CopyAction,

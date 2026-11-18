@@ -133,7 +133,7 @@ class DragNDropManager(ManagerBase):
 
         # on the screen: each event is seen at the window it comes to and at
         # the widget it goes on to, and each has its own position in them
-        self._drag_start_position = event.globalPos()
+        self._drag_start_position = event.globalPosition().toPoint()
 
     def mouseMoveEvent(self, event):
         if is_modal_open():
@@ -195,7 +195,7 @@ class DragNDropManager(ManagerBase):
             return False
 
         drag_distance = (
-            event.globalPos() - self._drag_start_position
+            event.globalPosition().toPoint() - self._drag_start_position
         ).manhattanLength()
         if drag_distance < QApplication.startDragDistance():
             return False
@@ -503,9 +503,9 @@ class DragNDropManager(ManagerBase):
         if not hasattr(event_object, "mapToGlobal"):
             return
 
-        # event.pos() + mapToGlobal: QCursor.pos() is stale during X11 XDND
+        # event.position() + mapToGlobal: QCursor.pos() is stale during X11 XDND
         self._update_drop_target(
-            event_object.mapToGlobal(event.pos()),
+            event_object.mapToGlobal(event.position().toPoint()),
             is_internal=self._local_block_from_event(event) is not None,
             event=event,
         )

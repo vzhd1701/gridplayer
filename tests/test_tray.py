@@ -657,7 +657,7 @@ class TestTrayIcon:
         made = []
 
         class OwnIcon(QObject):
-            activated = pyqtSignal(int)
+            activated = pyqtSignal(QSystemTrayIcon.ActivationReason)
             messageClicked = pyqtSignal()
 
             def __init__(self, icon, parent):

@@ -496,7 +496,7 @@ def font_families() -> dict:
     passed and VLC goes on choosing for itself.
     """
 
-    families = QFontDatabase().families()
+    families = QFontDatabase.families()
 
     return {
         "": translate("SettingsDialog", "Default"),

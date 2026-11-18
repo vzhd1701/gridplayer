@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock
 
 import pytest
+from PyQt6 import sip
 from PyQt6.QtCore import QSettings
 from PyQt6.QtWidgets import QApplication, QWidget
 
@@ -776,7 +777,9 @@ def grid(tmp_path):
         block.cleanup()
         block.url_resolver.cleanup()
 
-    parent.deleteLater()
+    # at once: with no event loop running, deleteLater() would leave the cells'
+    # timers going into later tests
+    sip.delete(parent)
 
 
 class TestInThePlayer:

@@ -200,11 +200,11 @@ class TableWidgetDragRows(QtWidgets.QTableWidget):
                 col["item"].setSelected(True)
 
     def _drop_on(self, event):
-        index = self.indexAt(event.pos())
+        index = self.indexAt(event.position().toPoint())
         if not index.isValid():
             return self.rowCount()
 
-        if self._is_below(event.pos(), index):
+        if self._is_below(event.position().toPoint(), index):
             return index.row() + 1
 
         return index.row()
@@ -219,7 +219,7 @@ class TableWidgetDragRows(QtWidgets.QTableWidget):
 
         return (
             rect.contains(pos, True)
-            and not (int(self.model().flags(index)) & Qt.ItemFlag.ItemIsDropEnabled)
+            and not (self.model().flags(index) & Qt.ItemFlag.ItemIsDropEnabled)
             and pos.y() >= rect.center().y()
         )
 

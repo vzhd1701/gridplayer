@@ -1309,7 +1309,7 @@ class ItemList(QTableView):
             event.ignore()
             return
 
-        row = self.drop_row_at(event.pos())
+        row = self.drop_row_at(event.position().toPoint())
 
         if not self.model().dropMimeData(
             event.mimeData(), action, row, Column.NUMBER, QModelIndex()
@@ -1344,7 +1344,7 @@ class ItemList(QTableView):
 
         event.setDropAction(action)
         event.accept()
-        self._mark_drop(event.pos())
+        self._mark_drop(event.position().toPoint())
 
     def _drop_action(self, event):
         """Rows of its own are moved, not another list's; what comes from

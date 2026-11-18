@@ -111,7 +111,7 @@ class WindowsTrayIcon(QObject):
     player has it up (see is_taken), and any icon before Explorer is ready.
     """
 
-    activated = pyqtSignal(int)
+    activated = pyqtSignal(QSystemTrayIcon.ActivationReason)
     messageClicked = pyqtSignal()
 
     def __init__(self, icon: QIcon, parent=None):
@@ -310,8 +310,6 @@ def _from_native(point: QPoint) -> QPoint | None:
 
 
 def _hicon(icon: QIcon) -> int | None:
-    from PyQt6.QtWinExtras import QtWin
-
     size = _win32().small_icon_size()
     pixmap = icon.pixmap(QSize(size, size))
     if pixmap.isNull():
@@ -325,7 +323,7 @@ def _hicon(icon: QIcon) -> int | None:
             Qt.TransformationMode.SmoothTransformation,
         )
 
-    hicon = QtWin.toHICON(pixmap)
+    hicon = pixmap.toImage().toHICON()
     return int(hicon) if hicon else None
 
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from PyQt6.QtCore import QEvent, QPoint, Qt
+from PyQt6.QtCore import QEvent, QKeyCombination, QPoint, QPointF, Qt
 from PyQt6.QtGui import QKeyEvent, QKeySequence, QMouseEvent, QWheelEvent
 from PyQt6.QtWidgets import QApplication
 
@@ -113,7 +113,7 @@ def _mouse_event(
 ):
     return QMouseEvent(
         event_type,
-        QPoint(0, 0),
+        QPointF(0, 0),
         button,
         button,
         modifiers,
@@ -121,16 +121,15 @@ def _mouse_event(
 
 
 def _wheel_event(dx=0, dy=0, modifiers=Qt.KeyboardModifier.NoModifier):
-    # PyQt5 QWheelEvent constructor variants differ; use the common form
     return QWheelEvent(
-        QPoint(0, 0),
-        QPoint(0, 0),
+        QPointF(0, 0),
+        QPointF(0, 0),
         QPoint(0, 0),
         QPoint(dx, dy),
-        0,
-        Qt.Orientation.Vertical if dy else Qt.Orientation.Horizontal,
         Qt.MouseButton.NoButton,
         modifiers,
+        Qt.ScrollPhase.NoScrollPhase,
+        False,
     )
 
 
@@ -230,10 +229,12 @@ def test_enter_and_return_are_one_logical_shortcut():
     assert normalize_shortcut("Ctrl+Return") == "Ctrl+Enter"
 
     seqs = qkeysequences_for_shortcut("Enter")
-    codes = {int(s[0]) for s in seqs}
+    codes = {s[0].toCombined() for s in seqs}
     assert codes == {
-        int(QKeySequence("Return", QKeySequence.SequenceFormat.PortableText)[0]),
-        int(QKeySequence("Enter", QKeySequence.SequenceFormat.PortableText)[0]),
+        QKeySequence("Return", QKeySequence.SequenceFormat.PortableText)[
+            0
+        ].toCombined(),
+        QKeySequence("Enter", QKeySequence.SequenceFormat.PortableText)[0].toCombined(),
     }
 
     assert len(qkeysequences_for_shortcut("Ctrl+Enter")) == 2
@@ -260,7 +261,7 @@ def test_qkeysequences_skips_empty_count_and_duplicate_codes(monkeypatch):
             return self._count
 
         def __getitem__(self, _index):
-            return self._code
+            return QKeyCombination.fromCombined(self._code)
 
         def toString(self, *_args):
             return self._text

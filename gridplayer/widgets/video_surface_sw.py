@@ -1,7 +1,7 @@
 import math
 
 from PyQt6.QtCore import QRect, QRectF, Qt
-from PyQt6.QtGui import QImage, QPainter, QRegion
+from PyQt6.QtGui import QImage, QPainter
 from PyQt6.QtWidgets import QWidget
 
 from gridplayer.params.static import VideoTransform, ViewParams
@@ -133,9 +133,34 @@ class VideoSurfaceView:
         if right <= left or bottom <= top:
             return [self.rect()]
 
-        covered = QRect(left, top, right - left, bottom - top)
+        area = self.rect()
+        covered = QRect(left, top, right - left, bottom - top).intersected(area)
+        if covered.isEmpty():
+            return [area]
 
-        return QRegion(self.rect()).subtracted(QRegion(covered)).rects()
+        # above, below, and the two sides between them
+        bars = [
+            QRect(area.left(), area.top(), area.width(), covered.top() - area.top()),
+            QRect(
+                area.left(),
+                covered.bottom() + 1,
+                area.width(),
+                area.bottom() - covered.bottom(),
+            ),
+            QRect(
+                area.left(),
+                covered.top(),
+                covered.left() - area.left(),
+                covered.height(),
+            ),
+            QRect(
+                covered.right() + 1,
+                covered.top(),
+                area.right() - covered.right(),
+                covered.height(),
+            ),
+        ]
+        return [bar for bar in bars if not bar.isEmpty()]
 
 
 class SoftwareVideoSurface(VideoSurfaceView, QWidget):

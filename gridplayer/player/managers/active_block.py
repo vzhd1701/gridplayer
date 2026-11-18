@@ -1366,14 +1366,14 @@ class ActiveBlockManager(ManagerBase):
 
     def update_active_from_drag(self, event, event_object):
         # QCursor.pos() is stale during X11 DND from another process;
-        # QDragMoveEvent.pos() is filled from XdndPosition and is current.
+        # QDragMoveEvent.position() is filled from XdndPosition and is current.
         if is_modal_open():
             return
 
         if not hasattr(event_object, "mapToGlobal"):
             return
 
-        global_pos = event_object.mapToGlobal(event.pos())
+        global_pos = event_object.mapToGlobal(event.position().toPoint())
         self._update_active_block(self.get_video_block_at(global_pos))
         self.cmd_active("show_overlay")
 

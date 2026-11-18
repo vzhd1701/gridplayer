@@ -13,7 +13,7 @@ and goes once the pointer leaves, unless "Show grid lines on hover" is off.
 
 import shutil
 
-from PyQt6.QtCore import QEvent, QPoint, Qt
+from PyQt6.QtCore import QEvent, QPoint, QPointF, Qt
 from PyQt6.QtGui import QCursor, QMouseEvent
 from PyQt6.QtTest import QTest
 from PyQt6.QtWidgets import QApplication
@@ -64,8 +64,8 @@ def _mouse(
         # a move with keys held, which QTest has no way to make
         event = QMouseEvent(
             QEvent.Type.MouseMove,
-            local,
-            pos,
+            QPointF(local),
+            QPointF(pos),
             Qt.MouseButton.NoButton,
             Qt.MouseButton.LeftButton,
             modifiers,

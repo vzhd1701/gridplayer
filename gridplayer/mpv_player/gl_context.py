@@ -639,9 +639,9 @@ _QT_GL_CALLS = {
 
 
 class _QtGLCalls:
-    """The calls of `_QT_GL_CALLS` in a context of Qt's, where PyQt5 has none
-    of its own: OpenGL ES. Taken as glDeleteTextures takes them in PyQt5's,
-    a list for the textures."""
+    """The calls of `_QT_GL_CALLS` in a context of Qt's, where PyQt6 has none
+    of its own: OpenGL ES, or a version it has no class for. Taken as
+    glDeleteTextures takes them in PyQt6's, a list for the textures."""
 
     def __init__(self, context):
         from PyQt6.QtCore import QByteArray
@@ -666,18 +666,24 @@ class _QtGLCalls:
 
 
 def qt_gl_functions(context):
-    """GL calls in a context of Qt's, current: OpenGL 2.0's, else what PyQt5
+    """GL calls in a context of Qt's, current: OpenGL 2.0's, else what PyQt6
     has for it, else ctypes ones. None if it has none of them."""
 
-    from PyQt6.QtOpenGL import QOpenGLVersionProfile
-
-    profile = QOpenGLVersionProfile()
-    profile.setVersion(2, 0)
     try:
-        functions = context.versionFunctions(profile) or context.versionFunctions()
+        # QtOpenGL is a package of its own on some distributions
+        from PyQt6.QtOpenGL import (
+            QOpenGLVersionFunctionsFactory,
+            QOpenGLVersionProfile,
+        )
+
+        profile = QOpenGLVersionProfile()
+        profile.setVersion(2, 0)
+        functions = QOpenGLVersionFunctionsFactory.get(
+            profile, context
+        ) or QOpenGLVersionFunctionsFactory.get(context=context)
     except (TypeError, RuntimeError, AttributeError, ImportError):
-        # a Core version PyQt5 has no class for (it has 4.1's), as on macOS, or
-        # its module left out of a package (PyQt5._QOpenGLFunctions_4_1_Core)
+        # a version PyQt6 has no class for (it has 2.0, 2.1 and 4.1 Core's), as
+        # 3.2 Core on macOS
         functions = None
 
     if functions is None:

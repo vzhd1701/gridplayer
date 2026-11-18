@@ -1605,7 +1605,7 @@ class KeymapTreeView(QTreeView):
         if event.button() == Qt.MouseButton.LeftButton:
             index = self.indexAt(event.pos())
             if index.isValid() and index.data(DATA_IS_ACTION):
-                self._emit_menu_for_index(index, event.globalPos())
+                self._emit_menu_for_index(index, event.globalPosition().toPoint())
                 event.accept()
                 return
             # Folders: toggle expand/collapse (ExpandsOnDoubleClick is off so

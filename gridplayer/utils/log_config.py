@@ -45,11 +45,11 @@ class StreamToLogger:
 
 class QtLogHandler:
     log_level_map = {
-        QtCore.QtDebugMsg: logging.DEBUG,
-        QtCore.QtInfoMsg: logging.INFO,
-        QtCore.QtWarningMsg: logging.WARNING,
-        QtCore.QtCriticalMsg: logging.ERROR,
-        QtCore.QtFatalMsg: logging.CRITICAL,
+        QtCore.QtMsgType.QtDebugMsg: logging.DEBUG,
+        QtCore.QtMsgType.QtInfoMsg: logging.INFO,
+        QtCore.QtMsgType.QtWarningMsg: logging.WARNING,
+        QtCore.QtMsgType.QtCriticalMsg: logging.ERROR,
+        QtCore.QtMsgType.QtFatalMsg: logging.CRITICAL,
     }
 
     def __init__(self):

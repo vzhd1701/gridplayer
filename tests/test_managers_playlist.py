@@ -5,6 +5,7 @@ from unittest.mock import call
 from uuid import uuid4
 
 import pytest
+from PyQt6 import sip
 from PyQt6.QtWidgets import QApplication, QMessageBox, QWidget
 
 from gridplayer.models.audio_selection import AudioExternal
@@ -79,8 +80,24 @@ def _without_bookmarks(ctx):
     return ctx
 
 
+# the managers' parents, deleted after each test with what they hold: their
+# timers would otherwise go on firing into later tests, the stand-in contexts
+# lacking what the real one has
+_parents = []
+
+
+@pytest.fixture(autouse=True)
+def _delete_parents():
+    yield
+    while _parents:
+        parent = _parents.pop()
+        if not sip.isdeleted(parent):
+            sip.delete(parent)
+
+
 def _make_manager(ctx=None):
     parent = QWidget()
+    _parents.append(parent)
     manager = PlaylistManager(
         context=_without_bookmarks(SimpleNamespace() if ctx is None else ctx),
         parent=parent,

@@ -8,26 +8,36 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-from PyQt6.QtCore import QEvent, QPoint, Qt
+from PyQt6.QtCore import QEvent, QPoint, QPointF, Qt
 from PyQt6.QtGui import QMouseEvent, QWheelEvent
 
 from gridplayer.player.managers.actions import ActionsManager
 from gridplayer.utils.keymap import WHEEL_NOTCH, WHEEL_PAUSE_MS, WheelNotches
 
 
+class _Wheel(QWheelEvent):
+    """A turn of the wheel at a time given: Qt 6's events can't be told one."""
+
+    def __init__(self, ms, *args):
+        super().__init__(*args)
+        self._ms = ms
+
+    def timestamp(self) -> int:
+        return self._ms
+
+
 def _wheel(dy=0, dx=0, ms=0, modifiers=Qt.KeyboardModifier.NoModifier):
-    event = QWheelEvent(
-        QPoint(0, 0),
-        QPoint(0, 0),
+    return _Wheel(
+        ms,
+        QPointF(0, 0),
+        QPointF(0, 0),
         QPoint(0, 0),
         QPoint(dx, dy),
-        0,
-        Qt.Orientation.Vertical if dy else Qt.Orientation.Horizontal,
         Qt.MouseButton.NoButton,
         modifiers,
+        Qt.ScrollPhase.NoScrollPhase,
+        False,
     )
-    event.setTimestamp(ms)
-    return event
 
 
 def _turned(notches, *turns):
@@ -164,7 +174,7 @@ class TestFiringShortcuts:
     def test_clicks_still_fire_as_they_did(self, manager):
         release = QMouseEvent(
             QEvent.Type.MouseButtonRelease,
-            QPoint(0, 0),
+            QPointF(0, 0),
             Qt.MouseButton.LeftButton,
             Qt.MouseButton.LeftButton,
             Qt.KeyboardModifier.NoModifier,

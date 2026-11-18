@@ -1,7 +1,6 @@
 import logging
 import sys
 
-from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import QApplication
 
@@ -64,12 +63,15 @@ def init_app():
 
     app.setStyle(create_fusion_style())
 
-    app.setAttribute(Qt.ApplicationAttribute.AA_DisableWindowContextHelpButton)
     app.styleHints().setShowShortcutsInContextMenus(True)
 
     apply_theme(app)
-    app.paletteChanged.connect(lambda: on_system_theme_changed(app))
-    watch_system_theme(lambda: on_system_theme_changed(app), app)
+    # the desktop's light or dark: our own watcher asks the system, retrying
+    # while its answer lags; where there is none (macOS), Qt says
+    if watch_system_theme(lambda: on_system_theme_changed(app), app) is None:
+        app.styleHints().colorSchemeChanged.connect(
+            lambda _scheme: on_system_theme_changed(app)
+        )
 
     init_icon(app)
 

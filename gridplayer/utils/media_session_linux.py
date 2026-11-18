@@ -11,9 +11,9 @@ import logging
 import os
 
 from PyQt6.QtCore import (
-    Q_CLASSINFO,
     QMetaType,
     QObject,
+    pyqtClassInfo,
     pyqtProperty,
     pyqtSignal,
     pyqtSlot,
@@ -72,10 +72,9 @@ _ROOT_INTROSPECTION = f"""
 """
 
 
+@pyqtClassInfo("D-Bus Interface", ROOT_INTERFACE)
+@pyqtClassInfo("D-Bus Introspection", _ROOT_INTROSPECTION)
 class _RootAdaptor(QDBusAbstractAdaptor):
-    Q_CLASSINFO("D-Bus Interface", ROOT_INTERFACE)
-    Q_CLASSINFO("D-Bus Introspection", _ROOT_INTROSPECTION)
-
     def __init__(self, session):
         super().__init__(session)
 
@@ -154,10 +153,9 @@ _PLAYER_INTROSPECTION = f"""
 """
 
 
+@pyqtClassInfo("D-Bus Interface", PLAYER_INTERFACE)
+@pyqtClassInfo("D-Bus Introspection", _PLAYER_INTROSPECTION)
 class _PlayerAdaptor(QDBusAbstractAdaptor):
-    Q_CLASSINFO("D-Bus Interface", PLAYER_INTERFACE)
-    Q_CLASSINFO("D-Bus Introspection", _PLAYER_INTROSPECTION)
-
     def __init__(self, session):
         super().__init__(session)
 
@@ -336,7 +334,7 @@ class MprisSession(QObject):
                 PLAYER_INTERFACE,
                 changed,
                 # a plain list goes over as av, the spec's is as
-                QDBusArgument([], QMetaType.Type.QStringList),
+                QDBusArgument([], QMetaType.Type.QStringList.value),
             ]
         )
         self._bus.send(message)

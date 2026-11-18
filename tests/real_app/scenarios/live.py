@@ -16,7 +16,7 @@ def _picture(cell):
         return b""
 
     bits = image.bits()
-    bits.setsize(image.byteCount())
+    bits.setsize(image.sizeInBytes())
 
     return bytes(bits)
 
