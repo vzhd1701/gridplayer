@@ -2748,7 +2748,7 @@ ACTIONS = MappingProxyType(
         },
         "Unlock All Tiles": {
             "title": translate("Actions", "Unlock All Tiles"),
-            "icon": "empty",
+            "icon": "grid-tiles-unlock",
             "func": "unlock_all_tiles",
             "enable_if": "has_locked_tiles",
             "show_if": "is_grid_free",

@@ -106,6 +106,7 @@ icon-symbolic,icons/custom/tile overlap.svg,grid-tile-overlap
 icon-symbolic,icons/custom/bring to front.svg,grid-tile-front
 icon-symbolic,icons/custom/send to back.svg,grid-tile-back
 icon-symbolic,icons/custom/lock tile.svg,grid-tile-lock
+icon-symbolic,icons/custom/unlock tiles.svg,grid-tiles-unlock
 icon-symbolic,icons/custom/make room.svg,grid-make-room
 icon-symbolic,icons/custom/fill space.svg,grid-fill-space
 icon-symbolic,icons/custom/fit tile.svg,grid-fit-tile
