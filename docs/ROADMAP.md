@@ -86,6 +86,20 @@ Every dialog needs the same frame. Then Auto could take Wayland on GNOME too.
 Another way is the QAdwaitaDecorations plugin, GNOME's look for Qt's frame, but a packaged app has its own Qt and the
 plugin must be built for exactly that one: a compiled part to keep up for every Qt release and CPU.
 
+## Architecture refactor
+
+After the move to Qt 6 (said 2026-11-18), so the big diff of each isn't fought twice. What and in what order is in
+`ARCHITECTURE_REVIEW.md`, a read of the whole app done 2026-11-16. In short: the managers, connections, commands,
+actions, menu, block parts, drivers, resolvers and settings are each a closed list written out by hand in one file, so
+a feature means editing five to thirteen files, and a plugin could edit none of them. Each list becomes a registry
+that things add themselves to.
+
+- If only five are done: `Player`'s hand wiring (1), the flat commands and context (2), the frozen actions and menu
+  (3), the settings singletons (7) and the block parts (5); the cheap ones on the way, `[ALL]` as a loop (4),
+  resolver and list-format registries (10) and a lifecycle with teardown (16).
+- Its "A possible order" goes in steps that each leave the app working, from guard rails and quick registries to a
+  plugin loader with one of the app's own features moved onto it.
+
 ## Maybe some day
 
 Ideas talked about and put aside. None is wanted soon; they're here so they aren't lost.
