@@ -50,7 +50,7 @@ class AboutDialog(QDialog):
         try:
             from curl_cffi import __version__ as CURL_CFFI_VERSION
         except ImportError:
-            # not shipped where it has no wheel to install from (32-bit Windows)
+            # an extra of yt-dlp's, not there where it has no wheel to install from
             CURL_CFFI_VERSION = None
 
         super().__init__(parent)

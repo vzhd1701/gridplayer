@@ -127,11 +127,7 @@ def _set_window_owner(hwnd: int, owner_hwnd: int) -> None:
 
     user32 = ctypes.WinDLL("user32")
 
-    # SetWindowLongPtrW is a macro for SetWindowLongW in 32-bit Windows
-    set_window_long = getattr(user32, "SetWindowLongPtrW", None)
-    if set_window_long is None:
-        set_window_long = user32.SetWindowLongW
-
+    set_window_long = user32.SetWindowLongPtrW
     set_window_long.argtypes = [wintypes.HWND, ctypes.c_int, ctypes.c_ssize_t]
     set_window_long.restype = ctypes.c_ssize_t
 

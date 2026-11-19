@@ -223,13 +223,8 @@ def _load_user32():
     user32.MapWindowPoints.restype = ctypes.c_int
     user32.GetClassNameW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
     user32.GetClassNameW.restype = ctypes.c_int
-    # GetWindowLongPtrW is a macro for GetWindowLongW in 32-bit Windows
-    if not hasattr(user32, "GetWindowLongPtrW"):
-        user32.GetWindowLongPtrW = user32.GetWindowLongW
     user32.GetWindowLongPtrW.argtypes = [wintypes.HWND, ctypes.c_int]
     user32.GetWindowLongPtrW.restype = ctypes.c_ssize_t
-    if not hasattr(user32, "SetWindowLongPtrW"):
-        user32.SetWindowLongPtrW = user32.SetWindowLongW
     user32.SetWindowLongPtrW.argtypes = [
         wintypes.HWND,
         ctypes.c_int,
