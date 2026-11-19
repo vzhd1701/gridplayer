@@ -33,8 +33,7 @@ jobs:
           - { os: ubuntu-latest, python-version: "3.10" }
           - { os: ubuntu-latest, python-version: "3.14" }
           # what is only true on the other two shows there. macOS on Intel:
-          # GitHub has arm64 Macs to spare for one job at a time, which the
-          # real app's takes (see real-app-desktop), and a job left waiting
+          # GitHub often has no arm64 Mac to give, and a job left waiting
           # 15 min is cancelled
           - { os: windows-latest, python-version: "3.14" }
           - { os: macos-15-intel, python-version: "3.14" }
@@ -168,9 +167,10 @@ jobs:
             !build/real-app/**/home
 
   # Every scenario on Windows and macOS. Windows's VLC ones and MPV ones side
-  # by side, as on Linux; macOS's on one arm64 runner, all that GitHub has to
-  # spare at a time (more were left waiting and cancelled). A system new here
-  # goes in with trial: true, which holds no release up, until it has passed
+  # by side, as on Linux; macOS's on one Intel runner: an arm64 one was most
+  # often not to be had, and the job cancelled after 15 min of waiting
+  # (2026-11-18, -19). A system new here goes in with trial: true, which
+  # holds no release up, until it has passed
   real-app-desktop:
     strategy:
       fail-fast: false
@@ -178,7 +178,7 @@ jobs:
         include:
           - { os: windows-latest, part: vlc, select: "not mpv" }
           - { os: windows-latest, part: mpv, select: mpv }
-          - { os: macos-15, part: all, select: "" }
+          - { os: macos-15-intel, part: all, select: "" }
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.trial == true }}
     timeout-minutes: 60
