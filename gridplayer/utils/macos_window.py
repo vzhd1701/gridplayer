@@ -9,9 +9,8 @@ frame, the lines it snaps to, the word by the pointer) are hidden together
 as it is let go of.
 """
 
+from PyQt6.QtGui import QGuiApplication
 from PyQt6.QtWidgets import QWidget
-
-from gridplayer.params import env
 
 # NSWindowAnimationBehaviorNone
 _ANIMATION_NONE = 2
@@ -21,7 +20,8 @@ def without_window_animation(widget: QWidget) -> None:
     """Shown and hidden at once. Called each time it is shown: Qt can make
     the native window anew."""
 
-    if not env.IS_MACOS:
+    # only Cocoa's window ids are NSViews: offscreen's (the tests') isn't
+    if QGuiApplication.platformName() != "cocoa":
         return
 
     import objc
