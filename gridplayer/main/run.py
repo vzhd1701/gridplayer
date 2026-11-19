@@ -40,6 +40,13 @@ def run_app():
     if sys.argv[1:]:
         player.process_arguments(sys.argv[1:])
 
+    if env.MPV_GL_OUTPUT:
+        # Drawn with GL from the start. A window shown without, Qt makes anew
+        # as GL comes with its first video's frame: off the screen a moment.
+        from gridplayer.widgets.video_surface_gl import GLGridSurface
+
+        GLGridSurface.of(player)
+
     if Settings().get("player/start_fullscreen"):
         player.showFullScreen()
     elif Settings().get("player/start_maximized"):
