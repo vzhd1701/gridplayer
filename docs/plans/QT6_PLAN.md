@@ -3,14 +3,14 @@
 The move from PyQt5 (Qt 5.15) to PyQt6 on Qt 6.12, on the `qt6` branch. This file says what changes, in what order,
 and how each step is checked. Tick an item only once it has been seen working.
 
-**Status: stages 0-8 done (2026-11-19). Left: CI's first run (the branch isn't pushed: a `dry_run` pre-release), the stage 3 hand checks.**
+**Status: stages 0-8 done (2026-11-19), the stage 3 hand checks too. Left: CI's first run (the branch isn't pushed: a `dry_run` pre-release).**
 
 | | Stage | State |
 |---|---|---|
 | 0 | Baseline on PyQt5: tests, scenarios, benches, screenshots | **done 2026-11-18** but the Macs (before stage 5) and benches (stage 3) |
 | 1 | Rewrites that work on both: full enum names, `exec()`, flag values | **done 2026-11-18** |
 | 2 | The switch: PyQt6 6.12, imports, removed APIs, events; tests pass | **done 2026-11-18** |
-| 3 | Windows: DPI, native windows, GL, look, input | **done 2026-11-18**; hand checks left (DPI, keys, drag and drop, tray, SMTC) |
+| 3 | Windows: DPI, native windows, GL, look, input | **done 2026-11-18**; hand checks done 2026-11-19 |
 | 4 | Linux: X11, Wayland, D-Bus | **done 2026-11-19** |
 | 5 | macOS | **done 2026-11-19** on the hackintosh (`test_macos` unreachable) |
 | 6 | Translations: pylupdate6 | **done 2026-11-19** |
@@ -149,7 +149,7 @@ calls in the code.
 
 | | Today | With Qt 6 |
 |---|---|---|
-| Windows | x64 and x86, Qt 5.15.2 | x64 only (arm64 wheels exist: later, if wanted) |
+| Windows | x64 and x86, Qt 5.15.2 | x64, and arm64 (7.8) |
 | macOS | x86_64 and arm64 DMGs | the same, macOS 14 and up |
 | AppImage | `manylinux_2_34`, x64 | the same base (PyQt6's x64 wheel is `manylinux_2_34` too); plus arm64 on `manylinux_2_39` |
 | Flatpak | KDE 5.15-25.08, PyQt BaseApp | KDE 6.11, PyQt BaseApp 6.11, until a 6.12 branch |
@@ -302,6 +302,7 @@ The main platform and the one Qt 6 changes most under us. Each item against the 
   pixel ratio (the three `devicePixelRatio()` calls were floats on Qt 5 too). **By hand:** Windows' own 125%, 150%,
   200%, and a window moved between screens of different scale (Qt 6 is Per-Monitor v2, Qt 5 was v1): VLC's and
   mpv's own windows, the overlay, zoom to cursor, the tray menu's place.
+  **By hand, done 2026-11-19:** scaling works (the user's check).
 - 3.2 **GL.** Qt 6 puts a window with a `QOpenGLWidget` together differently. MPV Shared: the one surface, the holes,
   `repaint_now`, `gl_window_size`'s held paints, 120 fps (13.10), resize without the jump, the GL line fix, `grabbing()`.
   Benches against stage 0.
@@ -335,12 +336,15 @@ The main platform and the one Qt 6 changes most under us. Each item against the 
   5%, a click plays and pauses, all through Qt 6's Windows input. **By hand:** keys (Qt drops key messages to a
   window never activated, on PyQt5 too, and activating one would switch the desktop): keypad, AltGr, media keys;
   drag and drop in and out (Windows' OLE loop takes the real mouse), the hold-to-switch key, double-click.
+  **By hand, done 2026-11-19:** keys, drags and clicks work (the user's check).
 - 3.5 **Native bits.** Tray and its menu, hidden from taskbar, SMTC, taskbar icon (the app ID), single instance,
   dark title bars, window geometry restored from a playlist saved on Qt 5.
   **Partly done 2026-11-18:** the app ID (`shell32` now) is what it was; dark title bar on and off with the scheme;
   a window geometry saved by Qt 5 restored by Qt 6 to the pixel; single instance doesn't use Qt. Windows doesn't say
   a caption colour back, on either binding. **By hand:** the tray and its menu, hidden from taskbar, SMTC (each would
   show on the user's own taskbar from here).
+  **By hand, done 2026-11-19:** the tray and hiding from the taskbar work (the user's check). MPV Shared starts and
+  plays on Windows with the GL surface made before the window shows (`run.py`, from the Ubuntu round).
 - 3.6 All real-app scenarios; VLC single-process freeze check (VLC SP).
   **Done:** all scenarios pass offscreen on PyQt6 (stage 2); VLC hardware single-process played 4, 9 and 16 cells in
   real windows through every bench run without a stall.
@@ -478,8 +482,12 @@ after the other in real cocoa windows (`~/gp-tests/suite_in.sh`, `ab*.sh`).
   same 1,795 and three pylupdate5 dropped because the same text was already taken in another context: "Margins",
   "Proxy address" and "Verify TLS certificates" in `SettingsDialog`. Plural forms the same. pylupdate6 writes one
   message with a `<location>` for each place it's used (2,239) where pylupdate5 wrote one, and `<translation
-  type="unfinished" />` where pylupdate5 wrote an open and close tag: **see what Crowdin makes of it before the
-  first upload.**
+  type="unfinished" />` where pylupdate5 wrote an open and close tag.
+  **Checked 2026-11-19:** Qt's own `lupdate` (6.12, from PySide6-Essentials) run on the same code finds the same
+  1,798 messages, read as XML the same in every way: contexts, texts, disambiguations (47), the files each is used
+  in, the unfinished state. What differs is how it's written (`<translation type="unfinished"></translation>`,
+  `&quot;`, no space before `/>`) and some line numbers (a call over several lines). Qt's own `.ts` is the one
+  Crowdin's Qt format is made for, and Crowdin keys a string by its context and text, so the upload is safe.
 - 6.4 `lrelease` (Qt 6's tools) builds the `.qm` files; the app loads a translation.
   **Done 2026-11-19.** Qt 6.12's `lrelease` (from PySide6-Essentials, in a scratch venv) and the 5.15 one in use make
   byte-identical `.qm` files of `de_DE`, `ja_JP` and `ru_RU`, so the resources needn't be made again;
@@ -567,6 +575,21 @@ after the other in real cocoa windows (`~/gp-tests/suite_in.sh`, `ab*.sh`).
 - 7.7 (asked 2026-11-19) The pre-release no longer runs the tests first, which run on every push and are waited for
   before it's started; `dry_run` builds everything and keeps the files as the run's artifacts, releasing and tagging
   nothing.
+- 7.8 (asked 2026-11-19) Windows on arm64, a package of its own, built on GitHub's `windows-11-arm` runner.
+  Everything it takes exists: PyQt6, PyQt6-Qt6, sip, pydantic-core, the winrt projections, curl_cffi and the rest
+  have `win_arm64` wheels for Python 3.14 (only `brotlicffi`, which CPython doesn't use, and a dev tool haven't);
+  VideoLAN publishes VLC 3.0.24 for `winarm64` (every plugin the package takes is in it); shinchiro builds libmpv for
+  `aarch64` beside the x86_64 one we pin, the same mpv commit. `BUILD_WIN_ARCH=arm64` (`just
+  build-win-package-arm64`) builds it with an arm64 Python, which `build_win.sh` checks; VLC and the venv are kept
+  per architecture in `build/`; the files are `-winarm64-install.exe` and `-winarm64-portable.zip`, the installer
+  starting only on arm64 Windows. Chocolatey stays x64: it has no arm64 package of its own.
+  VLC's arm64 build imports `WaitOnAddress` from Windows itself (made for Windows 10 1809 and up), so
+  `libvlc_waits.py` reads libvlccore's import table first and leaves it be when the three are imported (read right
+  from both real DLLs); the 32-bit scanner went with the 32-bit build, as did the `GetWindowLongW` fallbacks. A
+  change of driver that waits for a restart leaves the open videos be, so the VLC process managers are kept one for
+  each kind of process. **Not run anywhere yet**: there's no arm64 Windows here, and CI's first run is its
+  first build and self-check. OpenGL on Windows on Arm comes from the GPU's driver (Qualcomm's has it) or Microsoft's
+  OpenCL and OpenGL Compatibility Pack; without either, MPV Shared can't draw (Copy and Direct don't need it).
 
 ## Stage 8: clean-up and docs
 
@@ -602,5 +625,5 @@ after the other in real cocoa windows (`~/gp-tests/suite_in.sh`, `ab*.sh`).
 ## After the move (not part of it)
 
 What Qt 6 opens up, from ROADMAP: sharp windows at 125% and 150% on Wayland (comes with the move, seen in 4.2), our own
-window frame on GNOME, Wayland as Auto there. Also possible: Windows on arm64, and the system colour scheme from
+window frame on GNOME, Wayland as Auto there. Also possible: the system colour scheme from
 `QStyleHints.colorScheme()` instead of our own watchers. Then the architecture refactor.

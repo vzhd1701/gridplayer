@@ -63,6 +63,18 @@ What it would cost:
   kills any game running. First step: force one with MPV playing and see what happens today, and build this only if
   the app really closes.
 
+## Restart Now
+
+Talked about 2026-11-19. Some settings work only after a restart (the video driver or MPV's output, when it changes
+whether MPV draws with GL; the window system; the language). The "Restart to apply" message only says so. When what
+draws the videos is what waits for the restart, the videos already open stay as they are until then rather than being
+made again twice, once as a stand-in and once after the restart; the ones opened next take the new settings.
+
+A "Restart Now" button beside it would start the app again with the same playlist and cells, unsaved changes kept as
+unsaved. Left for later because it has to work in every package: the Windows exe and installer, the `.app`, the
+AppImage, the Flatpak and Snap sandboxes, and from source. And the new copy must wait for the old one to close, or the
+single-instance check hands it back to the old one.
+
 ## Qt 6
 
 Moved to PyQt6 6.12 on the `qt6` branch (2026-11-19), stage by stage in `docs/plans/QT6_PLAN.md`. What it brought for
