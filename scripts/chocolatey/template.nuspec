@@ -14,7 +14,7 @@
     <authors>{APP_AUTHOR}</authors>
     <title>{CHOCO_TITLE}</title>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <tags>gridplayer python player youtube streamlink twitch streaming qt video video-player livestream pyqt5 youtube-dl qt5 vlc libvlc pyqt player-video yt-dlp media multi-video</tags>
+    <tags>gridplayer python player youtube streamlink twitch streaming qt video video-player livestream pyqt6 youtube-dl qt6 vlc libvlc pyqt player-video yt-dlp media multi-video</tags>
     <summary>Play videos side-by-side</summary>
     <description>Simple VLC-based media player that can play multiple videos at the same time. You can
 play as many videos as you like, the only limit is your hardware. It supports all video

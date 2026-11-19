@@ -27,75 +27,38 @@ BUILD_DIR = os.path.abspath("./build")
 
 hiddenimports = collect_submodules('streamlink.plugins')
 
-# QOpenGLContext.versionFunctions() imports these by name, for the version of
-# the context it's in: Shared output's (MPV), the macOS default
-hiddenimports += [
-    "PyQt5." + name.split(".")[0]
-    for name in os.listdir(os.path.dirname(importlib.util.find_spec("PyQt5").origin))
-    if name.startswith("_QOpenGLFunctions_")
-]
-
+# PyQt6's modules the app doesn't import, from the installed wheel's own list:
+# Qt 6 has more than Qt 5 had, and each brings its Qt libraries
+PYQT_USED = {"QtCore", "QtGui", "QtWidgets", "QtOpenGL", "QtOpenGLWidgets", "QtSvg", "QtSvgWidgets"}
 excludes = [
-    "PyQt5.QtBluetooth",
-    "PyQt5.QtDBus",
-    "PyQt5.QtDesigner",
-    "PyQt5.QtHelp",
-    "PyQt5.QtLocation",
-    "PyQt5.QtMacExtras",
-    "PyQt5.QtNetworkAuth",
-    "PyQt5.QtNfc",
-    "PyQt5.QtOpenGL",
-    "PyQt5.QtPositioning",
-    "PyQt5.QtPrintSupport",
-    "PyQt5.QtQml",
-    "PyQt5.QtQuick",
-    "PyQt5.QtQuick3D",
-    "PyQt5.QtQuickWidgets",
-    "PyQt5.QtRemoteObjects",
-    "PyQt5.QtSensors",
-    "PyQt5.QtSerialPort",
-    "PyQt5.QtSql",
-    "PyQt5.QtTest",
-    "PyQt5.QtTextToSpeech",
-    "PyQt5.QtWebChannel",
-    "PyQt5.QtWebSockets",
-    "PyQt5.QtXml",
-    "PyQt5.QtXmlPatterns",
-    "PyQt5.QtMultimedia",
-    "PyQt5.QtMultimediaWidgets",
-    "PyQt5.QtNetwork",
-    "QtDBus",
-    "QtOpenGL",
-    "QtPrintSupport",
-    "QtQml",
-    "QtQmlModels",
-    "QtQuick",
-    "QtWebSockets",
-]
+    "PyQt6." + name.split(".")[0]
+    for name in os.listdir(os.path.dirname(importlib.util.find_spec("PyQt6").origin))
+    if name.startswith("Qt") and name.split(".")[0] not in PYQT_USED
+] + ["PyQt6.uic", "PyQt6.lupdate"]
 
 del_bins = [
-    "QtQml",
-    "QtQuick",
-    "QtWebSockets",
+    # brought in only by the TUIO touch plugin, touches sent over the network;
+    # "QtNetwork" is the bundle's own link to the framework
     "QtNetwork",
-    "PyQt5/Qt5/plugins/audio/libqtaudio_coreaudio",
-    "PyQt5/Qt5/plugins/bearer/libqgenericbearer",
-    "PyQt5/Qt5/plugins/imageformats/libqgif",
-    "PyQt5/Qt5/plugins/imageformats/libqico",
-    "PyQt5/Qt5/plugins/imageformats/libqmacheif",
-    "PyQt5/Qt5/plugins/imageformats/libqmacjp2",
-    "PyQt5/Qt5/plugins/imageformats/libqtga",
-    "PyQt5/Qt5/plugins/imageformats/libqtiff",
-    "PyQt5/Qt5/plugins/imageformats/libqwbmp",
-    "PyQt5/Qt5/plugins/imageformats/libqwebp",
-    "PyQt5/Qt5/plugins/platforms/libqminimal",
-    "PyQt5/Qt5/plugins/platforms/libqoffscreen",
-    "PyQt5/Qt5/plugins/platforms/libqwebgl",
-    "PyQt5/Qt5/plugins/platformthemes/libqxdgdesktopportal",
-    "PyQt5/Qt5/plugins/playlistformats/libqtmultimedia_m3u",
+    "PyQt6/Qt6/lib/QtNetwork.framework",
+    "PyQt6/Qt6/plugins/generic/libqtuiotouchplugin",
+    "PyQt6/Qt6/plugins/imageformats/libqgif",
+    "PyQt6/Qt6/plugins/imageformats/libqmacheif",
+    "PyQt6/Qt6/plugins/imageformats/libqmacjp2",
+    "PyQt6/Qt6/plugins/imageformats/libqtga",
+    "PyQt6/Qt6/plugins/imageformats/libqtiff",
+    "PyQt6/Qt6/plugins/imageformats/libqwbmp",
+    "PyQt6/Qt6/plugins/imageformats/libqwebp",
+    "PyQt6/Qt6/plugins/platforms/libqminimal",
+    "PyQt6/Qt6/plugins/platforms/libqoffscreen",
 ]
 
-del_data = []
+# the rest of a framework whose binary went: its Info.plist and signature
+# left behind, its links lead nowhere and codesign fails
+del_data = [
+    "QtNetwork",
+    "PyQt6/Qt6/lib/QtNetwork.framework",
+]
 
 add_data = [
     (os.path.join(BUILD_DIR, "mime.icns"), '.')
@@ -191,6 +154,9 @@ info_plist = {
     **mime_plist,
 
     "LSApplicationCategoryType": "public.app-category.video",
+
+    # Qt 6.12's own minimum: PyQt6's wheels are macosx_14_0
+    "LSMinimumSystemVersion": "14.0",
 
     # App can use GPU
     "NSSupportsAutomaticGraphicsSwitching": True,

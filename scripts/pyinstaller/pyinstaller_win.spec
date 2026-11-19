@@ -23,65 +23,30 @@ hiddenimports = collect_submodules('streamlink.plugins')
 # the WinRT media controls load the projections they hand out by name
 hiddenimports += collect_submodules('winrt')
 
-# QOpenGLContext.versionFunctions() imports these by name, for the version of
-# the context it's in: Shared output's (MPV), the macOS default
-hiddenimports += [
-    "PyQt5." + name.split(".")[0]
-    for name in os.listdir(os.path.dirname(importlib.util.find_spec("PyQt5").origin))
-    if name.startswith("_QOpenGLFunctions_")
-]
-
+# PyQt6's modules the app doesn't import, from the installed wheel's own list:
+# Qt 6 has more than Qt 5 had, and each brings its Qt libraries
+PYQT_USED = {"QtCore", "QtGui", "QtWidgets", "QtOpenGL", "QtOpenGLWidgets", "QtSvg", "QtSvgWidgets"}
 excludes = [
-    "altgraph",
-    "PyQt5.QtBluetooth",
-    "PyQt5.QtDBus",
-    "PyQt5.QtDesigner",
-    "PyQt5.QtHelp",
-    "PyQt5.QtLocation",
-    "PyQt5.QtNetworkAuth",
-    "PyQt5.QtNfc",
-    "PyQt5.QtOpenGL",
-    "PyQt5.QtPositioning",
-    "PyQt5.QtPrintSupport",
-    "PyQt5.QtQml",
-    "PyQt5.QtQuick",
-    "PyQt5.QtQuick3D",
-    "PyQt5.QtQuickWidgets",
-    "PyQt5.QtRemoteObjects",
-    "PyQt5.QtSensors",
-    "PyQt5.QtSerialPort",
-    "PyQt5.QtSql",
-    "PyQt5.QtTest",
-    "PyQt5.QtTextToSpeech",
-    "PyQt5.QtWebChannel",
-    "PyQt5.QtWebSockets",
-    "PyQt5.QtXml",
-    "PyQt5.QtXmlPatterns",
-    "PyQt5.QtMultimedia",
-    "PyQt5.QtMultimediaWidgets",
-    "PyQt5.QtNetwork",
-]
+    "PyQt6." + name.split(".")[0]
+    for name in os.listdir(os.path.dirname(importlib.util.find_spec("PyQt6").origin))
+    if name.startswith("Qt") and name.split(".")[0] not in PYQT_USED
+] + ["PyQt6.uic", "PyQt6.lupdate", "altgraph"]
 
 del_bins = [
-    r"PyQt5\Qt5\bin\d3dcompiler_47",
-    r"PyQt5\Qt5\bin\libEGL",
-    r"PyQt5\Qt5\bin\libGLESv2",
-    r"PyQt5\Qt5\bin\opengl32sw",
-    r"PyQt5\Qt5\bin\Qt5DBus",
-    r"PyQt5\Qt5\bin\Qt5Network",
-    r"PyQt5\Qt5\bin\Qt5Qml",
-    r"PyQt5\Qt5\bin\Qt5Quick",
-    r"PyQt5\Qt5\bin\Qt5WebSockets",
-    r"PyQt5\Qt5\plugins\imageformats\qgif",
-    r"PyQt5\Qt5\plugins\imageformats\qicns",
-    r"PyQt5\Qt5\plugins\imageformats\qtga",
-    r"PyQt5\Qt5\plugins\imageformats\qtiff",
-    r"PyQt5\Qt5\plugins\imageformats\qwbmp",
-    r"PyQt5\Qt5\plugins\imageformats\qwebp",
-    r"PyQt5\Qt5\plugins\platforms\qminimal",
-    r"PyQt5\Qt5\plugins\platforms\qoffscreen",
-    r"PyQt5\Qt5\plugins\platforms\qwebgl",
-    r"PyQt5\Qt5\plugins\platformthemes\qxdgdesktopportal",
+    r"PyQt6\Qt6\bin\d3dcompiler_47",
+    r"PyQt6\Qt6\bin\opengl32sw",
+    # brought in only by the TUIO touch plugin, touches sent over the network
+    r"PyQt6\Qt6\bin\Qt6Network",
+    r"PyQt6\Qt6\plugins\generic\qtuiotouchplugin",
+    r"PyQt6\Qt6\plugins\imageformats\qgif",
+    r"PyQt6\Qt6\plugins\imageformats\qicns",
+    r"PyQt6\Qt6\plugins\imageformats\qtga",
+    r"PyQt6\Qt6\plugins\imageformats\qtiff",
+    r"PyQt6\Qt6\plugins\imageformats\qwbmp",
+    r"PyQt6\Qt6\plugins\imageformats\qwebp",
+    r"PyQt6\Qt6\plugins\platforms\qdirect2d",
+    r"PyQt6\Qt6\plugins\platforms\qminimal",
+    r"PyQt6\Qt6\plugins\platforms\qoffscreen",
 ]
 
 del_data = []

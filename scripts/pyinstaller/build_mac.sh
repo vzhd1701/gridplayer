@@ -32,14 +32,14 @@ if python_arch != target_arch:
 
 paths_to_check = []
 
-from PyQt5 import QtCore
+from PyQt6 import QtCore
 
 qtcore_ext = Path(QtCore.__file__).resolve()
-paths_to_check.append((qtcore_ext, "PyQt5.QtCore extension"))
+paths_to_check.append((qtcore_ext, "PyQt6.QtCore extension"))
 
-qt_framework = qtcore_ext.parent / "Qt5" / "lib" / "QtCore.framework" / "Versions" / "5" / "QtCore"
-if qt_framework.exists():
-    paths_to_check.append((qt_framework, "QtCore framework"))
+qt_framework = qtcore_ext.parent / "Qt6" / "lib" / "QtCore.framework" / "Versions" / "A" / "QtCore"
+# checked whether there or not: a wheel laid out otherwise fails here
+paths_to_check.append((qt_framework, "QtCore framework"))
 
 try:
     from pydantic_core import _pydantic_core

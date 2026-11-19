@@ -6,20 +6,14 @@ SCRIPT_DIR="$( cd "$( dirname $0 )" && pwd )"
 
 . "scripts/init_app_vars.sh"
 
-# Get machine architecture
-if [ -z "$BUILD_ARCH" ]; then
-    BUILD_ARCH=$(python -c "import platform; print('win32' if platform.architecture()[0] == '32bit' else 'win64')")
-fi
+# 64-bit only: Qt 6 has no 32-bit Windows build
+BUILD_ARCH="win64"
 
 # VideoLAN's own server: get.videolan.org can pick a mirror running at a
 # few KB/s. The SHA-256s are the ones published beside each file.
 VLC_VERSION="3.0.24"
 VLC_URL="https://download.videolan.org/pub/videolan/vlc/$VLC_VERSION/$BUILD_ARCH/vlc-$VLC_VERSION-$BUILD_ARCH.zip"
-if [ "$BUILD_ARCH" = "win32" ]; then
-    VLC_SHA256="8511356afd680817f3aea624c63032d0936f3d77b2175fb36c8fc16adf9744e8"
-else
-    VLC_SHA256="fcf30850371ad10c9373cc4f0f4501e7dee49e3e9ae9f20c72fb2661a1ca6323"
-fi
+VLC_SHA256="fcf30850371ad10c9373cc4f0f4501e7dee49e3e9ae9f20c72fb2661a1ca6323"
 PYINSTALLER_VERSION="6.22.3"
 
 # which libmpv, also what CI's Windows tests play with
@@ -32,17 +26,7 @@ init_venv "$BUILD_DIR/venv-pyinstaller"
 # Reduce size by installing src version of pydantic
 export PIP_NO_BINARY="pydantic"
 
-REQUIREMENTS="$BUILD_DIR/requirements.txt"
-
-# curl-cffi has no 32-bit Windows wheel, and its sdist builds against a
-# libcurl DLL that nothing bundles, so yt-dlp goes without browser
-# impersonation in that build
-if [ "$BUILD_ARCH" = "win32" ]; then
-    REQUIREMENTS="$BUILD_DIR/requirements-win32.txt"
-    grep -v "^curl-cffi==" "$BUILD_DIR/requirements.txt" > "$REQUIREMENTS"
-fi
-
-pip install -r "$REQUIREMENTS"
+pip install -r "$BUILD_DIR/requirements.txt"
 pip install pyinstaller=="$PYINSTALLER_VERSION"
 
 # Copy icons to build dir
