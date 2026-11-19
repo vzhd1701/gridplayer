@@ -41,6 +41,19 @@ plugins/access/libsmb_plugin.so
 plugins/access/libv4l2_plugin.so
 plugins/access/libvnc_plugin.so
 plugins/access/libxcb_screen_plugin.so
+plugins/access/libaccess_mtp_plugin.so
+plugins/access/libdcp_plugin.so
+# what else EL's vlc-plugins-extra brings, which the AppImage takes for its
+# MKV and TS demuxers and its subtitles' text renderers: AV1 is dav1d's, and
+# Daala, Intel QSV, SDL images, game and tracker music, ARIB conditional
+# access have no use here
+plugins/codec/libaom_plugin.so
+plugins/codec/libdaala_plugin.so
+plugins/codec/libqsv_plugin.so
+plugins/codec/libsdl_image_plugin.so
+plugins/demux/libgme_plugin.so
+plugins/demux/libmod_plugin.so
+plugins/stream_filter/libaribcam_plugin.so
 # keep only
 # libpulse_plugin.so
 plugins/audio_output/libadummy_plugin.so

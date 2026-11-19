@@ -179,15 +179,48 @@ echo "==> Setting up binary dependencies"
 # xcb-cursor too, which many systems don't have
 yum install -y libxkbcommon-x11 xcb-util xcb-util-cursor xcb-util-image xcb-util-keysyms xcb-util-renderutil xcb-util-wm
 
-# VLC and libmpv: EPEL's, with RPM Fusion's ffmpeg in place of EPEL's, which
-# leaves out H.264, HEVC and AAC. Same libraries by name, so both take it.
+# VLC and libmpv, and the FFmpeg they share, with H.264, HEVC and AAC: EPEL's
+# own FFmpeg leaves those out.
+# EL9 (x86_64): negativo17's VLC, libmpv and FFmpeg 7. EPEL 9's VLC takes the
+# FFmpeg 5.1 of ffmpeg5-*-free, which nobody has a full one of: HEVC didn't
+# play at all ("codec not found"), H.264 went to openh264.
+# EL10 (aarch64): EPEL's VLC and libmpv, which take FFmpeg 7, with RPM
+# Fusion's in place of EPEL's. Same libraries by name, so both take it.
+# negativo17's repo isn't to be mixed with RPM Fusion: one or the other.
+# vlc-plugins-extra in both has what VLC plays with as much as decodes with:
+# the MKV and MPEG-TS demuxers, and the text renderers that draw subtitles
+# (vlc-plugins-base has only a stand-in that draws nothing).
+EL_VERSION=$(rpm -E %rhel)
+
 if [ ! -f /usr/lib64/libmpv.so.2 ]; then
     dnf install -y epel-release dnf-plugins-core
     dnf config-manager --set-enabled crb
-    dnf install -y "https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-$(rpm -E %rhel).noarch.rpm"
-    dnf install -y vlc vlc-plugins-freeworld mpv-libs
-    dnf swap -y ffmpeg-free ffmpeg --allowerasing
+
+    if [ "$EL_VERSION" = 9 ]; then
+        curl -L -s -f -o /etc/yum.repos.d/negativo17-epel-multimedia.repo \
+            https://negativo17.org/repos/epel-multimedia.repo
+        dnf install -y vlc vlc-plugins-extra mpv-libs
+    else
+        dnf install -y "https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-$EL_VERSION.noarch.rpm"
+        dnf install -y vlc vlc-plugins-extra vlc-plugins-freeworld mpv-libs
+        dnf swap -y ffmpeg-free ffmpeg --allowerasing
+    fi
 fi
+
+# Loud, rather than an AppImage that plays nothing in H.264 or HEVC
+for codec in h264 hevc; do
+    python3 -c "
+import ctypes, sys
+av = ctypes.CDLL('libavcodec.so.61')
+av.avcodec_find_decoder_by_name.restype = ctypes.c_void_p
+sys.exit(0 if av.avcodec_find_decoder_by_name(b'$codec') else 1)
+" || { echo "FFmpeg has no $codec decoder" >&2; exit 1; }
+done
+ldd /usr/lib64/vlc/plugins/codec/libavcodec_plugin.so | grep -q "libavcodec.so.61" ||
+    { echo "VLC doesn't decode with FFmpeg 7" >&2; exit 1; }
+for plugin in demux/libmkv_plugin.so demux/libts_plugin.so text_renderer/libfreetype_plugin.so; do
+    [ -f "/usr/lib64/vlc/plugins/$plugin" ] || { echo "VLC has no $plugin" >&2; exit 1; }
+done
 
 LIB_DIR="./AppDir/usr/lib"
 mkdir -p "$LIB_DIR"
@@ -311,17 +344,25 @@ done
     echo "GridPlayer $APP_VERSION"
     echo "    $APP_URL"
     echo
-    echo "The libraries come from these packages of AlmaLinux 9, EPEL 9 and"
-    echo "RPM Fusion (free, EL 9), each named with its source RPM:"
+    if [ "$EL_VERSION" = 9 ]; then
+        THIRD_REPO="negativo17's multimedia repo (EL 9)"
+        THIRD_SRPMS="https://negativo17.org/repos/multimedia/epel-9/SRPMS/"
+    else
+        THIRD_REPO="RPM Fusion (free, EL $EL_VERSION)"
+        THIRD_SRPMS="https://download1.rpmfusion.org/free/el/updates/$EL_VERSION/SRPMS/"
+    fi
+
+    echo "The libraries come from these packages of AlmaLinux $EL_VERSION, EPEL $EL_VERSION"
+    echo "and $THIRD_REPO, each named with its source RPM:"
     echo
     for package in $PACKAGES; do
         rpm -q --qf "    %{NAME}-%{VERSION}-%{RELEASE} (%{SOURCERPM})\n" "$package"
     done
     echo
     echo "Source RPMs:"
-    echo "    https://repo.almalinux.org/vault/9/"
-    echo "    https://dl.fedoraproject.org/pub/epel/9/Everything/source/tree/"
-    echo "    https://download1.rpmfusion.org/free/el/updates/9/SRPMS/"
+    echo "    https://repo.almalinux.org/vault/$EL_VERSION/"
+    echo "    https://dl.fedoraproject.org/pub/epel/$EL_VERSION/Everything/source/tree/"
+    echo "    $THIRD_SRPMS"
 } > "$LICENSES_DIR/SOURCES.txt"
 
 APPIMAGE_FILE="$APP_NAME-$APP_FILE_VERSION-$ARCH.AppImage"
