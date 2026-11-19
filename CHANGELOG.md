@@ -102,6 +102,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 
+- Fix videos stuttering while the mouse moves over them ([b958c14](https://github.com/vzhd1701/gridplayer/commit/b958c144bdb04f840779e863dcee3676bb23365e))
 - Fix links and folders not opening from the AppImage on newer distros, and files named by a relative path on its command line not opening ([0c82636](https://github.com/vzhd1701/gridplayer/commit/0c82636af839045d51559cdc6e8778565aa19459))
 - Fix signed-in YouTube videos stopping after a minute, reload network videos that stall or start over, say when a stream's sound fails ([679c92c](https://github.com/vzhd1701/gridplayer/commit/679c92c63ce54b3e310790597398a1d16a9a9071)), ([19f9461](https://github.com/vzhd1701/gridplayer/commit/19f946138e81e73cf9d69b64490d045d1448a2a0)), ([d16ce76](https://github.com/vzhd1701/gridplayer/commit/d16ce7691e9f543d8a50817e2a888652af720d22))
 - Fix macOS calling the downloaded app damaged ([e706f7c](https://github.com/vzhd1701/gridplayer/commit/e706f7c9a475161e06203d4c3eca34d010768388))
