@@ -3,7 +3,7 @@
 The move from PyQt5 (Qt 5.15) to PyQt6 on Qt 6.12, on the `qt6` branch. This file says what changes, in what order,
 and how each step is checked. Tick an item only once it has been seen working.
 
-**Status: stages 0-8 done (2026-11-19), but CI's first run (the branch isn't pushed), the arm64 AppImage and the CHANGELOG.**
+**Status: stages 0-8 done (2026-11-19). Left: CI's first run (the branch isn't pushed: a `dry_run` pre-release), the stage 3 hand checks.**
 
 | | Stage | State |
 |---|---|---|
@@ -14,8 +14,8 @@ and how each step is checked. Tick an item only once it has been seen working.
 | 4 | Linux: X11, Wayland, D-Bus | **done 2026-11-19** |
 | 5 | macOS | **done 2026-11-19** on the hackintosh (`test_macos` unreachable) |
 | 6 | Translations: pylupdate6 | **done 2026-11-19** |
-| 7 | Packaging and CI | **done 2026-11-19** but the arm64 AppImage and CI itself, which runs once pushed |
-| 8 | Clean-up and docs | **done 2026-11-19** but the CHANGELOG |
+| 7 | Packaging and CI | **done 2026-11-19** but CI itself, which runs once the branch is pushed |
+| 8 | Clean-up and docs | **done 2026-11-19** |
 
 ## Decisions
 
@@ -507,11 +507,18 @@ after the other in real cocoa windows (`~/gp-tests/suite_in.sh`, `ab*.sh`).
     stale `QT_PLUGIN_PATH` (`python3.9/.../PyQt5`) gone.
   - `libjack` joins the fallback libraries: EL9's libmpv links it and linuxdeploy leaves it to the system, so libmpv
     wouldn't load on a system without JACK.
-  - The arm64 AppImage: built the same way on `manylinux_2_39_aarch64` (PyQt6's aarch64 wheels need glibc 2.39), on
-    `ubuntu-24.04-arm` in CI; `APPIMAGE_ARCH=aarch64` builds it elsewhere under QEMU.
+  - The arm64 AppImage: built the same way on `manylinux_2_39_aarch64` (AlmaLinux 10; PyQt6's aarch64 wheels need
+    glibc 2.39), on `ubuntu-24.04-arm` in CI; `APPIMAGE_ARCH=aarch64` builds it elsewhere under QEMU (where binfmt
+    needs a rule that ignores the AppImage magic in the ELF header's padding). EL10 has all of it (EPEL's VLC 3.0.24
+    and mpv 0.40, RPM Fusion's FFmpeg). Three things it needed that EL9 didn't: no strip (linuxdeploy's doesn't know
+    EL10's `.relr.dyn` sections), SDL3 bundled (EL10's SDL2 is sdl2-compat, which loads SDL3 by name and aborts the
+    app without it), and `libgpg-error` among the fallback libraries (EL10's `libgcrypt` needs a newer one than Ubuntu
+    24.04's; linuxdeploy bundles the one and leaves the other). **Done 2026-11-19 under QEMU**: its `--self-check`
+    passes in an arm64 Ubuntu 24.04 container, Qt 6.12.0, VLC 3.0.24 and libmpv 0.40 each playing. Not run on a real
+    arm machine.
   - CI checks the AppImage in containers too (Ubuntu 24.04 and 26.04, Debian 13, Fedora), each with what a desktop
     has and the AppImage leaves to it (glib, fontconfig, EGL, harfbuzz, ALSA, `libgpg-error`, `p11-kit`,
-    `libcom_err`...). Seen on `test_ubuntu` the same way (`--init`: `xvfb-run` as a container's first process never
+    `libcom_err`, `libOpenGL`...). Seen on `test_ubuntu` the same way (`--init`: `xvfb-run` as a container's first process never
     hears Xvfb is up): **the x64 AppImage passes in all four**, Qt 6.12.0, VLC 3.0.24 and libmpv 0.39 each playing.
     Each library a bare container lacked was one linuxdeploy leaves to the system on purpose; JACK was the one a
     desktop can really lack.
@@ -553,7 +560,7 @@ after the other in real cocoa windows (`~/gp-tests/suite_in.sh`, `ab*.sh`).
   say what Qt 6 draws. Tests that spoke of PyQt5 reworded.
 - 8.2 AGENTS.md (PyQt6, the flag trap, the event positions), README (platforms, `libxcb-cursor0`, macOS 14),
   CONTRIBUTING, CHANGELOG, ROADMAP's Qt 6 section, `MPV_PLAN.md`'s Snap notes.
-  **Done 2026-11-19** but the CHANGELOG, which waits for the commits' final hashes. AGENTS.md has a PyQt6 section of
+  **Done 2026-11-19**, the CHANGELOG with the commits' hashes. AGENTS.md has a PyQt6 section of
   the traps met here; the README says 64-bit Windows 10 1809+, macOS 14+, `libxcb-cursor0`, the arm64 AppImage and no
   `libfuse2`, and the Snap has MPV. CONTRIBUTING had nothing of Qt 5.
 - 8.3 `scripts/qt6_port/` removed. **Done 2026-11-19**; they're in git before it.
