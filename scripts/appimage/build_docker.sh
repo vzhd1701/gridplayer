@@ -203,12 +203,14 @@ cp -a /usr/lib64/libmpv.so.2* "$LIB_DIR"
 # Kept apart under their full file names, which have the version, and AppRun
 # puts one on the path only when the system has none or an older one.
 # JACK's client must be the server's, and libmpv links it: a system without
-# JACK has no server for ours to find, but libmpv loads.
+# JACK has no server for ours to find, but libmpv loads. libgpg-error, which
+# linuxdeploy leaves to the system, goes with the libgcrypt it bundles: EL10's
+# needs a newer one than Ubuntu 24.04 has.
 FALLBACK_LIBS=(
     libva.so.2 libva-drm.so.2 libva-x11.so.2 libva-wayland.so.2
     libvdpau.so.1 libvulkan.so.1 libGLESv2.so.2
     libwayland-client.so.0 libwayland-cursor.so.0 libwayland-egl.so.1
-    libpipewire-0.3.so.0 libpulse.so.0 libjack.so.0
+    libpipewire-0.3.so.0 libpulse.so.0 libjack.so.0 libgpg-error.so.0
 )
 FALLBACK_EXCLUDES=()
 
@@ -245,6 +247,20 @@ export UPDATE_INFORMATION="gh-releases-zsync|vzhd1701|gridplayer|$APP_UPDATE_REL
 export ARCH
 export VERSION="$APP_FILE_VERSION"
 
+# linuxdeploy's own strip doesn't know EL10's .relr.dyn sections and stops
+# the build; EL's packages come stripped anyway
+if [ "$ARCH" = "aarch64" ]; then
+    export NO_STRIP=1
+fi
+
+# Loaded by name, which linuxdeploy can't see: EL10's SDL2 is sdl2-compat,
+# which loads SDL3 and aborts the app without it (FFmpeg's libavdevice links
+# SDL2, and libmpv libavdevice)
+LOADED_LIBS=()
+if [ -e /usr/lib64/libSDL3.so.0 ]; then
+    LOADED_LIBS+=(-l /usr/lib64/libSDL3.so.0)
+fi
+
 deploy() {
     "./$LINUXDEPLOY" \
         -l /lib64/libxcb-icccm.so.4 \
@@ -254,6 +270,7 @@ deploy() {
         -l /lib64/libxcb-keysyms.so.1 \
         -l /lib64/libxkbcommon-x11.so.0 \
         -l /lib64/libxcb-cursor.so.0 \
+        "${LOADED_LIBS[@]}" \
         "${FALLBACK_EXCLUDES[@]}" \
         --appdir AppDir \
         "$@"

@@ -297,11 +297,11 @@ jobs:
             apt-get update -qq
             apt-get install -y -qq xvfb xauth libglib2.0-bin libfontconfig1 \
               libegl1 libgl1 libdbus-1-3 libxkbcommon0 libx11-xcb1 \
-              libharfbuzz0b libfribidi0 libthai0 alsa-utils libgpg-error0 libp11-kit0 libcom-err2
+              libharfbuzz0b libfribidi0 libthai0 alsa-utils libgpg-error0 libp11-kit0 libcom-err2 libopengl0
           else
             dnf install -y -q xorg-x11-server-Xvfb xorg-x11-xauth which glib2 \
               fontconfig libglvnd-egl libglvnd-glx dbus-libs libxkbcommon \
-              harfbuzz fribidi libthai alsa-lib libgpg-error p11-kit libcom_err
+              harfbuzz fribidi libthai alsa-lib libgpg-error p11-kit libcom_err libglvnd-opengl
           fi
 
       - uses: actions/checkout@v7
