@@ -2762,8 +2762,9 @@ class MediaListDialog(QDialog):
         """The list as it is to be now: the registry tells the cells and
         this window alike."""
 
-        # read again with nothing new is the same list
-        if media_list != self._media_list:
+        # read again with nothing new is the same list, only read later
+        current = self._media_list
+        if media_list.model_copy(update={"read_at": current.read_at}) != current:
             self._is_edited = True
 
         self._registry.put(media_list)

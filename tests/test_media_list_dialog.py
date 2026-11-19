@@ -2071,11 +2071,15 @@ class TestWhetherAnythingWasDone:
         assert not dialog.is_edited
 
     def test_not_by_reading_it_again_with_nothing_new(
-        self, make_dialog, season, reading
+        self, mocker, make_dialog, season, reading
     ):
         reading.fresh = tuple(ListItem(uri=item.uri) for item in season.items)
         dialog = make_dialog(season)
 
+        # read again later than it was: only when is new
+        mocker.patch(
+            "gridplayer.dialogs.media_list.time.time", return_value=season.read_at + 90
+        )
         dialog._refresh()
 
         assert _wait_until(lambda: dialog._hint.text() == "Nothing new")
