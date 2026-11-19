@@ -1,6 +1,7 @@
 import logging
 import sys
 
+from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import QApplication
 
@@ -65,6 +66,9 @@ def init_app():
     app.setStyle(create_fusion_style())
 
     app.styleHints().setShowShortcutsInContextMenus(True)
+    # Qt 6 hides them on macOS (its theme says so as the app starts), Qt 5
+    # didn't: the menus' icons are as much theirs as the text
+    app.setAttribute(Qt.ApplicationAttribute.AA_DontShowIconsInMenus, False)
 
     apply_theme(app)
     # the desktop's light or dark: our own watcher asks the system, retrying
