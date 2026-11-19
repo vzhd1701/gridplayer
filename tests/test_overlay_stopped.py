@@ -935,6 +935,8 @@ def test_with_no_compositor_a_floating_overlay_dragged_over_is_hidden(mocker, fl
     mocker.patch(
         "gridplayer.widgets.video_overlay.is_compositor_running", return_value=False
     )
+    mocker.patch.object(env, "IS_LINUX", True)
+    mocker.patch.object(env, "IS_MACOS", False)
 
     overlay.set_out_of_sight(True)
 
@@ -942,18 +944,38 @@ def test_with_no_compositor_a_floating_overlay_dragged_over_is_hidden(mocker, fl
     assert overlay.windowOpacity() == pytest.approx(opacity)
 
 
-def test_elsewhere_than_linux_a_floating_overlay_dragged_over_is_hidden(
-    mocker, floating
-):
+def test_on_windows_a_floating_overlay_dragged_over_is_hidden(mocker, floating):
     overlay, _opacity = floating
     mocker.patch(
         "gridplayer.widgets.video_overlay.is_compositor_running", return_value=True
     )
     mocker.patch.object(env, "IS_LINUX", False)
+    mocker.patch.object(env, "IS_MACOS", False)
 
     overlay.set_out_of_sight(True)
 
     assert not overlay.isVisible()
+
+
+def test_on_macos_a_floating_overlay_dragged_over_stays_up_see_through(
+    mocker, floating
+):
+    # macOS has no mouse grab: hidden, it would drop the rest of the drag
+    overlay, opacity = floating
+    mocker.patch(
+        "gridplayer.widgets.video_overlay.is_compositor_running", return_value=False
+    )
+    mocker.patch.object(env, "IS_LINUX", False)
+    mocker.patch.object(env, "IS_MACOS", True)
+
+    overlay.set_out_of_sight(True)
+
+    assert overlay.isVisible()
+    assert overlay.windowOpacity() == 0
+
+    overlay.set_out_of_sight(False)
+
+    assert overlay.windowOpacity() == pytest.approx(opacity)
 
 
 def test_an_overlay_not_to_be_shown_once_a_tile_is_let_go_of_is_hidden(mocker):

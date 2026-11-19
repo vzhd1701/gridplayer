@@ -217,6 +217,8 @@ def test_each_kind_of_vlc_process_has_a_manager_of_its_own(mocker):
     """After a change of driver put off until a restart, the videos open play
     on in their processes while the new ones get processes of their kind."""
 
+    # macOS has no Hardware VLC in processes of its own
+    mocker.patch("gridplayer.params.env.IS_MACOS", False)
     made = mocker.patch("gridplayer.vlc_player.instance.ProcessManagerVLC")
     made.side_effect = lambda kind: SimpleNamespace(kind=kind, crash=mocker.Mock())
     manager = VideoDriverManager(context=SimpleNamespace())
