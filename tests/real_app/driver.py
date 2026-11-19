@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import re
+import socketserver
 import sys
 import threading
 import time
@@ -331,11 +332,13 @@ class Driver:
             partial(_LiveDashHandler, live=live, directory=str(directory))
         )
         live.url = f"{base}/live.mpd"
+        # out from now, however long the server took to start
+        live.start()
 
         return live
 
     def _start_server(self, handler) -> str:
-        server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+        server = _LocalServer(("127.0.0.1", 0), handler)
         threading.Thread(target=server.serve_forever, daemon=True).start()
         self._servers.append(server)
 
@@ -523,11 +526,14 @@ class LiveDash:
         template = re.search(r'timescale="(\d+)" duration="(\d+)"', self._manifest)
         self._segment_s = int(template[2]) / int(template[1])
 
-        self._started_at = time.time() - self.HEAD_START_S
+        self.start()
 
         self.url = ""
         # asked for before they were out: what a player following it never does
         self.too_early: list[str] = []
+
+    def start(self) -> None:
+        self._started_at = time.time() - self.HEAD_START_S
 
     def manifest(self) -> str:
         started = datetime.fromtimestamp(self._started_at, timezone.utc)
@@ -553,6 +559,15 @@ class LiveDash:
         ends_at = self._started_at + int(number[1]) * self._segment_s
 
         return ends_at <= time.time()
+
+
+class _LocalServer(ThreadingHTTPServer):
+    """A server on this machine, without the name of the host looked up
+    as it starts, which took 36 s on GitHub's Mac (2026-11-19)."""
+
+    def server_bind(self):
+        socketserver.TCPServer.server_bind(self)
+        self.server_name, self.server_port = self.server_address[:2]
 
 
 class _LiveDashHandler(QuietHandler):
