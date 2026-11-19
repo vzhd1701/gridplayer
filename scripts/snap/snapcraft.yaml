@@ -6,8 +6,6 @@ description: |
   time. You can play as many videos as you like, the only limit is your
   hardware. It supports all video formats that VLC supports (which is all
   of them).
-architectures:
-  - amd64
 
 title: {APP_NAME}
 contact: {APP_AUTHOR_CONTACT}
@@ -16,11 +14,14 @@ issues: {APP_BUGTRACKER_URL}
 source-code: {APP_URL}
 website: {APP_URL}
 
-base: core22
+base: core24
 grade: stable
 confinement: strict
 
 license: GPL-3.0-or-later
+
+platforms:
+  amd64:
 
 parts:
   # python multiprocessing fix
@@ -58,6 +59,7 @@ parts:
       LIB_DIR="${CRAFT_PART_INSTALL}/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}"
       VLC_LIB_DIR="${LIB_DIR}/vlc"
 
+      # what the gnome extension's runtime has
       ${CRAFT_PROJECT_DIR}/blacklist_clean.sh "$LIB_DIR" ${CRAFT_PROJECT_DIR}/blacklist_snap.txt
       rm -rf "${LIB_DIR}/dri"
       rm -rf "${LIB_DIR}/gdk-pixbuf-2.0"
@@ -65,52 +67,50 @@ parts:
       # Cleanup unused VLC modules
       ${CRAFT_PROJECT_DIR}/blacklist_clean.sh "$VLC_LIB_DIR" ${CRAFT_PROJECT_DIR}/blacklist_vlc_linux.txt
 
-      #MAIN_SNAP="/snap/core22/current"
-      #KDE_SNAP="/snap/kde-frameworks-5-102-qt-5-15-8-core22/current"
+  # Ubuntu 24.04's, mpv 0.37: the oldest the app takes
+  libmpv:
+    plugin: nil
+    after: [vlc]
+    stage-packages:
+      - libmpv2
+    prime:
+      - -usr/include
+      - -usr/share/doc
+      - -usr/share/fonts
+      - -usr/share/icons
+      - -usr/share/X11
+    override-build: |
+      craftctl default
 
-      #if [ ! -d "${KDE_SNAP}" ]; then echo "${KDE_SNAP} doesn't exist!"; exit 1; fi
-      #if [ ! -d "${MAIN_SNAP}" ]; then echo "${MAIN_SNAP} doesn't exist!"; exit 1; fi
+      LIB_DIR="${CRAFT_PART_INSTALL}/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}"
 
-      # Emulate runtime env to make sure all plugin dependencies are reachable
-      #LIBS="/var/lib/snapd/lib/gl:"
-      #LIBS+="/var/lib/snapd/lib/gl32:"
-      #LIBS+="/var/lib/snapd/void:"
-      #LIBS+="${CRAFT_PART_INSTALL}/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}/pulseaudio:"
-      #LIBS+="${VLC_LIB_DIR}:"
-      #LIBS+="${CRAFT_PART_INSTALL}/lib:"
-      #LIBS+="${CRAFT_PART_INSTALL}/usr/lib:"
-      #LIBS+="${CRAFT_PART_INSTALL}/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}:"
-      #LIBS+="${CRAFT_PART_INSTALL}/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}:"
-      #LIBS+="${KDE_SNAP}/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}:"
-      #LIBS+="${KDE_SNAP}/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}:"
-      #LIBS+="${KDE_SNAP}/usr/lib:"
-      #LIBS+="${KDE_SNAP}/lib:"
-      #LIBS+="${KDE_SNAP}/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}/dri:"
-      #LIBS+="${KDE_SNAP}/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}/pulseaudio:"
-      #LIBS+="${MAIN_SNAP}/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}:"
-      #LIBS+="${MAIN_SNAP}/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}:"
-      #LIBS+="${MAIN_SNAP}/usr/lib:"
-      #LIBS+="${MAIN_SNAP}/lib:"
-
-      # Generate VLC plugin cache
-      #LD_LIBRARY_PATH="$LIBS" "${VLC_LIB_DIR}/vlc-cache-gen" "${VLC_LIB_DIR}/plugins"
+      ${CRAFT_PROJECT_DIR}/blacklist_clean.sh "$LIB_DIR" ${CRAFT_PROJECT_DIR}/blacklist_snap.txt
+      rm -rf "${LIB_DIR}/dri"
 
   gridplayer:
     source: .
     plugin: python
-    after: [snapcraft-preload, vlc]
+    after: [snapcraft-preload, vlc, libmpv]
+    # Qt's own, from PyQt6's wheel: what its X11 platform takes that the
+    # gnome extension's runtime has none of
     stage-packages:
-    - libxcb-shape0
+      - libxcb-cursor0
+      - libxcb-icccm4
+      - libxcb-image0
+      - libxcb-keysyms1
+      - libxcb-render-util0
+      - libxcb-shape0
+      - libxcb-xinput0
+      - libxcb-xkb1
+      - libxkbcommon-x11-0
     python-packages:
       - ${CRAFT_PROJECT_DIR}/{WHL_FILE}
-    build-packages:
-      - wget
     prime:
       - -usr/share/icons
       - -usr/include
-      - -bin/pylupdate5
-      - -bin/pyrcc5
-      - -bin/pyuic5
+      - -bin/lupdate*
+      - -bin/pylupdate6
+      - -bin/pyuic6
       - -bin/pip*
       - -bin/easy*
       - -bin/activate*
@@ -138,17 +138,11 @@ parts:
       install -D /dev/null "${CRAFT_PART_INSTALL}/usr/local/etc/httpd/conf/mime.types"
       install -D /dev/null "${CRAFT_PART_INSTALL}/usr/local/etc/mime.types"
 
-      # Replace static PyQt with dynamic to make it depend on libraries from kde-neon extension
-      ${CRAFT_PROJECT_DIR}/apt_dl.sh python3-pyqt5 python3-pyqt5.qtx11extras python3-pyqt5.qtsvg python3-pyqt5.sip
+      SITE_PATH=$(echo "${CRAFT_PART_INSTALL}"/lib/python3*/site-packages)
 
-      for file in *.deb; do dpkg-deb -x "$file" ./pyqt; done
-
-      SITE_PATH="${CRAFT_PART_INSTALL}/lib/python3.10/site-packages"
-
-      rm -rf "${SITE_PATH}"/PyQt*
-      mv pyqt/usr/lib/python3/dist-packages/* "${SITE_PATH}"
-
-      # Remove unneeded qt parts
+      # Qt from PyQt6's wheel, without what the app doesn't use, and without
+      # the platform themes, as the AppImage: the app draws with Fusion
+      echo "PyQt6/Qt6/plugins/platformthemes" >> ${CRAFT_PROJECT_DIR}/blacklist_pyqt.txt
       ${CRAFT_PROJECT_DIR}/blacklist_clean.sh "${SITE_PATH}" ${CRAFT_PROJECT_DIR}/blacklist_pyqt.txt
 
       # Install application meta
@@ -157,9 +151,6 @@ parts:
       # Snaps don't support registration of new MIMEs yet?
       # https://forum.snapcraft.io/t/allow-snaps-to-register-new-mime-types/6467/9
       install -Dm 644 ${CRAFT_PROJECT_DIR}/meta/{APP_ID}.xml         ${CRAFT_PART_INSTALL}/usr/share/mime/packages/{APP_ID}.xml
-
-      # Useless, since snap employs custom names for icons
-      #(cd ${CRAFT_PROJECT_DIR}/meta/icons && find * -type f -exec install -Dm 644 "{}" "${CRAFT_PART_INSTALL}/usr/share/icons/{}" \;)
 
       # Copy icons to meta and rename icons as snap.* according to
       # https://forum.snapcraft.io/t/proposal-support-the-icon-theme-spec-for-desktop-icons/10676
@@ -176,11 +167,14 @@ slots:
 
 apps:
   gridplayer:
+    # fonts, cursors, OpenGL (Mesa through gpu-2404) and the desktop's
+    # libraries; Qt itself is the wheel's
     extensions:
-      - kde-neon
+      - gnome
     environment:
-      LD_LIBRARY_PATH: "$SNAP/usr/lib/x86_64-linux-gnu/pulseaudio:$SNAP/usr/lib/x86_64-linux-gnu/vlc:$SNAP/usr/lib/x86_64-linux-gnu"
-      DISABLE_WAYLAND: 1
+      # BLAS and LAPACK (libmpv's, through FFmpeg) in folders of their own,
+      # which Ubuntu links in by update-alternatives, as a snap can't
+      LD_LIBRARY_PATH: "$SNAP/usr/lib/x86_64-linux-gnu/pulseaudio:$SNAP/usr/lib/x86_64-linux-gnu/vlc:$SNAP/usr/lib/x86_64-linux-gnu/blas:$SNAP/usr/lib/x86_64-linux-gnu/lapack:$SNAP/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH"
       NO_AT_BRIDGE: 1 # disable dbind-WARNING warning
     desktop: usr/share/applications/{APP_ID}.desktop
     command: bin/gridplayer

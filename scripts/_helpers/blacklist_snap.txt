@@ -46,8 +46,8 @@ libdrm_intel.so.*
 libdrm_nouveau.so.*
 libdrm_radeon.so.*
 #libdvbpsi.so.*
-libdvdnav.so.*
-libdvdread.so.*
+#libdvdnav.so.*
+#libdvdread.so.*
 #libebml.so.*
 libEGL.so.*
 libEGL_mesa.so.*
@@ -115,7 +115,7 @@ liblirc_client.so.*
 libLLVM-12.so
 libLLVM-12.so.*
 libltdl.so.*
-liblua5.2.so.*
+#liblua5.2.so.*
 liblua5.2-c++.so.*
 #libmad.so.*
 #libmatroska.so.*
@@ -162,7 +162,7 @@ libraw1394.so.*
 librest-0.7.so.*
 #librist.so.*
 librom1394.so.*
-#librsvg-2.so.*
+librsvg-2.so.*
 #libsamplerate.so.*
 #libSDL_image-1.2.so.*
 #libSDL-1.2.so.*
@@ -174,7 +174,7 @@ libshout.so.*
 libSM.so.*
 #libsnappy.so.*
 #libsndfile.so.*
-libsndio.so.*
+#libsndio.so.*
 #libsodium.so.*
 libsoup-2.4.so.*
 libsoup-gnome-2.4.so.*
