@@ -14,13 +14,15 @@ mkdir -p "$BUILD_DIR_FLATPAK"
 
 if ! command -v flatpak; then
     sudo apt install -y flatpak
-    flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 fi
 
-flatpak install --system -y flathub org.kde.Platform//5.15-25.08
-flatpak install --system -y flathub org.kde.Sdk//5.15-25.08
-flatpak install --system -y flathub com.riverbankcomputing.PyQt.BaseApp//5.15-25.08
-flatpak install --system -y flathub org.flatpak.Builder
+# the user's own installation, as CI's: no root needed
+flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+
+flatpak install --user -y flathub org.kde.Platform//6.11
+flatpak install --user -y flathub org.kde.Sdk//6.11
+flatpak install --user -y flathub com.riverbankcomputing.PyQt.BaseApp//6.11
+flatpak install --user -y flathub org.flatpak.Builder
 
 # Preparation
 

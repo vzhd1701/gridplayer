@@ -11,7 +11,7 @@ process_requirements() {
     requirements="$1"
 
     packages_del=(
-        "pyqt5-qt5" "pyqt5-sip" "pyqt5"
+        "pyqt6-qt6" "pyqt6-sip" "pyqt6"
         "brotlicffi"
         "pyobjc-core" "pyobjc-framework-cocoa" "exceptiongroup" "six"
     )
@@ -29,7 +29,7 @@ mkdir -p "$BUILD_DIR_PYTHON_DEPS"
 # For the runtime's own Python alone: the build's list, from the oldest Python
 # taken up, has two of a package for older and newer ones, which
 # flatpak-pip-generator doesn't tell apart
-FLATPAK_SDK="org.kde.Sdk//5.15-25.08"
+FLATPAK_SDK="org.kde.Sdk//6.11"
 RUNTIME_PYTHON=$(flatpak run --command=python3 "$FLATPAK_SDK" -c "import sys; print('%d.%d' % sys.version_info[:2])")
 
 uv pip compile "$ROOT_DIR/pyproject.toml" -q --universal --python-version "$RUNTIME_PYTHON" \
