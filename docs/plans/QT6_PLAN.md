@@ -344,7 +344,7 @@ The main platform and the one Qt 6 changes most under us. Each item against the 
   a caption colour back, on either binding. **By hand:** the tray and its menu, hidden from taskbar, SMTC (each would
   show on the user's own taskbar from here).
   **By hand, done 2026-11-19:** the tray and hiding from the taskbar work (the user's check). MPV Shared starts and
-  plays on Windows with the GL surface made before the window shows (`run.py`, from the Ubuntu round).
+  plays on Windows and on macOS with the GL surface made before the window shows (`run.py`, from the Ubuntu round).
 - 3.6 All real-app scenarios; VLC single-process freeze check (VLC SP).
   **Done:** all scenarios pass offscreen on PyQt6 (stage 2); VLC hardware single-process played 4, 9 and 16 cells in
   real windows through every bench run without a stall.
