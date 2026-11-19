@@ -9,16 +9,16 @@ import json
 import logging
 import os
 import re
-import socketserver
 import sys
 import threading
 import time
 import traceback
 from datetime import datetime, timezone
 from functools import partial
-from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from http.server import SimpleHTTPRequestHandler
 from pathlib import Path
 
+from gridplayer.utils.local_server import LocalHTTPServer
 from tests.real_app.media import Media
 
 _log = logging.getLogger("real_app")
@@ -45,7 +45,7 @@ class Driver:
         self.steps: list[dict] = []
         self.failures: list[str] = []
         self.errors: list[str] = []
-        self._servers: list[ThreadingHTTPServer] = []
+        self._servers: list[LocalHTTPServer] = []
 
     # -- time
 
@@ -338,7 +338,7 @@ class Driver:
         return live
 
     def _start_server(self, handler) -> str:
-        server = _LocalServer(("127.0.0.1", 0), handler)
+        server = LocalHTTPServer(("127.0.0.1", 0), handler)
         threading.Thread(target=server.serve_forever, daemon=True).start()
         self._servers.append(server)
 
@@ -559,15 +559,6 @@ class LiveDash:
         ends_at = self._started_at + int(number[1]) * self._segment_s
 
         return ends_at <= time.time()
-
-
-class _LocalServer(ThreadingHTTPServer):
-    """A server on this machine, without the name of the host looked up
-    as it starts, which took 36 s on GitHub's Mac (2026-11-19)."""
-
-    def server_bind(self):
-        socketserver.TCPServer.server_bind(self)
-        self.server_name, self.server_port = self.server_address[:2]
 
 
 class _LiveDashHandler(QuietHandler):

@@ -5,7 +5,7 @@ from bisect import bisect_right
 from collections.abc import Iterable
 from contextlib import contextmanager
 from http import HTTPStatus
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler
 from itertools import accumulate
 from threading import Lock, local
 from urllib.parse import parse_qsl, urlencode, urljoin, urlparse
@@ -16,6 +16,7 @@ from streamlink import StreamError
 
 from gridplayer.models.stream import Stream, StreamFragment, StreamOrigin, Streams
 from gridplayer.utils.list_errors import read_error_of
+from gridplayer.utils.local_server import LocalHTTPServer
 from gridplayer.utils.network_errors import log_failure
 from gridplayer.utils.stream_proxy.fragments import fragment_stream
 from gridplayer.utils.stream_proxy.session import StreamSession
@@ -75,7 +76,7 @@ class RelayFailure:
         )
 
 
-class StreamProxyServer(ThreadingHTTPServer):
+class StreamProxyServer(LocalHTTPServer):
     def __init__(self, *args, resolve_source=None, **kwargs):
         super().__init__(*args, **kwargs)
 
