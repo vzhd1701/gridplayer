@@ -33,6 +33,23 @@ normalize_macos_arch() {
     esac
 }
 
+# what VideoLAN names its Windows builds by, and the packages after them
+windows_arch_suffix() {
+    case "$1" in
+        x64)
+            printf '%s
+' "win64"
+            ;;
+        arm64)
+            printf '%s
+' "winarm64"
+            ;;
+        *)
+            die "Unsupported Windows architecture: $1 (x64 or arm64)"
+            ;;
+    esac
+}
+
 macos_arch_suffix() {
     case "$1" in
         arm64)
@@ -147,4 +164,9 @@ export APP_CDN_URL_ROOT="https://cdn.jsdelivr.net/gh/${APP_REPO_SLUG}@v${APP_VER
 if [[ "$OSTYPE" == "darwin"* ]]; then
     export APP_TARGET_ARCH=$(normalize_macos_arch "${BUILD_MACOS_ARCH:-arm64}")
     export APP_TARGET_ARCH_SUFFIX=$(macos_arch_suffix "$APP_TARGET_ARCH")
+elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
+    export APP_TARGET_ARCH="${BUILD_WIN_ARCH:-x64}"
+    # not in the export: that would take die's exit for its own success
+    APP_TARGET_ARCH_SUFFIX=$(windows_arch_suffix "$APP_TARGET_ARCH") || exit 1
+    export APP_TARGET_ARCH_SUFFIX
 fi

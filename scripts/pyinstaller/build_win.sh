@@ -6,22 +6,46 @@ SCRIPT_DIR="$( cd "$( dirname $0 )" && pwd )"
 
 . "scripts/init_app_vars.sh"
 
-# 64-bit only: Qt 6 has no 32-bit Windows build
-BUILD_ARCH="win64"
+# x64 (the default) or arm64, BUILD_WIN_ARCH, each built by a Python of its
+# own architecture: PyInstaller makes a package for the one it runs on. No
+# 32-bit: Qt 6 has no 32-bit Windows build
+BUILD_ARCH="$APP_TARGET_ARCH_SUFFIX"
 
 # VideoLAN's own server: get.videolan.org can pick a mirror running at a
 # few KB/s. The SHA-256s are the ones published beside each file.
 VLC_VERSION="3.0.24"
 VLC_URL="https://download.videolan.org/pub/videolan/vlc/$VLC_VERSION/$BUILD_ARCH/vlc-$VLC_VERSION-$BUILD_ARCH.zip"
-VLC_SHA256="fcf30850371ad10c9373cc4f0f4501e7dee49e3e9ae9f20c72fb2661a1ca6323"
+# and the Python that builds it, as sysconfig names its own architecture
+# (platform.machine() names the CPU's, even to an x64 Python run on arm64)
+case "$APP_TARGET_ARCH" in
+    x64)
+        VLC_SHA256="fcf30850371ad10c9373cc4f0f4501e7dee49e3e9ae9f20c72fb2661a1ca6323"
+        PYTHON_PLATFORM="win-amd64"
+        ;;
+    arm64)
+        VLC_SHA256="f096226211f67f8e06e50cd0d6a948d842db128ff22a676dc1ca1cc6114baba5"
+        PYTHON_PLATFORM="win-arm64"
+        ;;
+esac
+
+assert_python_arch() {
+    local platform
+    platform=$("$1" -c 'import sysconfig; print(sysconfig.get_platform())')
+    if [ "$platform" != "$PYTHON_PLATFORM" ]; then
+        die "$1 is $platform, but BUILD_WIN_ARCH=$APP_TARGET_ARCH takes $PYTHON_PLATFORM: use a native $APP_TARGET_ARCH Python."
+    fi
+}
 PYINSTALLER_VERSION="6.22.3"
 
 # which libmpv, also what CI's Windows tests play with
-. "scripts/windows/libmpv_pins.sh"
+BUILD_WIN_ARCH="$APP_TARGET_ARCH" . "scripts/windows/libmpv_pins.sh"
 
 mkdir -p "$BUILD_DIR"
 
-init_venv "$BUILD_DIR/venv-pyinstaller"
+# the one the venv is made with, before it's kept for good, and the venv's
+assert_python_arch python3
+init_venv "$BUILD_DIR/venv-pyinstaller-$APP_TARGET_ARCH"
+assert_python_arch python
 
 # Reduce size by installing src version of pydantic
 export PIP_NO_BINARY="pydantic"
@@ -45,55 +69,59 @@ pyinstaller --clean --noconfirm "$BUILD_DIR/$APP_NAME.spec"
 
 echo "Embedding VLC"
 
-VLC_EMBED_SRC=$(realpath "$BUILD_DIR/libVLC")
+# each architecture's apart, should one build dir make both
+VLC_EMBED_SRC=$(realpath "$BUILD_DIR")/libVLC-$APP_TARGET_ARCH
+VLC_ZIP="$BUILD_DIR/vlc-$APP_TARGET_ARCH.zip"
+VLC_UNPACKED="$BUILD_DIR/vlc-$APP_TARGET_ARCH"
 
 if [ ! -d "$VLC_EMBED_SRC" ]; then
     # Downloaded to a side name first, so a broken download is not kept
     # as the zip by the next run
-    if [ ! -f "$BUILD_DIR/vlc.zip" ]; then
-        wget -q -O "$BUILD_DIR/vlc.zip.part" "$VLC_URL"
-        echo "$VLC_SHA256 *$BUILD_DIR/vlc.zip.part" | sha256sum -c -
-        mv "$BUILD_DIR/vlc.zip.part" "$BUILD_DIR/vlc.zip"
+    if [ ! -f "$VLC_ZIP" ]; then
+        wget -q -O "$VLC_ZIP.part" "$VLC_URL"
+        echo "$VLC_SHA256 *$VLC_ZIP.part" | sha256sum -c -
+        mv "$VLC_ZIP.part" "$VLC_ZIP"
     fi
 
-    unzip -oq "$BUILD_DIR/vlc.zip" -d "$BUILD_DIR"
+    rm -rf "$VLC_UNPACKED"
+    unzip -oq "$VLC_ZIP" -d "$VLC_UNPACKED"
 
     mkdir -p "$VLC_EMBED_SRC/plugins"
 
     mkdir "$VLC_EMBED_SRC/plugins/audio_output"
 
-    cp "$BUILD_DIR"/vlc-*/plugins/audio_output/libdirectsound_plugin.dll "$VLC_EMBED_SRC/plugins/audio_output"
+    cp "$VLC_UNPACKED"/vlc-*/plugins/audio_output/libdirectsound_plugin.dll "$VLC_EMBED_SRC/plugins/audio_output"
 
-    cp -a "$BUILD_DIR"/vlc-*/plugins/access "$VLC_EMBED_SRC/plugins"
-    cp -a "$BUILD_DIR"/vlc-*/plugins/audio_filter "$VLC_EMBED_SRC/plugins"
-    cp -a "$BUILD_DIR"/vlc-*/plugins/audio_mixer "$VLC_EMBED_SRC/plugins"
-    cp -a "$BUILD_DIR"/vlc-*/plugins/codec "$VLC_EMBED_SRC/plugins"
-    cp -a "$BUILD_DIR"/vlc-*/plugins/demux "$VLC_EMBED_SRC/plugins"
-    cp -a "$BUILD_DIR"/vlc-*/plugins/misc "$VLC_EMBED_SRC/plugins"
-    cp -a "$BUILD_DIR"/vlc-*/plugins/packetizer "$VLC_EMBED_SRC/plugins"
-    cp -a "$BUILD_DIR"/vlc-*/plugins/stream_filter "$VLC_EMBED_SRC/plugins"
-    cp -a "$BUILD_DIR"/vlc-*/plugins/video_chroma "$VLC_EMBED_SRC/plugins"
-    cp -a "$BUILD_DIR"/vlc-*/plugins/video_output "$VLC_EMBED_SRC/plugins"
-    cp -a "$BUILD_DIR"/vlc-*/plugins/d3d9 "$VLC_EMBED_SRC/plugins"
-    cp -a "$BUILD_DIR"/vlc-*/plugins/d3d11 "$VLC_EMBED_SRC/plugins"
+    cp -a "$VLC_UNPACKED"/vlc-*/plugins/access "$VLC_EMBED_SRC/plugins"
+    cp -a "$VLC_UNPACKED"/vlc-*/plugins/audio_filter "$VLC_EMBED_SRC/plugins"
+    cp -a "$VLC_UNPACKED"/vlc-*/plugins/audio_mixer "$VLC_EMBED_SRC/plugins"
+    cp -a "$VLC_UNPACKED"/vlc-*/plugins/codec "$VLC_EMBED_SRC/plugins"
+    cp -a "$VLC_UNPACKED"/vlc-*/plugins/demux "$VLC_EMBED_SRC/plugins"
+    cp -a "$VLC_UNPACKED"/vlc-*/plugins/misc "$VLC_EMBED_SRC/plugins"
+    cp -a "$VLC_UNPACKED"/vlc-*/plugins/packetizer "$VLC_EMBED_SRC/plugins"
+    cp -a "$VLC_UNPACKED"/vlc-*/plugins/stream_filter "$VLC_EMBED_SRC/plugins"
+    cp -a "$VLC_UNPACKED"/vlc-*/plugins/video_chroma "$VLC_EMBED_SRC/plugins"
+    cp -a "$VLC_UNPACKED"/vlc-*/plugins/video_output "$VLC_EMBED_SRC/plugins"
+    cp -a "$VLC_UNPACKED"/vlc-*/plugins/d3d9 "$VLC_EMBED_SRC/plugins"
+    cp -a "$VLC_UNPACKED"/vlc-*/plugins/d3d11 "$VLC_EMBED_SRC/plugins"
 
     mkdir -p "$VLC_EMBED_SRC/plugins/video_filter"
-    cp "$BUILD_DIR"/vlc-*/plugins/video_filter/libtransform_plugin.dll "$VLC_EMBED_SRC/plugins/video_filter"
+    cp "$VLC_UNPACKED"/vlc-*/plugins/video_filter/libtransform_plugin.dll "$VLC_EMBED_SRC/plugins/video_filter"
 
     # Subtitles need both of these, and neither says so when it is missing:
     # the track is decoded and selected, and nothing is ever drawn.
     # blend composites the subpicture onto the frame, scale fits bitmap
     # subtitles (DVD, PGS) to it.
-    cp "$BUILD_DIR"/vlc-*/plugins/video_filter/libblend_plugin.dll "$VLC_EMBED_SRC/plugins/video_filter"
-    cp "$BUILD_DIR"/vlc-*/plugins/video_filter/libscale_plugin.dll "$VLC_EMBED_SRC/plugins/video_filter"
+    cp "$VLC_UNPACKED"/vlc-*/plugins/video_filter/libblend_plugin.dll "$VLC_EMBED_SRC/plugins/video_filter"
+    cp "$VLC_UNPACKED"/vlc-*/plugins/video_filter/libscale_plugin.dll "$VLC_EMBED_SRC/plugins/video_filter"
 
     # freetype draws the text ones
-    cp -a "$BUILD_DIR"/vlc-*/plugins/text_renderer "$VLC_EMBED_SRC/plugins"
+    cp -a "$VLC_UNPACKED"/vlc-*/plugins/text_renderer "$VLC_EMBED_SRC/plugins"
 
-    "$BUILD_DIR"/vlc-*/vlc-cache-gen.exe "$VLC_EMBED_SRC/plugins"
+    "$VLC_UNPACKED"/vlc-*/vlc-cache-gen.exe "$VLC_EMBED_SRC/plugins"
 
-    cp -a "$BUILD_DIR"/vlc-*/libvlc.dll "$VLC_EMBED_SRC"
-    cp -a "$BUILD_DIR"/vlc-*/libvlccore.dll "$VLC_EMBED_SRC"
+    cp -a "$VLC_UNPACKED"/vlc-*/libvlc.dll "$VLC_EMBED_SRC"
+    cp -a "$VLC_UNPACKED"/vlc-*/libvlccore.dll "$VLC_EMBED_SRC"
 fi
 
 if [ ! -d "$DIST_DIR/$APP_NAME/libVLC" ]; then
@@ -140,7 +168,7 @@ rm -rf "$LICENSES_DIR"
 mkdir -p "$LICENSES_DIR"
 
 cp "$ROOT_DIR/LICENSE" "$LICENSES_DIR/GridPlayer-GPL-3.0.txt"
-unzip -p "$BUILD_DIR/vlc.zip" "vlc-$VLC_VERSION/COPYING.txt" > "$LICENSES_DIR/VLC-GPL-2.0.txt"
+unzip -p "$VLC_ZIP" "vlc-$VLC_VERSION/COPYING.txt" > "$LICENSES_DIR/VLC-GPL-2.0.txt"
 cp "$LIBMPV_LICENSES"/* "$LICENSES_DIR"
 
 cat > "$LICENSES_DIR/SOURCES.txt" <<EOF

@@ -19,8 +19,8 @@ VersionInfoCopyright=(c) 2021 {APP_AUTHOR}
 VersionInfoProductName={APP_DISP_NAME}
 VersionInfoProductVersion={APP_VERSION_NUMERIC}
 VersionInfoProductTextVersion={APP_VERSION}
-ArchitecturesAllowed=x64
-ArchitecturesInstallIn64BitMode=x64
+ArchitecturesAllowed={INNO_ARCH}
+ArchitecturesInstallIn64BitMode={INNO_ARCH}
 SourceDir={APP_SRC}
 ChangesAssociations=yes
 

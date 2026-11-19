@@ -42,6 +42,13 @@ build-win-pyinstaller: build-requirements
 build-win-package: build-win-pyinstaller
     ./scripts/windows/build_packages.sh
 
+# on Windows on Arm, with an arm64 Python
+build-win-pyinstaller-arm64: build-requirements
+    BUILD_WIN_ARCH=arm64 ./scripts/pyinstaller/build_win.sh
+
+build-win-package-arm64: build-win-pyinstaller-arm64
+    BUILD_WIN_ARCH=arm64 ./scripts/windows/build_packages.sh
+
 build-win-chocolatey:
     ./scripts/chocolatey/build.sh all
 

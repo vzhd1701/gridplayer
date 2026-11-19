@@ -17,14 +17,20 @@ echo "Building installer"
 
 cp "$SCRIPT_DIR/installer.iss" "$BUILD_DIR/installer.iss"
 
-INSTALLER_SUFFIX="win64-install"
-PORTABLE_SUFFIX="win64-portable"
+# win64 or winarm64, as BUILD_WIN_ARCH says, the one the package was built for
+INSTALLER_SUFFIX="$APP_TARGET_ARCH_SUFFIX-install"
+PORTABLE_SUFFIX="$APP_TARGET_ARCH_SUFFIX-portable"
+
+# Inno Setup's name for it: the arm64 installer won't start on x64 Windows,
+# nor the x64 one on arm64, where the arm64 package is the one to have
+INNO_ARCH="$APP_TARGET_ARCH"
 
 APP_SRC=$(cygpath -w "$DIST_DIR/$APP_NAME" | escapeSubst)
 
 replace_app_vars "$BUILD_DIR/installer.iss"
 
 sed -i "s#{APP_SRC}#$APP_SRC#g" "$BUILD_DIR/installer.iss"
+sed -i "s#{INNO_ARCH}#$INNO_ARCH#g" "$BUILD_DIR/installer.iss"
 PYTHONPATH="$ROOT_DIR" python "$SCRIPT_DIR/generate_file_associations.py" "{APP_FILE_ASSOCIATIONS}" "$BUILD_DIR/installer.iss"
 
 "$ISCC" //O"dist" //F"$APP_NAME-$APP_FILE_VERSION-$INSTALLER_SUFFIX" "$BUILD_DIR/installer.iss"
