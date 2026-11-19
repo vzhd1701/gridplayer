@@ -6,7 +6,9 @@ SCRIPT_DIR="$( cd "$( dirname $0 )" && pwd )"
 
 . "scripts/init_app_vars.sh"
 
-BUILD_DIR_APPIMAGE="$BUILD_DIR/appimage_docker"
+ARCH=$(uname -m)
+
+BUILD_DIR_APPIMAGE="$BUILD_DIR/appimage_docker/$ARCH"
 mkdir -p "$BUILD_DIR_APPIMAGE"
 
 # ======
@@ -24,9 +26,10 @@ chmod +x "$BUILD_DIR_APPIMAGE/blacklist_clean.sh"
 # ======
 
 PYTHON_VERSION="3.14"
-# Built on manylinux_2_34 (EL9), the oldest with a libmpv new enough in its
-# packages. No Python AppImage is made for it: 2_28's runs there.
-PYTHON_BASE_NAME="manylinux_2_28_x86_64"
+# Built on manylinux_2_34 (EL9) for x86_64, the oldest with a libmpv new
+# enough in its packages, and on manylinux_2_39 (EL10) for aarch64, as
+# PyQt6's wheels are. No Python AppImage is made for them: 2_28's runs there.
+PYTHON_BASE_NAME="manylinux_2_28_$ARCH"
 
 cd "$BUILD_DIR_APPIMAGE"
 
@@ -37,15 +40,68 @@ if ! which jq; then
     yum install -y jq
 fi
 
-if [ ! -f "linuxdeploy-x86_64.AppImage" ]; then
+# What gathers the libraries: x86_64's kept as it was, aarch64's from
+# linuxdeploy's own releases, which the kept one has none of
+LINUXDEPLOY="linuxdeploy-$ARCH.AppImage"
+
+if [ ! -f "$LINUXDEPLOY" ]; then
     echo "==> Fetching linuxdeploy"
 
-    curl -L -s -O "https://github.com/vzhd1701/linuxdeploy-frozen/releases/download/649fc02/linuxdeploy-x86_64.AppImage"
-    chmod +x linuxdeploy-x86_64.AppImage
+    if [ "$ARCH" = "x86_64" ]; then
+        LINUXDEPLOY_URL="https://github.com/vzhd1701/linuxdeploy-frozen/releases/download/649fc02/linuxdeploy-x86_64.AppImage"
+        LINUXDEPLOY_SHA256=""
+    else
+        LINUXDEPLOY_URL="https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20251107-1/linuxdeploy-aarch64.AppImage"
+        LINUXDEPLOY_SHA256="620095110d693282b8ebeb244a95b5e911cf8f65f76c88b4b47d16ae6346fcff"
+    fi
+
+    curl -L -s -f -o "$LINUXDEPLOY.part" "$LINUXDEPLOY_URL"
+    if [ -n "$LINUXDEPLOY_SHA256" ]; then
+        echo "$LINUXDEPLOY_SHA256 *$LINUXDEPLOY.part" | sha256sum -c -
+    fi
+    mv "$LINUXDEPLOY.part" "$LINUXDEPLOY"
+    chmod +x "$LINUXDEPLOY"
+fi
+
+# What makes the AppImage of the AppDir: appimagetool puts in the static
+# runtime, which needs no libfuse2 on the system (Ubuntu 22.04 and later,
+# Fedora, have only FUSE 3). linuxdeploy's own still uses the old one.
+APPIMAGETOOL_VERSION="1.9.1"
+if [ "$ARCH" = "x86_64" ]; then
+    APPIMAGETOOL_SHA256="ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0"
+else
+    APPIMAGETOOL_SHA256="f0837e7448a0c1e4e650a93bb3e85802546e60654ef287576f46c71c126a9158"
+fi
+APPIMAGETOOL="appimagetool-$APPIMAGETOOL_VERSION-$ARCH.AppImage"
+
+if [ ! -f "$APPIMAGETOOL" ]; then
+    echo "==> Fetching appimagetool"
+
+    curl -L -s -f -o "$APPIMAGETOOL.part" "https://github.com/AppImage/appimagetool/releases/download/$APPIMAGETOOL_VERSION/appimagetool-$ARCH.AppImage"
+    echo "$APPIMAGETOOL_SHA256 *$APPIMAGETOOL.part" | sha256sum -c -
+    mv "$APPIMAGETOOL.part" "$APPIMAGETOOL"
+    chmod +x "$APPIMAGETOOL"
+fi
+
+# The runtime it puts in, by release: appimagetool would take the newest
+RUNTIME_VERSION="20251108"
+if [ "$ARCH" = "x86_64" ]; then
+    RUNTIME_SHA256="2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d"
+else
+    RUNTIME_SHA256="00cbdfcf917cc6c0ff6d3347d59e0ca1f7f45a6df1a428a0d6d8a78664d87444"
+fi
+RUNTIME="runtime-$RUNTIME_VERSION-$ARCH"
+
+if [ ! -f "$RUNTIME" ]; then
+    echo "==> Fetching the AppImage runtime"
+
+    curl -L -s -f -o "$RUNTIME.part" "https://github.com/AppImage/type2-runtime/releases/download/$RUNTIME_VERSION/runtime-$ARCH"
+    echo "$RUNTIME_SHA256 *$RUNTIME.part" | sha256sum -c -
+    mv "$RUNTIME.part" "$RUNTIME"
 fi
 
 # Kept by its version, so a kept one of another isn't taken
-PYTHON_BASE="base-$PYTHON_VERSION.AppImage"
+PYTHON_BASE="base-$PYTHON_VERSION-$ARCH.AppImage"
 
 if [ ! -f "$PYTHON_BASE" ]; then
     echo "==> Fetching Python base image"
@@ -98,7 +154,7 @@ rm -rf "./AppDir/opt/python${PYTHON_VERSION}/share"
 # Remove libqgtk3.so to avoid GTK glitches
 # Remove libxdgdesktopportal.so, since it doesn't work in some distros
 # https://github.com/linuxdeploy/linuxdeploy-plugin-qt/commit/808c2065598db8f6c589038960d1053c92496bb8
-echo "PyQt5/Qt5/plugins/platformthemes" >> blacklist_pyqt.txt
+echo "PyQt6/Qt6/plugins/platformthemes" >> blacklist_pyqt.txt
 
 # Cleaning PyQt
 ./blacklist_clean.sh "./AppDir/opt/python${PYTHON_VERSION}/lib/python${PYTHON_VERSION}/site-packages" blacklist_pyqt.txt
@@ -111,21 +167,24 @@ install -Dm 644 $BUILD_DIR/meta/${APP_ID}.appdata.xml ./AppDir/usr/share/metainf
 install -Dm 644 $BUILD_DIR/meta/${APP_ID}.xml         ./AppDir/usr/share/mime/packages/${APP_ID}.xml
 cp -R $BUILD_DIR/meta/icons ./AppDir/usr/share
 
-# AppImage entry point
-gcc -fPIC -o ./AppDir/AppRun "$SCRIPT_DIR/AppRun.c" -ldl
+# AppImage entry point, which starts the app with this Python
+gcc -fPIC -DPYTHON_BIN="\"opt/python${PYTHON_VERSION}/bin/python${PYTHON_VERSION}\"" \
+    -DMULTIARCH="\"$ARCH-linux-gnu\"" \
+    -o ./AppDir/AppRun "$SCRIPT_DIR/AppRun.c" -ldl
 strip ./AppDir/AppRun
 
 echo "==> Setting up binary dependencies"
 
-# Qt5/plugins/platforms/libqxcb.so dependencies
-yum install -y libxkbcommon-x11 xcb-util xcb-util-image xcb-util-keysyms xcb-util-renderutil xcb-util-wm || true
+# Qt6/plugins/platforms/libqxcb.so dependencies; Qt 6.5 and later take
+# xcb-cursor too, which many systems don't have
+yum install -y libxkbcommon-x11 xcb-util xcb-util-cursor xcb-util-image xcb-util-keysyms xcb-util-renderutil xcb-util-wm
 
 # VLC and libmpv: EPEL's, with RPM Fusion's ffmpeg in place of EPEL's, which
 # leaves out H.264, HEVC and AAC. Same libraries by name, so both take it.
 if [ ! -f /usr/lib64/libmpv.so.2 ]; then
     dnf install -y epel-release dnf-plugins-core
     dnf config-manager --set-enabled crb
-    dnf install -y https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-9.noarch.rpm
+    dnf install -y "https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-$(rpm -E %rhel).noarch.rpm"
     dnf install -y vlc vlc-plugins-freeworld mpv-libs
     dnf swap -y ffmpeg-free ffmpeg --allowerasing
 fi
@@ -143,16 +202,21 @@ cp -a /usr/lib64/libmpv.so.2* "$LIB_DIR"
 # older than the drivers of a newer system; host Mesa would get EL9's libwayland.
 # Kept apart under their full file names, which have the version, and AppRun
 # puts one on the path only when the system has none or an older one.
+# JACK's client must be the server's, and libmpv links it: a system without
+# JACK has no server for ours to find, but libmpv loads.
 FALLBACK_LIBS=(
     libva.so.2 libva-drm.so.2 libva-x11.so.2 libva-wayland.so.2
     libvdpau.so.1 libvulkan.so.1 libGLESv2.so.2
     libwayland-client.so.0 libwayland-cursor.so.0 libwayland-egl.so.1
-    libpipewire-0.3.so.0 libpulse.so.0
+    libpipewire-0.3.so.0 libpulse.so.0 libjack.so.0
 )
 FALLBACK_EXCLUDES=()
 
 for lib in "${FALLBACK_LIBS[@]}"; do
-    real=$(readlink -f "/usr/lib64/$lib")
+    # where the linker finds it: EL's libjack is PipeWire's, in a folder of its own
+    found=$(ldconfig -p | awk -v lib="$lib" '$1 == lib { print $NF; exit }')
+    [ -n "$found" ] || { echo "No $lib to fall back on" >&2; exit 1; }
+    real=$(readlink -f "$found")
     mkdir -p "$LIB_DIR/fallback/$lib"
     cp "$real" "$LIB_DIR/fallback/$lib/"
     ln -s "$(basename "$real")" "$LIB_DIR/fallback/$lib/$lib"
@@ -177,19 +241,19 @@ echo "==> Generating AppImage"
 
 # fuse doesn't work inside docker
 export APPIMAGE_EXTRACT_AND_RUN=1
-export UPDATE_INFORMATION="gh-releases-zsync|vzhd1701|gridplayer|$APP_UPDATE_RELEASE|GridPlayer-*x86_64.AppImage.zsync"
-export ARCH="x86_64"
+export UPDATE_INFORMATION="gh-releases-zsync|vzhd1701|gridplayer|$APP_UPDATE_RELEASE|GridPlayer-*$ARCH.AppImage.zsync"
+export ARCH
 export VERSION="$APP_FILE_VERSION"
 
 deploy() {
-    ./linuxdeploy-x86_64.AppImage \
+    "./$LINUXDEPLOY" \
         -l /lib64/libxcb-icccm.so.4 \
         -l /lib64/libxcb-render-util.so.0 \
         -l /lib64/libxcb-util.so.1 \
         -l /lib64/libxcb-image.so.0 \
         -l /lib64/libxcb-keysyms.so.1 \
         -l /lib64/libxkbcommon-x11.so.0 \
-        -l /lib64/libxcb-xinerama.so.0 \
+        -l /lib64/libxcb-cursor.so.0 \
         "${FALLBACK_EXCLUDES[@]}" \
         --appdir AppDir \
         "$@"
@@ -243,7 +307,10 @@ done
     echo "    https://download1.rpmfusion.org/free/el/updates/9/SRPMS/"
 } > "$LICENSES_DIR/SOURCES.txt"
 
-deploy --output appimage
+APPIMAGE_FILE="$APP_NAME-$APP_FILE_VERSION-$ARCH.AppImage"
+
+"./$APPIMAGETOOL" --runtime-file "$RUNTIME" --updateinformation "$UPDATE_INFORMATION" \
+    AppDir "$APPIMAGE_FILE"
 
 chmod 777 "$BUILD_DIR_APPIMAGE/$APP_NAME"*.AppImage*
 mv "$BUILD_DIR_APPIMAGE/$APP_NAME"*.AppImage* "$DIST_DIR"

@@ -16,6 +16,7 @@ from gridplayer.params.theme import (
     on_system_theme_changed,
 )
 from gridplayer.utils.darkmode import watch_system_theme
+from gridplayer.utils.host_env import open_urls_in_host_environment
 from gridplayer.utils.mouse_windows import keep_held_buttons
 from gridplayer.utils.wayland import draw_header_lines, follow_desktop_cursor
 
@@ -74,6 +75,7 @@ def init_app():
         )
 
     draw_header_lines(app)
+    open_urls_in_host_environment(app)
 
     init_icon(app)
 

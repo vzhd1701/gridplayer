@@ -55,6 +55,34 @@ THE SOFTWARE.
 
 #define LINE_SIZE 255
 
+/* Python, from the AppDir: build_docker.sh passes it as -DPYTHON_BIN */
+#ifndef PYTHON_BIN
+#error "PYTHON_BIN not given"
+#endif
+
+/* Debian's name for the architecture's folders, x86_64-linux-gnu */
+#ifndef MULTIARCH
+#error "MULTIARCH not given"
+#endif
+
+/* The names of the variables changed here, ":" between them; the system's
+   value of each it had is kept as GRIDPLAYER_HOST_<name> */
+char host_vars[1024] = "";
+
+void keep_host(const char *name) {
+    if (host_vars[0])
+        strncat(host_vars, ":", sizeof(host_vars) - strlen(host_vars) - 1);
+    strncat(host_vars, name, sizeof(host_vars) - strlen(host_vars) - 1);
+
+    const char *value = getenv(name);
+
+    if (value) {
+        char kept[256];
+        snprintf(kept, sizeof(kept), "GRIDPLAYER_HOST_%s", name);
+        setenv(kept, value, 1);
+    }
+}
+
 int filter(const struct dirent *dir) {
     char *p = (char*) &dir->d_name;
     p = strrchr(p, '.');
@@ -123,7 +151,11 @@ char *needed_fallbacks(const char *appdir, bool *own_libva) {
             char *ours = file_name(ours_path);
             char *systems = system_file_name(soname);
 
-            if (ours && (!systems || strverscmp(systems, ours) < 0)) {
+            // JACK's only where the system has none: ours is PipeWire's, whose
+            // version reads higher than JACK2's own and serves no JACK server
+            bool by_version = strcmp(soname, "libjack.so.0") != 0;
+
+            if (ours && (!systems || (by_version && strverscmp(systems, ours) < 0))) {
                 paths_s += strlen(dir) + strlen(soname) + 2;
                 paths = realloc(paths, paths_s);
                 strcat(paths, dir);
@@ -246,13 +278,9 @@ int main(int argc, char *argv[]) {
     }
     outargptrs[outargindex] = '\0';     // trailing null argument required by execvp()
 
-    // change directory
+    // The folder it was started in is kept: a file named on the command line
+    // is found from there, as with any other program
     size_t appdir_s = strlen(appdir);
-    char *usr_in_appdir = malloc(appdir_s + 5);
-    snprintf(usr_in_appdir, appdir_s + 5, "%s/usr", appdir);
-    ret = chdir(usr_in_appdir);
-    if (ret != 0)
-        die("Could not cd into %s\n", usr_in_appdir);
 
     // set environment variables
     char *old_env;
@@ -260,6 +288,7 @@ int main(int argc, char *argv[]) {
     const char *format;
 
     old_env = getenv("PATH") ?: "";
+    keep_host("PATH");
     SET_NEW_ENV(new_path, appdir_s + strlen(old_env), "PATH=%s/usr/bin/:%s", appdir, old_env);
 
     // asked before LD_LIBRARY_PATH changes, of the system alone
@@ -268,38 +297,64 @@ int main(int argc, char *argv[]) {
 
     // ours looks for VAAPI drivers where EL9 keeps them; the system's are
     // older than it, which libva takes
-    if (own_libva && !getenv("LIBVA_DRIVERS_PATH"))
-        putenv("LIBVA_DRIVERS_PATH=/usr/lib/x86_64-linux-gnu/dri:/usr/lib64/dri:/usr/lib/dri:/run/opengl-driver/lib/dri");
+    if (own_libva && !getenv("LIBVA_DRIVERS_PATH")) {
+        keep_host("LIBVA_DRIVERS_PATH");
+        putenv("LIBVA_DRIVERS_PATH=/usr/lib/" MULTIARCH "/dri:/usr/lib64/dri:/usr/lib/dri:/run/opengl-driver/lib/dri");
+    }
 
     old_env = getenv("LD_LIBRARY_PATH") ?: "";
+    keep_host("LD_LIBRARY_PATH");
     SET_NEW_ENV(new_ld_library_path, appdir_s*2 + strlen(fallbacks) + strlen(old_env), "LD_LIBRARY_PATH=%s/usr/lib/:%s/usr/lib/vlc:%s%s", appdir, appdir, fallbacks, old_env);
 
     old_env = getenv("XDG_DATA_DIRS") ?: "/usr/local/share/:/usr/share/";
+    keep_host("XDG_DATA_DIRS");
     SET_NEW_ENV(new_xdg_data_dirs, appdir_s + strlen(old_env), "XDG_DATA_DIRS=%s/usr/share/:%s", appdir, old_env);
 
-    SET_NEW_ENV(new_qt_plugin_path, appdir_s, "QT_PLUGIN_PATH=%s/opt/python3.9/lib/python3.9/site-packages/PyQt5/Qt5/plugins/", appdir);
+    keep_host("QT_QPA_PLATFORM");
     putenv("QT_QPA_PLATFORM=xcb");
 
+    keep_host("SSL_CERT_FILE");
     SET_NEW_ENV(ssl_cert_file_path, appdir_s, "SSL_CERT_FILE=%s/opt/_internal/certs.pem", appdir);
 
     /* Otherwise may get errors because Python cannot write __pycache__ bytecode cache */
+    keep_host("PYTHONDONTWRITEBYTECODE");
     putenv("PYTHONDONTWRITEBYTECODE=1");
 
-    /* Run */
-    ret = execvp(exe, outargptrs);
+    // what the app takes away again for a program of the system it starts
+    // (xdg-open), see gridplayer/utils/host_env.py
+    setenv("GRIDPLAYER_HOST_VARS", host_vars, 1);
+
+    /* Run: the script with our Python. Not the script itself, whose first
+       lines are a shell's, running the system's readlink and dirname with
+       our libraries on the path: Ubuntu's Rust coreutils fail on them. */
+    size_t python_s = appdir_s + strlen(PYTHON_BIN) + 2;
+    char *python = calloc(python_s, sizeof(char));
+    snprintf(python, python_s, "%s/%s", appdir, PYTHON_BIN);
+
+    size_t script_s = appdir_s + strlen(exe) + 10;
+    char *script = calloc(script_s, sizeof(char));
+    snprintf(script, script_s, "%s/usr/bin/%s", appdir, exe);
+
+    char *python_args[outargindex + 2];
+    python_args[0] = python;
+    python_args[1] = script;
+    for (int i = 1; i <= outargindex; i++)
+        python_args[i + 1] = outargptrs[i];
+
+    ret = execv(python, python_args);
 
     int error = errno;
 
     if (ret == -1)
-        die("Error executing '%s': %s\n", exe, strerror(error));
+        die("Error executing '%s': %s\n", python, strerror(error));
 
     free(line);
     free(desktop_file);
-    free(usr_in_appdir);
     free(new_path);
     free(new_ld_library_path);
     free(new_xdg_data_dirs);
-    free(new_qt_plugin_path);
     free(ssl_cert_file_path);
+    free(python);
+    free(script);
     return 0;
 }
