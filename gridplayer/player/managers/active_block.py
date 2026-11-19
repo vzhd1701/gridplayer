@@ -1426,8 +1426,11 @@ class ActiveBlockManager(ManagerBase):
         old_active_block = self._ctx.active_block
         self._ctx.active_block = new_active_block
 
-        if self._ctx.active_block is not None:
-            self._ctx.active_block.is_active = True
+        # Asked at every move of the mouse: told only once, its overlay is
+        # painted anew each time it is
+        new_active = self._ctx.active_block
+        if new_active is not None and not new_active.is_active:
+            new_active.is_active = True
 
         if self._ctx.active_block != old_active_block:
             if old_active_block is not None:
