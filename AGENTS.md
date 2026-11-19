@@ -203,6 +203,9 @@ use nothing newer than 6.11.
   hundreds of milliseconds while AppKit snapshots it for its fade. A window
   of ours shown over the player calls `without_window_animation`
   (`utils/macos_window.py`) as it is shown.
+* macOS has no mouse grab: a drag's moves and release go to the window that
+  got the press, and are lost once it is hidden. A window the press may
+  have reached goes see-through during a drag instead (`set_out_of_sight`).
 
 ## Translatable strings
 

@@ -1142,13 +1142,15 @@ class OverlayBlockFloating(OverlayBlock):
     def set_out_of_sight(self, is_out: bool) -> None:
         """A window of its own, it may have the press the drag began with:
         hidden while the button is held, on Xwayland the desktop lets go of
-        the button there, and the drag ends at once. So it is see-through
-        till the drag is over, where a compositor draws it so; with none,
-        the X server keeps the press, and it is hidden. Elsewhere, hidden
-        too: nothing lets go of the press there."""
+        the button there, and the drag ends at once; on macOS the rest of
+        the drag and its release go on to the hidden window, which Qt drops,
+        and the drag stays, the tile still. So it is see-through till the
+        drag is over, where a compositor draws it so (macOS always); with
+        none, the X server keeps the press, and it is hidden. On Windows,
+        hidden too: the player window's grab of the mouse keeps the drag."""
 
         if is_out:
-            is_kept = env.IS_LINUX and is_compositor_running()
+            is_kept = env.IS_MACOS or (env.IS_LINUX and is_compositor_running())
             if not self.isVisible() or not is_kept:
                 self.hide()
             elif self._sight_opacity is None:
