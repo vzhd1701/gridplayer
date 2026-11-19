@@ -323,7 +323,7 @@ def test_is_replace_uses_dnd_move_action_as_shift(mocker):
         return_value=Qt.KeyboardModifier.NoModifier,
     )
     event = SimpleNamespace(
-        keyboardModifiers=lambda: Qt.KeyboardModifier.NoModifier,
+        modifiers=lambda: Qt.KeyboardModifier.NoModifier,
         proposedAction=lambda: Qt.DropAction.MoveAction,
         possibleActions=lambda: Qt.DropAction.CopyAction | Qt.DropAction.MoveAction,
         mimeData=lambda: SimpleNamespace(
@@ -342,7 +342,7 @@ def test_is_replace_uses_event_modifiers_when_query_empty(mocker):
         "queryKeyboardModifiers",
         return_value=Qt.KeyboardModifier.NoModifier,
     )
-    event = SimpleNamespace(keyboardModifiers=lambda: Qt.KeyboardModifier.ShiftModifier)
+    event = SimpleNamespace(modifiers=lambda: Qt.KeyboardModifier.ShiftModifier)
     assert manager._is_replace(True, event) is True
     assert manager._is_replace(True) is False
 
@@ -376,7 +376,7 @@ def _file_drag_event():
         ),
         acceptProposedAction=lambda: None,
         position=lambda: QPointF(1, 1),
-        keyboardModifiers=lambda: Qt.KeyboardModifier.NoModifier,
+        modifiers=lambda: Qt.KeyboardModifier.NoModifier,
         proposedAction=lambda: Qt.DropAction.CopyAction,
         possibleActions=lambda: Qt.DropAction.CopyAction,
     )

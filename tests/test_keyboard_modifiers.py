@@ -12,12 +12,7 @@ def _qapp():
     return QApplication.instance() or QApplication([])
 
 
-def test_modifiers_from_event_keyboard_modifiers():
-    event = SimpleNamespace(keyboardModifiers=lambda: Qt.KeyboardModifier.ShiftModifier)
-    assert km.modifiers_from_event(event) == Qt.KeyboardModifier.ShiftModifier
-
-
-def test_modifiers_from_event_mouse_modifiers():
+def test_modifiers_from_event():
     event = SimpleNamespace(modifiers=lambda: Qt.KeyboardModifier.ControlModifier)
     assert km.modifiers_from_event(event) == Qt.KeyboardModifier.ControlModifier
 
@@ -127,5 +122,5 @@ def test_query_drop_modifiers_ors_event_and_query(mocker):
         "queryKeyboardModifiers",
         return_value=Qt.KeyboardModifier.NoModifier,
     )
-    event = SimpleNamespace(keyboardModifiers=lambda: Qt.KeyboardModifier.ShiftModifier)
+    event = SimpleNamespace(modifiers=lambda: Qt.KeyboardModifier.ShiftModifier)
     assert km.query_drop_modifiers(event) == Qt.KeyboardModifier.ShiftModifier

@@ -64,7 +64,7 @@ from gridplayer.utils.bookmarks import (
     parse_bookmarks_txt,
     with_bookmark,
 )
-from gridplayer.utils.qt import detach_modal_dialog, flag_value, translate
+from gridplayer.utils.qt import detach_modal_dialog, translate
 from gridplayer.utils.time_txt import (
     get_time_txt,
     ms_time_txt,
@@ -134,8 +134,8 @@ DEFAULT_NAME_ROLE = Qt.ItemDataRole.UserRole
 # The list's keys, said in its menus; Enter goes to the current bookmark,
 # and Copy and Paste are the system's.
 RENAME_KEY = Qt.Key.Key_F2
-EDIT_TIME_KEY = flag_value(Qt.Modifier.SHIFT) | Qt.Key.Key_F2
-MOVE_HERE_KEY = flag_value(Qt.Modifier.CTRL) | Qt.Key.Key_M
+EDIT_TIME_KEY = Qt.Modifier.SHIFT.value | Qt.Key.Key_F2
+MOVE_HERE_KEY = Qt.Modifier.CTRL.value | Qt.Key.Key_M
 REMOVE_KEY = Qt.Key.Key_Delete
 ADD_KEY = Qt.Key.Key_Insert
 
@@ -516,7 +516,7 @@ class BookmarkList(QTreeView):
         if event.matches(QKeySequence.StandardKey.Paste):
             return self.paste_requested
 
-        modifiers = flag_value(event.modifiers() & ~Qt.KeyboardModifier.KeypadModifier)
+        modifiers = (event.modifiers() & ~Qt.KeyboardModifier.KeypadModifier).value
 
         if event.key() in {Qt.Key.Key_Return, Qt.Key.Key_Enter} and not modifiers:
             return self.jump_requested

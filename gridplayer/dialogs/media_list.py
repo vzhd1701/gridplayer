@@ -147,7 +147,7 @@ from gridplayer.utils.list_update import (
 from gridplayer.utils.misc import is_url
 from gridplayer.utils.next_file import natural_key
 from gridplayer.utils.off_thread import OffThread
-from gridplayer.utils.qt import count_txt, detach_modal_dialog, flag_value, translate
+from gridplayer.utils.qt import count_txt, detach_modal_dialog, translate
 from gridplayer.utils.screenshots import sanitize_filename
 from gridplayer.utils.show_in_folder import FolderRevealer
 from gridplayer.utils.thumbnails import ThumbnailLoader
@@ -594,9 +594,7 @@ class ListItemsModel(QAbstractTableModel):
             return None
 
         if role == Qt.ItemDataRole.TextAlignmentRole and column != Column.TITLE:
-            return flag_value(
-                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-            )
+            return (Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter).value
 
         if role == Qt.ItemDataRole.ToolTipRole and column == Column.TITLE:
             return _item_tooltip(self.name_of(item), str(item.uri))
@@ -1180,7 +1178,7 @@ class ItemList(QTableView):
         if event.matches(QKeySequence.StandardKey.Paste):
             return self.paste_requested
 
-        modifiers = flag_value(event.modifiers() & ~Qt.KeyboardModifier.KeypadModifier)
+        modifiers = (event.modifiers() & ~Qt.KeyboardModifier.KeypadModifier).value
 
         if event.key() in {Qt.Key.Key_Return, Qt.Key.Key_Enter} and not modifiers:
             return self.play_requested

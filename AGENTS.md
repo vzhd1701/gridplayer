@@ -186,14 +186,16 @@ use nothing newer than 6.11.
 
 * Enum members by their full names: `Qt.AlignmentFlag.AlignLeft`.
 * Where the C++ takes an int, PyQt6 refuses a plain enum: pass `.value`
-  (`postEvent`'s priority, `QDBusArgument`'s type). A flag as an int is
-  `flag_value()` (`utils/qt.py`).
+  (`postEvent`'s priority, `QDBusArgument`'s type). Keyboard modifiers, drop
+  actions and `QDialogButtonBox` buttons are `enum.Flag`s, which `int()`
+  refuses and no int equals: `.value` where an int is wanted (a key code is
+  `modifiers.value | key`).
 * A plain enum sent through `pyqtSignal(int)` arrives as an address: type the
   signal with the enum.
 * Mouse and drop events: `position()` / `globalPosition()`, which are
   `QPointF`.
 * `QTimer.singleShot(0, obj.signal.emit)` crashes the process if `obj` is
-  deleted before it runs: use a `QTimer` that is a child of `obj`.
+  deleted before it runs: pass the signal itself, `obj.signal`.
 * An app-wide event filter keeps no Python reference to a window Qt made
   itself (a combo box's list): it can go without Python knowing. Keep its
   address (`sip.unwrapinstance`) and look it up in `topLevelWidgets()`.

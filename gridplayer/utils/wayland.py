@@ -100,14 +100,10 @@ class _HeaderLines(QObject):
 
         # a child raised or added over the line
         elif kind == QEvent.Type.ZOrderChange:
-            line = _header_line(_parent_window(watched))
-            if line is not None and watched is not line and line.isVisible():
-                line.raise_()
+            _raise_line_over(_parent_window(watched), watched)
 
         elif kind == QEvent.Type.ChildAdded:
-            line = _header_line(watched)
-            if line is not None and event.child() is not line and line.isVisible():
-                line.raise_()
+            _raise_line_over(watched, event.child())
 
         return False
 
@@ -146,7 +142,16 @@ def _header_line(window) -> "_HeaderLine | None":
     if not isinstance(window, QWidget):
         return None
 
-    return getattr(window, "_header_line", None)
+    # from the instance's own attributes: a miss through getattr goes the long
+    # way round PyQt's, for every child added anywhere
+    return window.__dict__.get("_header_line")
+
+
+def _raise_line_over(window, child) -> None:
+    line = _header_line(window)
+
+    if line is not None and child is not line and line.isVisible():
+        line.raise_()
 
 
 def _place_header_line(window: QWidget) -> None:

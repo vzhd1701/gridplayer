@@ -10,7 +10,6 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QApplication
 
 from gridplayer.params.static import DropAction
-from gridplayer.utils.qt import flag_value
 
 _FILE_DROP_FORMATS = (
     "text/uri-list",
@@ -35,13 +34,7 @@ def drop_is_replace(qt_modifiers, action, modifier) -> bool:
 def modifiers_from_event(event) -> Qt.KeyboardModifier:
     if event is None:
         return Qt.KeyboardModifier.NoModifier
-    keyboard_modifiers = getattr(event, "keyboardModifiers", None)
-    if keyboard_modifiers is not None:
-        return keyboard_modifiers()
-    modifiers = getattr(event, "modifiers", None)
-    if modifiers is not None:
-        return modifiers()
-    return Qt.KeyboardModifier.NoModifier
+    return event.modifiers()
 
 
 def _mime_formats(md) -> list[str]:
@@ -85,14 +78,14 @@ def modifiers_from_dnd_action(event) -> Qt.KeyboardModifier:
     if get_proposed is None:
         return Qt.KeyboardModifier.NoModifier
     try:
-        proposed = flag_value(get_proposed())
+        proposed = get_proposed()
     except Exception:
         return Qt.KeyboardModifier.NoModifier
 
     mods = Qt.KeyboardModifier.NoModifier
-    if proposed & flag_value(Qt.DropAction.MoveAction):
+    if proposed & Qt.DropAction.MoveAction:
         mods |= Qt.KeyboardModifier.ShiftModifier
-    elif proposed & flag_value(Qt.DropAction.LinkAction):
+    elif proposed & Qt.DropAction.LinkAction:
         mods |= (
             Qt.KeyboardModifier.ShiftModifier
             | Qt.KeyboardModifier.ControlModifier

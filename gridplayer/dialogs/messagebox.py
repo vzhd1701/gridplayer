@@ -22,7 +22,7 @@ from PyQt6.QtWidgets import (
 )
 
 from gridplayer.params.theme import set_html_with_links
-from gridplayer.utils.qt import flag_value, translate
+from gridplayer.utils.qt import translate
 
 ICON_PX = 32
 
@@ -145,12 +145,10 @@ class QCustomMessageBox(QDialog):
 
         if isinstance(button, str):
             added = self._button_box.addButton(
-                button, QDialogButtonBox.ButtonRole(flag_value(role))
+                button, QDialogButtonBox.ButtonRole(role.value)
             )
         else:
-            added = self._button_box.addButton(
-                QDialogButtonBox.StandardButton(flag_value(button))
-            )
+            added = self._button_box.addButton(QDialogButtonBox.StandardButton(button))
 
         # Enter only ever presses the default, never what was tabbed to
         added.setAutoDefault(False)
@@ -158,21 +156,17 @@ class QCustomMessageBox(QDialog):
         return added
 
     def button(self, which) -> QPushButton | None:
-        return self._button_box.button(
-            QDialogButtonBox.StandardButton(flag_value(which))
-        )
+        return self._button_box.button(QDialogButtonBox.StandardButton(which))
 
     def buttons(self) -> list[QAbstractButton]:
         return self._button_box.buttons()
 
     def buttonRole(self, button) -> QMessageBox.ButtonRole:
         # the box's own roles are another enum in PyQt6, never equal to these
-        return QMessageBox.ButtonRole(flag_value(self._button_box.buttonRole(button)))
+        return QMessageBox.ButtonRole(self._button_box.buttonRole(button).value)
 
     def standardButton(self, button) -> QMessageBox.StandardButton:
-        return QMessageBox.StandardButton(
-            flag_value(self._button_box.standardButton(button))
-        )
+        return QMessageBox.StandardButton(self._button_box.standardButton(button).value)
 
     def defaultButton(self) -> QPushButton | None:
         if self._default is not None:
@@ -410,11 +404,10 @@ class QCustomMessageBox(QDialog):
 def _standard_buttons(buttons) -> list[QMessageBox.StandardButton]:
     """The standard buttons of a set of their flags, one by one."""
 
-    buttons = flag_value(buttons)
     each = []
 
-    bit = flag_value(QMessageBox.StandardButton.FirstButton)
-    while bit <= flag_value(QMessageBox.StandardButton.LastButton):
+    bit = QMessageBox.StandardButton.FirstButton
+    while bit <= QMessageBox.StandardButton.LastButton:
         if buttons & bit:
             each.append(QMessageBox.StandardButton(bit))
         bit <<= 1

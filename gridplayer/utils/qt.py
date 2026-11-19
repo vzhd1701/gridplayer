@@ -61,14 +61,6 @@ def detach_modal_dialog(dialog: QWidget):
     window.setFlags(flags)
 
 
-def flag_value(flag) -> int:
-    """A Qt enum or flags as a plain int. PyQt6 makes some of them (keyboard
-    modifiers, mouse buttons, drop actions, standard buttons) an enum.Flag,
-    which int() refuses and which never equals an int."""
-
-    return int(getattr(flag, "value", flag))
-
-
 def qt_connect(*connections):
     for c_sig, c_slot in connections:
         c_sig.connect(c_slot)

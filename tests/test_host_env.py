@@ -11,11 +11,6 @@ from PyQt6.QtWidgets import QApplication
 from gridplayer.utils import host_env
 
 
-@pytest.fixture(autouse=True)
-def _qapp():
-    return QApplication.instance() or QApplication([])
-
-
 @pytest.fixture
 def apprun(monkeypatch):
     """As AppRun leaves it: PATH and LD_LIBRARY_PATH changed, the system had

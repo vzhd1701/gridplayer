@@ -3,7 +3,7 @@
 The move from PyQt5 (Qt 5.15) to PyQt6 on Qt 6.12, on the `qt6` branch. This file says what changes, in what order,
 and how each step is checked. Tick an item only once it has been seen working.
 
-**Status: stages 0-6 done (2026-11-19); packaging (7) and clean-up (8) under way.**
+**Status: stages 0-8 done (2026-11-19), but CI's first run (the branch isn't pushed), the arm64 AppImage and the CHANGELOG.**
 
 | | Stage | State |
 |---|---|---|
@@ -15,7 +15,7 @@ and how each step is checked. Tick an item only once it has been seen working.
 | 5 | macOS | **done 2026-11-19** on the hackintosh (`test_macos` unreachable) |
 | 6 | Translations: pylupdate6 | **done 2026-11-19** |
 | 7 | Packaging and CI | **done 2026-11-19** but the arm64 AppImage and CI itself, which runs once pushed |
-| 8 | Clean-up and docs | not started |
+| 8 | Clean-up and docs | **done 2026-11-19** but the CHANGELOG |
 
 ## Decisions
 
@@ -559,6 +559,19 @@ after the other in real cocoa windows (`~/gp-tests/suite_in.sh`, `ab*.sh`).
 - 8.3 `scripts/qt6_port/` removed. **Done 2026-11-19**; they're in git before it.
 - 8.4 `/simplify` once PyQt5 is gone: `flag_value()` to `.value` where the kind is known, fallbacks for both bindings
   (`look.py`'s import among them) dropped.
+  **Done 2026-11-19**, four reviews (reuse, simplification, efficiency, altitude), each change checked on PyQt6 6.12:
+  - `flag_value()` gone: at every call the kind is known, so `.value` where an int is wanted (key codes, the button
+    roles), the flag itself where PyQt6 takes it (`&` on a drop action, `QKeySequence(modifier | Qt.Key.Key_A)`,
+    equality of wheel modifiers, `QDialogButtonBox.StandardButton(button)` from QMessageBox's IntFlag).
+  - `modifiers_from_event`'s `keyboardModifiers` branch, for events PyQt6 doesn't have, gone.
+  - The GL grid's ready signal: `QTimer.singleShot(0, self.ready)`, the signal itself, which PyQt ties to the
+    surface and skips once it's gone; only `.emit` crashed. The timer of its own (stage 4) and AGENTS.md's advice
+    changed to that; the test that crashed on `.emit` passes.
+  - The header line's lookup from the widget's own `__dict__`: a `getattr` miss goes round PyQt's `__getattr__`, at
+    3.4 µs for each child added anywhere on GNOME's Wayland.
+  - Left as they are: a fixture deleting every top-level widget a test leaves (it would touch every test's
+    teardown), the black bars by `QRegion` and a clip (the rectangles are right, the clip would change how they're
+    painted), `_told_scheme` as a list (style).
 
 ## After the move (not part of it)
 

@@ -12,7 +12,6 @@ from gridplayer.models.keymap_overrides import KeymapOverrides
 from gridplayer.params.actions import ACTIONS
 from gridplayer.params.gestures import GESTURE_DROP_SWITCH, GESTURES, GestureKind
 from gridplayer.settings import Settings
-from gridplayer.utils.qt import flag_value
 
 
 class WheelDirection(Enum):
@@ -53,7 +52,7 @@ class WheelNotches:
         delta = event.angleDelta()
         is_vertical = delta.y() != 0
         turn = delta.y() if is_vertical else delta.x()
-        turned = (is_vertical, turn > 0, flag_value(event.modifiers()))
+        turned = (is_vertical, turn > 0, event.modifiers())
 
         ms = event.timestamp()
         is_paused = self._last_ms is not None and ms - self._last_ms > WHEEL_PAUSE_MS
@@ -668,7 +667,7 @@ def key_sequence_from_event(event) -> str | None:
         key = Qt.Key.Key_Tab
         modifiers |= Qt.KeyboardModifier.ShiftModifier
 
-    return normalize_key_sequence(QKeySequence(flag_value(modifiers) | key))
+    return normalize_key_sequence(QKeySequence(modifiers.value | key))
 
 
 def split_shortcuts(shortcuts: list[str]) -> tuple[list[str], list[str]]:

@@ -32,7 +32,7 @@ from PyQt6.QtWidgets import (
 
 from gridplayer.params.static import GridMode
 from gridplayer.utils.compositor_linux import is_compositor_running
-from gridplayer.utils.qt import flag_value, translate
+from gridplayer.utils.qt import translate
 from gridplayer.widgets.closing_click import EatenClick
 from gridplayer.widgets.grid_line_mark import EDGE_COLOR, LINE_COLOR, GridLineTag
 from gridplayer.widgets.settings_controls import SegmentedChoice
@@ -1077,7 +1077,7 @@ def popup_palette(widget: QWidget) -> QPalette:
 def modifier_name(modifier) -> str:
     """A modifier key as the system names it: "Shift", or "⇧" on macOS."""
 
-    text = QKeySequence(flag_value(modifier) | Qt.Key.Key_A).toString(
+    text = QKeySequence(modifier | Qt.Key.Key_A).toString(
         QKeySequence.SequenceFormat.NativeText
     )
     return text[:-1].rstrip("+")
