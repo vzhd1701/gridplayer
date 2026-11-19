@@ -7,6 +7,18 @@ from PyQt6.QtWidgets import QApplication, QWidget
 
 from gridplayer.widgets.video_overlay import OverlayBlock
 
+# how many arguments each handler of an event_map takes, by its function:
+# asked of inspect once, not at every event (a move of the mouse is a dozen)
+_param_counts: dict = {}
+
+
+def _param_count(handler) -> int:
+    key = getattr(handler, "__func__", handler)
+    count = _param_counts.get(key)
+    if count is None:
+        count = _param_counts[key] = len(inspect.signature(handler).parameters)
+    return count
+
 
 class ManagerBase(QObject):
     def __init__(self, context, **kwargs):
@@ -23,7 +35,7 @@ class ManagerBase(QObject):
             return False
 
         if event_function is not None:
-            nparams = len(inspect.signature(event_function).parameters)
+            nparams = _param_count(event_function)
             if nparams == 0:
                 result = event_function()
             elif nparams == 1:
