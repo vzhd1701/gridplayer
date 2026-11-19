@@ -176,8 +176,14 @@ def mpv_outputs() -> dict:
     }
 
     # mpv drawing into its own windows: not on macOS so far, and on Linux only
-    # with X11 (see is_mpv_window_output and advanced._DIRECT_OFF_WHEN)
-    if env.IS_WINDOWS or (env.IS_LINUX and env.has_x_server()):
+    # with X11 (see is_mpv_window_output and advanced._DIRECT_OFF_WHEN), and
+    # only if this libmpv can (the Flatpak's had no X11)
+    known = _mpv_abilities()
+    can_draw_into_windows = known is None or known.draws_into_windows()
+
+    if can_draw_into_windows and (
+        env.IS_WINDOWS or (env.IS_LINUX and env.has_x_server())
+    ):
         outputs[MpvOutput.WINDOW] = translate("SettingsDialog", "Direct")
 
     return outputs
@@ -363,9 +369,24 @@ def unavailable_deinterlace_modes() -> dict:
     MPVKit's in the macOS package. VLC has every mode. Asks libmpv, loading it,
     if no video has yet: once a run."""
 
+    from gridplayer.mpv_player.deinterlace import unavailable_modes
+
+    known = _mpv_abilities()
+
+    if known is None:
+        return {}
+
+    reason = translate("SettingsDialog", "Not available in this MPV")
+
+    return dict.fromkeys(unavailable_modes(known), reason)
+
+
+def _mpv_abilities():
+    """What this libmpv can do, None with MPV not playing. Asks it, loading
+    it, if no video has yet: once a run."""
+
     # imported here, it asks the session, which is not there on import
     from gridplayer.mpv_player import abilities
-    from gridplayer.mpv_player.deinterlace import unavailable_modes
     from gridplayer.mpv_player.libmpv import load_mpv
     from gridplayer.settings import Settings
     from gridplayer.utils.media_libs import MediaLib, lib_of_driver, lib_problem
@@ -374,7 +395,7 @@ def unavailable_deinterlace_modes() -> dict:
     driver = session_video_driver(Settings().get("player/video_driver"))
 
     if lib_of_driver(driver) != MediaLib.MPV or lib_problem(MediaLib.MPV):
-        return {}
+        return None
 
     known = abilities.known()
 
@@ -382,11 +403,9 @@ def unavailable_deinterlace_modes() -> dict:
         try:
             known = abilities.ask(load_mpv())
         except OSError:
-            return {}
+            return None
 
-    reason = translate("SettingsDialog", "Not available in this MPV")
-
-    return dict.fromkeys(unavailable_modes(known), reason)
+    return known
 
 
 def end_actions() -> dict:

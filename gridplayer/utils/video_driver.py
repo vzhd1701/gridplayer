@@ -145,9 +145,18 @@ def is_mpv_window_output(output: MpvOutput) -> bool:
     """Whether Hardware MPV draws into a native window a cell itself: on Windows,
     and on Linux with an X11 window to give mpv. On Wayland a surface is only its
     own client's to draw into, and offscreen there are no windows: Copy there
-    instead."""
+    instead. Nor where libmpv was built without what it draws into windows
+    with (see abilities.draws_into_windows), once it's been asked."""
 
     if output != MpvOutput.WINDOW:
+        return False
+
+    # imported here: libmpv is only loaded for a video, and asked then
+    from gridplayer.mpv_player import abilities
+
+    known = abilities.known()
+
+    if known is not None and not known.draws_into_windows():
         return False
 
     if env.IS_WINDOWS:

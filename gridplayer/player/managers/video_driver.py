@@ -1,3 +1,4 @@
+import contextlib
 from functools import partial
 
 from PyQt6.QtCore import QTimer
@@ -6,7 +7,7 @@ from gridplayer.dialogs.messagebox import QCustomMessageBox
 from gridplayer.exceptions import PlayerException
 from gridplayer.mpv_player.subtitles import current_subtitle_style
 from gridplayer.params import env
-from gridplayer.params.static import MpvCpuDecoding, VideoDriver
+from gridplayer.params.static import MpvCpuDecoding, MpvOutput, VideoDriver
 from gridplayer.player.managers.base import ManagerBase
 from gridplayer.settings import Settings
 from gridplayer.utils.media_libs import MediaLib, lib_of_driver, lib_problem_text
@@ -111,6 +112,8 @@ class VideoDriverManager(ManagerBase):
 
     def _mpv_video_frame(self, video_driver):
         # likewise libmpv, only when something is going to play with it
+        from gridplayer.mpv_player import abilities
+        from gridplayer.mpv_player.libmpv import load_mpv
         from gridplayer.mpv_player.renderer import MpvRenderService
         from gridplayer.widgets.video_frame_mpv import VideoFrameMpv
 
@@ -131,9 +134,14 @@ class VideoDriverManager(ManagerBase):
             "cpu_when_low": cpu_decoding == MpvCpuDecoding.AUTO,
         }
 
-        if not is_software and is_mpv_window_output(
-            Settings().get("player/mpv_output")
-        ):
+        output = Settings().get("player/mpv_output")
+
+        if not is_software and output == MpvOutput.WINDOW:
+            # whether this libmpv can, asked before its first video is made
+            with contextlib.suppress(OSError):
+                abilities.ask(load_mpv())
+
+        if not is_software and is_mpv_window_output(output):
             from gridplayer.widgets.video_frame_mpv_window import VideoFrameMpvWindow
 
             return partial(VideoFrameMpvWindow, **options)

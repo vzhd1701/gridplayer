@@ -73,3 +73,12 @@ modules:
       url: https://code.videolan.org/videolan/libplacebo.git
       tag: v7.387.0
       commit: 275f7dea27924cdd34ab2e6c20e448b6bc4fab65
+# X11, which Direct draws into: the runtime has no libXpresent, and without
+# it mpv leaves out X11 altogether
+- name: mpv-libxpresent
+  config-opts:
+    - --disable-static
+  sources:
+    - type: archive
+      url: https://xorg.freedesktop.org/releases/individual/lib/libXpresent-1.0.2.tar.xz
+      sha256: 4e5b21b4812206a4b223013606ae31170502c1043038777a1ef8f70c09d37602
