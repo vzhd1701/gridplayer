@@ -1,6 +1,8 @@
+from types import SimpleNamespace
+
 import pytest
 from PyQt6.QtCore import QEvent, QPoint, QPointF, Qt
-from PyQt6.QtGui import QMouseEvent
+from PyQt6.QtGui import QAction, QKeyEvent, QKeySequence, QMouseEvent
 from PyQt6.QtTest import QTest
 from PyQt6.QtWidgets import QApplication
 
@@ -12,7 +14,11 @@ from gridplayer.params.static import (
     TileResize,
     TileSnap,
 )
-from gridplayer.player.managers.layout_edit import EDITOR_ACTIONS, SETTING_ACTIONS
+from gridplayer.player.managers.layout_edit import (
+    EDITOR_ACTIONS,
+    SETTING_ACTIONS,
+    LayoutEditManager,
+)
 from gridplayer.utils.layout.boxes import Box
 from gridplayer.utils.layout.free_tiles import MOVE, FreeTiles, TileDrag
 from gridplayer.widgets.settings_controls import SegmentedChoice, Switch, ToggleChips
@@ -598,3 +604,48 @@ class TestPopups:
 def test_the_keys_taken_in_the_editors_are_the_players_actions():
     for name in (*EDITOR_ACTIONS.values(), *SETTING_ACTIONS):
         assert name in ACTIONS, name
+
+
+def _actions_for_keys(**more):
+    actions = {
+        name: QAction(name)
+        for name in (*EDITOR_ACTIONS.values(), *SETTING_ACTIONS, *more)
+    }
+    for name, key in more.items():
+        actions[name].setShortcut(QKeySequence(key))
+    return actions
+
+
+def test_a_key_of_the_players_qt_left_to_the_editor_does_its_action():
+    """As on macOS, where Qt didn't give Space to Play / Pause from the
+    editor's window."""
+
+    actions = _actions_for_keys(play="Space")
+    played = []
+    actions["play"].triggered.connect(lambda: played.append(True))
+    manager = LayoutEditManager(context=SimpleNamespace(actions=actions))
+
+    manager._key_pressed(
+        QKeyEvent(
+            QEvent.Type.KeyPress, Qt.Key.Key_Space, Qt.KeyboardModifier.NoModifier
+        )
+    )
+
+    assert played == [True]
+
+
+def test_a_key_of_a_disabled_action_does_nothing_from_the_editor():
+    actions = _actions_for_keys(play="Space")
+    actions["play"].setEnabled(False)
+    played = []
+    actions["play"].triggered.connect(lambda: played.append(True))
+    manager = LayoutEditManager(context=SimpleNamespace(actions=actions))
+
+    manager._key_pressed(
+        QKeyEvent(
+            QEvent.Type.KeyPress, Qt.Key.Key_Space, Qt.KeyboardModifier.NoModifier
+        )
+    )
+
+    # as Qt would: given as a shortcut, not triggered
+    assert played == []

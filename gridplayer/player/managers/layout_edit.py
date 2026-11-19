@@ -1,4 +1,5 @@
-from PyQt6.QtCore import QEvent, QTimer
+from PyQt6.QtCore import QCoreApplication, QEvent, QTimer
+from PyQt6.QtGui import QKeySequence, QShortcutEvent
 
 from gridplayer.params.static import (
     TILE_CROPS,
@@ -220,4 +221,16 @@ class LayoutEditManager(ManagerBase):
             if sequence in map(normalize_key_sequence, action.shortcuts()):
                 action.trigger()
                 self.update_settings()
+                return
+
+        # Any other key of the player's. The editor being a tool window of
+        # the player's, Qt gives those keys to the player's actions itself,
+        # and they never reach it; but not always (macOS, CI's offscreen
+        # runs). One that did, Qt didn't take: given as Qt would have, to
+        # the action, which may give a key it shares to another
+        for action in self._ctx.actions.values():
+            if sequence in map(normalize_key_sequence, action.shortcuts()):
+                QCoreApplication.sendEvent(
+                    action, QShortcutEvent(QKeySequence(sequence), None, False)
+                )
                 return
