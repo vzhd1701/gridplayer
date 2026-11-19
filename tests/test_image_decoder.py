@@ -310,3 +310,23 @@ def test_stop_closes_without_a_lock_that_is_never_given_back(monkeypatch, caplog
     # still its holder's: stop never had it to give back
     assert buffer.lock.locked()
     assert "not given back" in caplog.text
+
+
+def test_a_snap_names_its_segments_after_itself(monkeypatch):
+    # AppArmor lets a snap make only /dev/shm/snap.<its name>.*
+    from gridplayer.multiprocess import safe_shared_memory
+
+    monkeypatch.setattr(safe_shared_memory.env, "IS_SNAP", True)
+    monkeypatch.setenv("SNAP_INSTANCE_NAME", "gridplayer")
+
+    assert safe_shared_memory.segment_prefix() == "snap.gridplayer."
+
+    # $SNAP set, but not by snapd
+    monkeypatch.delenv("SNAP_INSTANCE_NAME")
+    monkeypatch.delenv("SNAP_NAME", raising=False)
+
+    assert safe_shared_memory.segment_prefix() == ""
+
+    monkeypatch.setattr(safe_shared_memory.env, "IS_SNAP", False)
+
+    assert safe_shared_memory.segment_prefix() == ""

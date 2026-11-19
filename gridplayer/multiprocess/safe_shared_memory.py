@@ -2,12 +2,29 @@ import contextlib
 import ctypes
 import gc
 import logging
+import os
 import time
 from multiprocessing.shared_memory import SharedMemory
+
+from gridplayer.params import env
 
 # closing a mapping fails while anyone still holds a pointer into it
 CLOSE_RETRIES = 10
 CLOSE_RETRY_DELAY = 0.1
+
+
+def segment_prefix() -> str:
+    """What a segment's name starts with: in a snap, the snap's name, the only
+    names AppArmor lets it make in /dev/shm. snapcraft-preload renames the
+    semaphores of multiprocessing, not what shm_open makes."""
+
+    snap = os.environ.get("SNAP_INSTANCE_NAME") or os.environ.get("SNAP_NAME")
+
+    # $SNAP alone, not a snap's: no name to go by
+    if not env.IS_SNAP or not snap:
+        return ""
+
+    return f"snap.{snap}."
 
 
 class releasing:
@@ -117,7 +134,7 @@ class SafeSharedMemory:
         self._release(memory)
 
     def _use_segment(self, size, is_creating):
-        segment_name = f"{self.name}-{size}"
+        segment_name = f"{segment_prefix()}{self.name}-{size}"
 
         if self._segment_name == segment_name:
             return
