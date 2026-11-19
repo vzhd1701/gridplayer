@@ -386,6 +386,25 @@ PyQt6 in `/opt/venv6`. Outputs in `build/qt6-stage4/`.
   2026-11-19: keep `adwaita`, and a 1 px line in the theme's border colour along the top of each window with Qt's
   header (`utils/wayland.py`, `draw_header_lines`). Our own header, for our colours and scheme, waits for after the
   move.
+  **Qt 6.12's header jumps with MPV Shared** (found 2026-11-19, Wayland chosen on GNOME): as the window is resized
+  its header and the top of the picture jump up 2-4 px now and then. Qt's bug, new in 6.12.0: a bare window with a
+  `QOpenGLWidget` and nothing of ours, its corner dragged on `test_ubuntu` and the desktop screenshot 14 times a drag,
+  jumped in 0 of 42 shots on Qt 5.15, 6.10.2 and 6.11.2, and in 9 of 42 on 6.12.0; GridPlayer on PyQt5 0 of 42, on
+  PyQt6 10 of 42. Copy and plain widgets don't, nor a GL window without Qt's header (frameless, resized through
+  `startSystemResize`). A frame is drawn for the new size into a buffer a few rows shorter, from the bottom up, so its
+  top rows are cut off. Likely from qtbase `ed4bf9c993` (April 2026: the `wl_egl_window` resized after
+  `eglMakeCurrent`, QTBUG-95817); qtbase `94f9621051` (dev, 2026-11-09: the header in subsurfaces) should end it.
+  Not helped by: no vsync, a context made current on the window as it resizes, `QT_WAYLAND_DISABLE_RESIZECHECK`.
+  Decided 2026-11-19: stay on 6.12 (not 6.11 on Linux, which gets no more fixes) and look again at each Qt release.
+  The Flatpak, on 6.11, has no such jump, nor does Auto, which takes X11 on GNOME.
+  **On X11, MPV Shared's picture lags a window being made bigger** (found 2026-11-19, `test_ubuntu`): a frame for the
+  old size shows in the grown window, drawn from the bottom up, so the cells and their overlays jump down and back.
+  Qt 5 does it worse; `gl_window_size` now holds Qt's paint while X11 already has a size Qt hasn't taken (asked over
+  its own xcb connection), which takes most of it away. What's left was the VM's Mesa: on Ubuntu 24.04's Mesa 25.2.8
+  (VMware's SVGA3D) the cells still jump, the same on Qt 6.11 and 6.12; on Mesa 26.2.6 (kisak-mesa, unpacked into
+  `/opt/mesa_new`, `run.sh`) and in the Flatpak (Mesa 26.2.7 of its runtime) the resize is smooth. Not tried on a real
+  GPU.
+  Both are listed in `docs/findings/KNOWN_ISSUES.md`.
 - 4.3 D-Bus: MPRIS with `@pyqtClassInfo`, the portal's dark mode (`darkmode_linux.py`), the tray.
   **Done 2026-11-19**, GNOME, X11 and Wayland: MPRIS named, Identity, PlaybackStatus, Metadata, PlayPause and Play
   from `gdbus` acting on the cells; GNOME's colour scheme switched and back, the app following both ways; the tray

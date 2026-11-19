@@ -85,6 +85,10 @@ double-click to maximize, moved and resized by the desktop), and a shadow. Newer
 window really ends inside the shadow, so maximizing and tiling leave no gaps; Qt 5 couldn't. Left for after the move.
 Every dialog needs the same frame. Then Auto could take Wayland on GNOME too.
 
+It would also end a glitch of Qt 6.12's frame: with MPV Shared, the header jumps up and down a few pixels as the window
+is resized (Qt's bug, not in 6.11; `docs/findings/KNOWN_ISSUES.md`). Qt's development branch draws the frame apart from the window
+from 2026-11-09, which should end it too: try each Qt release.
+
 Another way is the QAdwaitaDecorations plugin, GNOME's look for Qt's frame, but a packaged app has its own Qt and the
 plugin must be built for exactly that one: a compiled part to keep up for every Qt release and CPU.
 

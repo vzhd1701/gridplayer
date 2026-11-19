@@ -269,6 +269,11 @@ One GL surface draws all of a window's videos, under the cells
 * `grab()` or `render()` of a cell shows a hole where its video is, unless
   done inside `GLVideoSurface.grabbing()` (`VideoFrameMpv.grab` and the
   real-app driver's `shot` do).
+* On Wayland with Qt's own header (GNOME), Qt 6.12 makes the header jump a
+  few pixels as the window is resized: Qt's bug, a bare `QOpenGLWidget`
+  window does it too. Not ours to chase. Glitches like it, caused outside
+  the app, are listed in `docs/findings/KNOWN_ISSUES.md`: look there before
+  chasing one, and add one found.
 
 ## Credit
 
