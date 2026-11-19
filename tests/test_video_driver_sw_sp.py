@@ -37,7 +37,7 @@ def test_manager_returns_sw_sp_without_process_manager(mocker):
     driver = manager.video_driver()
 
     assert driver is VideoFrameVLCSWSP
-    assert manager._process_manager is None
+    assert manager._process_managers == {}
 
 
 def test_manager_returns_hw_sp_without_process_manager(mocker):
@@ -48,7 +48,7 @@ def test_manager_returns_hw_sp_without_process_manager(mocker):
     driver = manager.video_driver()
 
     assert driver is VideoFrameVLCHWSP
-    assert manager._process_manager is None
+    assert manager._process_managers == {}
 
 
 def test_set_log_level_vlc_forwards_to_sw_sp_frames(mocker):
@@ -211,3 +211,24 @@ def test_frame_is_copied_when_shown_not_when_delivered(mocker):
         assert surface.frame_image().pixel(0, 0) == 0xFF020202
     finally:
         driver.cleanup()
+
+
+def test_each_kind_of_vlc_process_has_a_manager_of_its_own(mocker):
+    """After a change of driver put off until a restart, the videos open play
+    on in their processes while the new ones get processes of their kind."""
+
+    made = mocker.patch("gridplayer.vlc_player.instance.ProcessManagerVLC")
+    made.side_effect = lambda kind: SimpleNamespace(kind=kind, crash=mocker.Mock())
+    manager = VideoDriverManager(context=SimpleNamespace())
+    driver = mocker.patch.object(Settings(), "get")
+
+    driver.return_value = VideoDriver.VLC_HW
+    hardware = manager.video_driver().keywords["process_manager"]
+    driver.return_value = VideoDriver.VLC_SW
+    software = manager.video_driver().keywords["process_manager"]
+    driver.return_value = VideoDriver.VLC_HW
+    hardware_again = manager.video_driver().keywords["process_manager"]
+
+    assert hardware.kind.__name__ == "InstanceProcessVLCHW"
+    assert software.kind.__name__ == "InstanceProcessVLCSW"
+    assert hardware_again is hardware

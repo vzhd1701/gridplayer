@@ -184,3 +184,72 @@ def test_a_change_of_mpv_output_opens_the_videos_again():
         assert manager._is_reload_needed(previous)
     finally:
         Settings().set("player/mpv_output", _default_settings["player/mpv_output"])
+
+
+def _after_dialog(mocker, *, restart, reload, videos, output_due=None):
+    """cmd_settings with the dialog closed at once: the reloads asked for and
+    the restart message's details, if it was shown."""
+
+    class Dialog(QDialog):
+        def exec(self):
+            return QDialog.DialogCode.Accepted
+
+    mocker.patch.object(settings_manager, "SettingsDialog", Dialog)
+    told = mocker.patch.object(settings_manager.QCustomMessageBox, "information")
+
+    manager = _manager(mocker.Mock())
+    manager._ctx.video_blocks = videos
+    mocker.patch.object(manager, "_apply_settings")
+    mocker.patch.object(manager, "_is_restart_needed", return_value=restart)
+    mocker.patch.object(manager, "_is_reload_needed", return_value=reload)
+    # what's due on restart is what draws the videos, unless said otherwise
+    is_output_due = restart if output_due is None else output_due
+    mocker.patch.object(manager, "_is_gl_output_due", return_value=is_output_due)
+    mocker.patch.object(manager, "_is_qt_platform_due", return_value=False)
+    reloads = []
+    manager.reload.connect(lambda: reloads.append(True))
+
+    manager.cmd_settings()
+
+    info = told.call_args.kwargs["info"] if told.called else None
+    return len(reloads), info
+
+
+def test_videos_open_are_not_reloaded_when_a_restart_will_do_it(mocker):
+    reloads, info = _after_dialog(mocker, restart=True, reload=True, videos=[object()])
+
+    assert reloads == 0
+    assert "stay as they are" in info
+
+
+def test_with_no_videos_open_the_reload_still_lets_go_of_vlc(mocker):
+    reloads, info = _after_dialog(mocker, restart=True, reload=True, videos=[])
+
+    assert reloads == 1
+    assert "stay as they are" not in info
+
+
+def test_a_reload_with_no_restart_due_happens_at_once(mocker):
+    reloads, info = _after_dialog(mocker, restart=False, reload=True, videos=[object()])
+
+    assert reloads == 1
+    assert info is None
+
+
+def test_a_restart_alone_says_nothing_of_the_videos(mocker):
+    reloads, info = _after_dialog(mocker, restart=True, reload=False, videos=[object()])
+
+    assert reloads == 0
+    assert "stay as they are" not in info
+
+
+def test_a_restart_for_something_else_leaves_the_reload_be(mocker):
+    """The language and the VLC options changed together: the options reach
+    the videos at once, whether or not the app is restarted."""
+
+    reloads, info = _after_dialog(
+        mocker, restart=True, reload=True, videos=[object()], output_due=False
+    )
+
+    assert reloads == 1
+    assert "stay as they are" not in info

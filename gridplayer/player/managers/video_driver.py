@@ -22,7 +22,9 @@ class VideoDriverManager(ManagerBase):
 
         self._ctx.video_driver = self.video_driver
 
-        self._process_manager = None
+        # one for each kind of VLC process: after a change of driver put off
+        # until a restart, videos of both can be open
+        self._process_managers = {}
         self._mpv_render_service = None
 
         # the libraries it has been said about, which is once a run
@@ -104,11 +106,13 @@ class VideoDriverManager(ManagerBase):
             VideoDriver.VLC_HW: (VideoFrameVLCHW, InstanceProcessVLCHW),
         }[video_driver]
 
-        if self._process_manager is None:
-            self._process_manager = ProcessManagerVLC(process_instance)
-            self._process_manager.crash.connect(self.crash)
+        process_manager = self._process_managers.get(process_instance)
+        if process_manager is None:
+            process_manager = ProcessManagerVLC(process_instance)
+            process_manager.crash.connect(self.crash)
+            self._process_managers[process_instance] = process_manager
 
-        return partial(frame, process_manager=self._process_manager)
+        return partial(frame, process_manager=process_manager)
 
     def _mpv_video_frame(self, video_driver):
         # likewise libmpv, only when something is going to play with it
@@ -149,24 +153,23 @@ class VideoDriverManager(ManagerBase):
         return partial(VideoFrameMpv, is_software=is_software, **options)
 
     def cleanup(self):
-        if self._process_manager:
-            self._process_manager.cleanup()
-            self._process_manager = None
+        for process_manager in self._process_managers.values():
+            process_manager.cleanup()
+        self._process_managers.clear()
 
         if self._mpv_render_service:
             self._mpv_render_service.cleanup()
 
     def set_log_level_vlc(self, log_level):
-        if self._process_manager:
-            self._process_manager.set_log_level_vlc(log_level)
-        elif Settings().get("player/video_driver") in {
-            VideoDriver.VLC_HW_SP,
-            VideoDriver.VLC_SW_SP,
-        }:
-            for vb in self._ctx.video_blocks:
-                driver = vb.video_driver
-                if driver is not None and hasattr(driver, "set_log_level_vlc"):
-                    driver.set_log_level_vlc(log_level)
+        for process_manager in self._process_managers.values():
+            process_manager.set_log_level_vlc(log_level)
+
+        # and each VLC playing in the app's own process, whatever the setting
+        # says now: a change of driver may be waiting for a restart
+        for vb in self._ctx.video_blocks:
+            driver = vb.video_driver
+            if driver is not None and hasattr(driver, "set_log_level_vlc"):
+                driver.set_log_level_vlc(log_level)
 
     def set_log_level_mpv(self, log_level):
         if self._mpv_render_service:
@@ -185,8 +188,8 @@ class VideoDriverManager(ManagerBase):
             self._mpv_render_service.set_subtitle_style(current_subtitle_style())
 
     def set_log_level(self, log_level):
-        if self._process_manager:
-            self._process_manager.set_log_level(log_level)
+        for process_manager in self._process_managers.values():
+            process_manager.set_log_level(log_level)
 
     def crash(self, traceback_txt):
         raise PlayerException(traceback_txt)

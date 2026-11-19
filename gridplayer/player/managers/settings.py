@@ -63,18 +63,45 @@ class SettingsManager(ManagerBase):
 
         self._apply_settings(previous_settings)
 
-        if self._is_restart_needed(previous_settings):
+        is_restart_needed = self._is_restart_needed(previous_settings)
+        is_reload_needed = self._is_reload_needed(previous_settings)
+
+        # What draws the videos changed in a way only a restart brings in
+        # (MPV's GL output, X11 or Wayland): made again now, they'd only play
+        # as a stand-in, and again after the restart. Until then they play as
+        # they were, and those opened next take the new settings. Not when the
+        # restart is for something else (the language), nor with no video
+        # open, when a reload only lets go of VLC's processes.
+        is_reload_put_off = (
+            is_reload_needed
+            and bool(self._ctx.video_blocks)
+            and (
+                self._is_gl_output_due(previous_settings)
+                or self._is_qt_platform_due(previous_settings)
+            )
+        )
+
+        if is_restart_needed:
+            if is_reload_put_off:
+                info = translate(
+                    "Dialog - Settings apply restart",
+                    "Some of the new settings work after you restart GridPlayer."
+                    " Videos already open stay as they are until then.",
+                )
+            else:
+                info = translate(
+                    "Dialog - Settings apply restart",
+                    "Some of the new settings work after you restart GridPlayer.",
+                )
+
             QCustomMessageBox.information(
                 self.parent(),
                 translate("Dialog - Settings apply restart", "Settings", "Header"),
                 translate("Dialog - Settings apply restart", "Restart to apply"),
-                info=translate(
-                    "Dialog - Settings apply restart",
-                    "Some of the new settings work after you restart GridPlayer.",
-                ),
+                info=info,
             )
 
-        if self._is_reload_needed(previous_settings):
+        if is_reload_needed and not is_reload_put_off:
             self.reload.emit()
 
     def _apply_settings(self, previous_settings):
