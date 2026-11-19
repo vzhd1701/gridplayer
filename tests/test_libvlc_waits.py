@@ -1,3 +1,4 @@
+import ctypes
 import struct
 
 import pytest
@@ -18,8 +19,6 @@ def _strings():
 
 
 TEST_RAX = b"\x48\x85\xc0"
-TEST_EAX = b"\x85\xc0"
-SUB_ESP_8 = b"\x83\xec\x08"
 
 
 def _x64_lookup(at, name_at, slot, is_store_first):
@@ -32,21 +31,6 @@ def _x64_lookup(at, name_at, slot, is_store_first):
     return lea + middle + (store + TEST_RAX if is_store_first else TEST_RAX + store)
 
 
-def _x86_lookup(name_at, slot, is_store_first):
-    # mov dword ptr [esp + 4], name; mov [esp], ebx; call esi; then
-    # mov [slot], eax among sub esp, 8 and test eax, eax
-    store = b"\xa3" + struct.pack("<I", slot)
-    after = (
-        store + SUB_ESP_8 + TEST_EAX if is_store_first else SUB_ESP_8 + TEST_EAX + store
-    )
-    return (
-        b"\xc7\x44\x24\x04"
-        + struct.pack("<I", name_at)
-        + b"\x89\x1c\x24\xff\xd6"
-        + after
-    )
-
-
 def _code(pieces):
     data = b""
     for piece in pieces:
@@ -55,26 +39,19 @@ def _code(pieces):
 
 
 @pytest.mark.parametrize("is_store_first", [False, True])
-@pytest.mark.parametrize("machine", [waits._MACHINE_AMD64, waits._MACHINE_I386])
-def test_finds_where_each_name_is_kept(machine, is_store_first):
+def test_finds_where_each_name_is_kept(is_store_first):
     strings, places = _strings()
     slots = {name: 0x9000 + 8 * i for i, name in enumerate(waits._NAMES)}
 
-    if machine == waits._MACHINE_AMD64:
-        pieces = [
-            lambda at, n=n: _x64_lookup(at, places[n], slots[n], is_store_first)
-            for n in waits._NAMES
-        ]
-    else:
-        pieces = [
-            lambda at, n=n: _x86_lookup(places[n], slots[n], is_store_first)
-            for n in waits._NAMES
-        ]
+    pieces = [
+        lambda at, n=n: _x64_lookup(at, places[n], slots[n], is_store_first)
+        for n in waits._NAMES
+    ]
 
     sections = [_code(pieces), strings]
 
     for name in waits._NAMES:
-        assert waits._slot_of(name, machine, sections) == slots[name]
+        assert waits._slot_of(name, sections) == slots[name]
 
 
 @pytest.mark.parametrize("version", ["4.0.0-dev", "2.2.8", ""])
@@ -93,7 +70,7 @@ def test_no_lookup_found_is_no_slot():
     code = waits._Section(CODE_AT, b"\x90" * 64, is_code=True)
 
     with pytest.raises(ValueError, match="0 places"):
-        waits._slot_of(b"WaitOnAddress", waits._MACHINE_AMD64, [code, strings])
+        waits._slot_of(b"WaitOnAddress", [code, strings])
 
 
 def test_two_copies_of_a_name_is_no_slot():
@@ -102,7 +79,7 @@ def test_two_copies_of_a_name_is_no_slot():
     code = waits._Section(CODE_AT, b"\x90" * 64, is_code=True)
 
     with pytest.raises(ValueError, match="2 copies"):
-        waits._slot_of(b"WaitOnAddress", waits._MACHINE_AMD64, [code, strings, twice])
+        waits._slot_of(b"WaitOnAddress", [code, strings, twice])
 
 
 def test_a_store_too_far_away_is_not_taken():
@@ -117,7 +94,7 @@ def test_a_store_too_far_away_is_not_taken():
         return lea + padding + store
 
     with pytest.raises(ValueError, match="0 places"):
-        waits._slot_of(b"WaitOnAddress", waits._MACHINE_AMD64, [_code([far]), strings])
+        waits._slot_of(b"WaitOnAddress", [_code([far]), strings])
 
 
 def test_anything_else_between_call_and_store_is_no_slot():
@@ -138,6 +115,24 @@ def test_anything_else_between_call_and_store_is_no_slot():
         )
 
     with pytest.raises(ValueError, match="0 places"):
-        waits._slot_of(
-            b"WaitOnAddress", waits._MACHINE_AMD64, [_code([other]), strings]
-        )
+        waits._slot_of(b"WaitOnAddress", [_code([other]), strings])
+
+
+def test_reads_the_functions_a_module_imports_by_name():
+    image = bytearray(0x500)
+    pe = 0x40
+    struct.pack_into("<I", image, 0x3C, pe)
+    struct.pack_into("<H", image, pe + 24, waits._PE32_PLUS)
+    struct.pack_into("<I", image, pe + 24 + 120, 0x200)
+    # one DLL, then the empty entry that ends the list
+    struct.pack_into("<IIIII", image, 0x200, 0x300, 0, 0, 0x280, 0x300)
+    image[0x280:0x2A1] = b"api-ms-win-core-synch-l1-2-0.dll\0"
+    for i, name in enumerate(waits._NAMES):
+        struct.pack_into("<Q", image, 0x300 + 8 * i, 0x400 + 0x20 * i)
+        image[0x402 + 0x20 * i : 0x403 + 0x20 * i + len(name)] = name + b"\0"
+    # and one by ordinal, which has no name
+    struct.pack_into("<Q", image, 0x300 + 8 * len(waits._NAMES), 1 << 63 | 5)
+
+    buffer = (ctypes.c_char * len(image)).from_buffer(image)
+
+    assert waits._imported_names(ctypes.addressof(buffer)) == set(waits._NAMES)

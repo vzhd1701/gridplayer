@@ -18,6 +18,9 @@ instance is made, which is before any thread can be waiting in a slot.
 The pointers are found in VLC's own code, each where the result of looking
 up its name is stored, and changed only when what they hold is exactly the
 stand-in. See docs/findings/VLC_WAITS.md.
+
+The arm64 build, made for Windows 10 1809 and up, imports the three from
+Windows itself, as its import table shows: nothing to change there.
 """
 
 import ctypes
@@ -35,7 +38,7 @@ _STORE_WITHIN = 48
 
 _IMAGE_SCN_MEM_EXECUTE = 0x20000000
 _MACHINE_AMD64 = 0x8664
-_MACHINE_I386 = 0x14C
+_PE32_PLUS = 0x20B
 
 
 class _Section(NamedTuple):
@@ -71,8 +74,12 @@ def use_system_waits(vlc_version: str, module_name: str = "libvlccore.dll") -> b
         return False
 
     try:
-        machine, size, sections = _image(base)
-        slots = [_slot_of(name, machine, sections) for name in _NAMES]
+        if set(_NAMES) <= _imported_names(base):
+            _log.info("VLC waits on Windows' own WaitOnAddress: VLC imports it")
+            return True
+
+        size, sections = _image(base)
+        slots = [_slot_of(name, sections) for name in _NAMES]
     except ValueError as err:
         _log.warning(f"VLC waits left as they are: {err}")
         return False
@@ -102,15 +109,53 @@ def use_system_waits(vlc_version: str, module_name: str = "libvlccore.dll") -> b
     return True
 
 
-def _image(base: int) -> tuple[int, int, list[_Section]]:
-    """The loaded module's machine, size and sections, read from memory."""
+def _imported_names(base: int) -> set[bytes]:
+    """The functions the loaded 64-bit module imports by name, read from
+    its import table in memory."""
+
+    def read(rva, size):
+        return ctypes.string_at(base + rva, size)
+
+    pe = struct.unpack_from("<I", read(0x3C, 4))[0]
+    if struct.unpack_from("<H", read(pe + 24, 2))[0] != _PE32_PLUS:
+        raise ValueError("not a 64-bit module")
+
+    # the optional header's data directory 1: the import table
+    imports_rva = struct.unpack_from("<I", read(pe + 24 + 120, 4))[0]
+
+    names = set()
+    while imports_rva:
+        lookup_rva, _, _, dll_name_rva = struct.unpack_from(
+            "<IIII", read(imports_rva, 16)
+        )
+        if not dll_name_rva:
+            break
+        # the lookup table names each one; the address table beside it is
+        # filled with addresses as the module loads
+        entry_rva = lookup_rva
+        while entry_rva:
+            entry = struct.unpack_from("<Q", read(entry_rva, 8))[0]
+            if not entry:
+                break
+            # by name, not by ordinal: a hint, then the name
+            if not entry >> 63:
+                names.add(ctypes.string_at(base + (entry & 0x7FFFFFFF) + 2))
+            entry_rva += 8
+        imports_rva += 20
+
+    return names
+
+
+def _image(base: int) -> tuple[int, list[_Section]]:
+    """The loaded module's size and sections, read from memory."""
 
     pe = base + struct.unpack_from("<I", ctypes.string_at(base + 0x3C, 4))[0]
     machine, n_sections, _, _, _, opt_size = struct.unpack_from(
         "<HHIIIH", ctypes.string_at(pe + 4, 20)
     )
-    if machine not in {_MACHINE_AMD64, _MACHINE_I386}:
-        raise ValueError(f"unknown machine {machine:#x}")
+    # only VLC's x64 code is known: its arm64 build imports them
+    if machine != _MACHINE_AMD64:
+        raise ValueError(f"no stand-in known for machine {machine:#x}")
 
     opt = pe + 24
     size = struct.unpack_from("<I", ctypes.string_at(opt + 56, 4))[0]
@@ -131,10 +176,10 @@ def _image(base: int) -> tuple[int, int, list[_Section]]:
                 )
             )
 
-    return machine, size, sections
+    return size, sections
 
 
-def _slot_of(name: bytes, machine: int, sections: list[_Section]) -> int:
+def _slot_of(name: bytes, sections: list[_Section]) -> int:
     """Where VLC keeps what it looked up by this name."""
 
     text = name + b"\0"
@@ -147,10 +192,7 @@ def _slot_of(name: bytes, machine: int, sections: list[_Section]) -> int:
 
     slots = set()
     for s in (s for s in sections if s.is_code):
-        if machine == _MACHINE_AMD64:
-            slots.update(_slots_x64(s, name_at))
-        else:
-            slots.update(_slots_x86(s, name_at))
+        slots.update(_slots_x64(s, name_at))
 
     if len(slots) != 1:
         raise ValueError(f"{len(slots)} places keep {name.decode()}")
@@ -175,25 +217,10 @@ def _slots_x64(code: _Section, name_at: int) -> list[int]:
     return slots
 
 
-def _slots_x86(code: _Section, name_at: int) -> list[int]:
-    # mov dword ptr [esp + 4], name ... call GetProcAddress, then the result
-    # stored: mov [slot], eax, with sub esp, 8 and test eax, eax around it
-    slots = []
-    data = code.data
-    for i in _find_all(data, b"\xc7\x44\x24\x04" + struct.pack("<I", name_at)):
-        store = _store_after_call(data, i + 8, _X86_CALL, _X86_SKIP, b"\xa3")
-        if store is not None:
-            slots.append(struct.unpack_from("<I", data, store + 1)[0])
-    return slots
-
-
 # call reg, call [address]
 _X64_CALL = re.compile(rb"\x41?\xff[\xd0-\xd7]|\xff\x15.{4}", re.DOTALL)
-_X86_CALL = re.compile(rb"\xff[\xd0-\xd7]|\xff\x15.{4}", re.DOTALL)
-# what may come between the call and the store: test rax, rax; and on
-# 32-bit, the stack put back after GetProcAddress (sub esp, 8) and test
+# what may come between the call and the store: test rax, rax
 _X64_SKIP = (b"\x48\x85\xc0",)
-_X86_SKIP = (b"\x83\xec\x08", b"\x85\xc0")
 
 
 def _store_after_call(data, start, call, skip, store) -> int | None:
