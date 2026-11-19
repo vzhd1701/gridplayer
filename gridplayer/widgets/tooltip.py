@@ -48,6 +48,7 @@ from PyQt6.QtWidgets import QAbstractItemView, QApplication, QWidget
 from gridplayer.params.theme import current_colors
 from gridplayer.utils.compositor_linux import is_compositor_running
 from gridplayer.utils.darkmode import is_dark_mode
+from gridplayer.utils.macos_window import without_window_animation
 
 # how wide a tip gets before it wraps, in characters of its font
 TIP_MAX_CHARS = 72
@@ -225,6 +226,11 @@ class TipWindow(QWidget):
         self._fade = QVariantAnimation(self)
         self._fade.valueChanged.connect(self._set_opacity)
         self._fade.finished.connect(self._on_fade_finished)
+
+    def showEvent(self, event) -> None:
+        # its own fade, not AppKit's too, which stalls the videos as it hides
+        without_window_animation(self)
+        super().showEvent(event)
 
     def text(self) -> str:
         return self._text

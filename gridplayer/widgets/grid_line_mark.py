@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import QWidget
 from gridplayer.utils.compositor_linux import is_compositor_running
 from gridplayer.utils.layout.free_tiles import Gap, Guide, GuideKind
 from gridplayer.utils.layout.lines import SnapKind, Target
+from gridplayer.utils.macos_window import without_window_animation
 from gridplayer.utils.qt import translate
 
 # a light line with a dark edge either side, to show over any picture
@@ -99,6 +100,10 @@ class FloatingMark(QWidget):
 
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+
+    def showEvent(self, event) -> None:
+        without_window_animation(self)
+        super().showEvent(event)
 
     def show_at(self, rect: QRect) -> None:
         """Shown at rect on the screen, painted anew if it is not the size

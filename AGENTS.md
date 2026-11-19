@@ -199,6 +199,10 @@ use nothing newer than 6.11.
 * An app-wide event filter keeps no Python reference to a window Qt made
   itself (a combo box's list): it can go without Python knowing. Keep its
   address (`sip.unwrapinstance`) and look it up in `topLevelWidgets()`.
+* macOS: hiding a `Qt.ToolTip` window (or a popup) blocks the GUI thread for
+  hundreds of milliseconds while AppKit snapshots it for its fade. A window
+  of ours shown over the player calls `without_window_animation`
+  (`utils/macos_window.py`) as it is shown.
 
 ## Translatable strings
 
