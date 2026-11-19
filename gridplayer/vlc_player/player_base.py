@@ -974,8 +974,26 @@ class VlcPlayerBase(ABC):
 
         if not is_arrived:
             self._log.warning("Audio slave brought no track")
+        elif self._tracks_manager is not None:
+            self._tracks_manager.update_tracks(media_tracks)
+            self._play_audio_slave()
 
         self._refresh_media_tracks(media_tracks)
+
+    def _play_audio_slave(self) -> None:
+        """Switch to the attached file's sound. libVLC switches to it too
+        (add_slave's select), but in its own time: under load after the
+        track is listed, the old one read as playing, and nothing tells of
+        the switch after (CI's Mac)."""
+
+        external = self._external_audio_ids()
+        if not external:
+            return
+
+        wanted = self._wanted_audio_track_id()
+        self._tracks_manager.set_audio_track_id(
+            wanted if wanted in external else external[0]
+        )
 
     def _read_media_tracks(self):
         # the player is released before the media is, and a wait that

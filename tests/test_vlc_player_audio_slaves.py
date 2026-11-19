@@ -132,6 +132,9 @@ class _FakeTracksManager:
     def update_tracks(self, media_tracks):
         self.updated.append(media_tracks)
 
+    def set_audio_track_id(self, track_id):
+        self.current_audio_track_id = track_id
+
     def set_subtitle_track_id(self, track_id):
         self.current_subtitle_track_id = track_id
 
@@ -290,8 +293,22 @@ class TestAddingOneToAVideoAlreadyPlaying:
 
         player.add_audio_slave(FIRST)
 
-        assert player._tracks_manager.updated == [media.tracks]
+        assert player._tracks_manager.updated[-1] == media.tracks
         assert len(player.tracks_changes) == 1
+
+    def test_the_files_track_is_switched_to_once_it_is_there(self):
+        """Not left to libVLC, which switches in its own time: under load
+        after the track was listed, the old one read as playing."""
+
+        # the video's two, and the file's
+        media = _FakeMedia(_audio_tracks(3))
+        player = _playing_player(media, audio_tracks={1: _track(), 2: _track()})
+        player._own_audio_count = 1
+
+        player.add_audio_slave(FIRST)
+
+        assert player._tracks_manager.current_audio_track_id == 2
+        assert player.tracks_changes[0].cur_audio_track_id == 2
 
     def test_the_new_list_is_the_one_handed_on(self):
         media = _FakeMedia(_audio_tracks(2))
