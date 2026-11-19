@@ -7,6 +7,10 @@ on:
         description: 'Custom commit (at gridplayer-flatpak) to release as'
         required: false
         type: string
+      dry_run:
+        description: 'Only build the bundle from this checkout, kept as the run''s artifact: nothing pushed'
+        type: boolean
+        default: false
   push:
     tags:
       - "v[0-9]+.[0-9]+.[0-9]+"
@@ -36,9 +40,25 @@ jobs:
         run: |
           sudo apt-get install -y desktop-file-utils appstream-util flatpak
           flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-          flatpak install --user -y flathub org.kde.Sdk//5.15-25.08
+          flatpak install --user -y flathub org.kde.Sdk//6.11
+
+      # the runtimes, the PyQt BaseApp and flatpak-builder are installed by
+      # the build script
+      - name: Build bundle
+        if: inputs.dry_run
+        run: |
+          just build-linux-flatpak
+
+      - name: Save bundle
+        if: inputs.dry_run
+        uses: actions/upload-artifact@v7
+        with:
+          name: flatpak_result
+          path: dist/*.flatpak
+          retention-days: 7
 
       - name: Release
+        if: ${{ !inputs.dry_run }}
         env:
           GIT_USER: vzhd1701
           GIT_EMAIL: vzhd1701@gmail.com

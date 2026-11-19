@@ -211,7 +211,6 @@ jobs:
           choco install vlc ffmpeg --yes --no-progress
           test -f "/c/Program Files/VideoLAN/VLC/libvlc.dll"
           command -v ffmpeg
-          BUILD_ARCH=win64
           . scripts/windows/libmpv_pins.sh
           mkdir -p build/libmpv
           curl -fsSL -o "build/$LIBMPV_ARCHIVE" "$LIBMPV_URL"

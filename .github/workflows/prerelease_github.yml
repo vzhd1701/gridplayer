@@ -7,6 +7,10 @@ on:
         description: 'Keep the pre-release as a draft, hidden until published by hand'
         type: boolean
         default: false
+      dry_run:
+        description: 'Only build: the files are kept as the run''s artifacts, nothing is released or tagged'
+        type: boolean
+        default: false
   # To build every push to develop as well, uncomment:
   # push:
   #   branches: [ develop ]
@@ -15,8 +19,9 @@ on:
   #     - "resources/translations/**"
   #     - ".github/ISSUE_TEMPLATE/**"
 
+# a dry run apart from a real one, each cancelling the one of its kind before
 concurrency:
-  group: prerelease_github
+  group: prerelease_github-${{ inputs.dry_run == true }}
   cancel-in-progress: true
 
 permissions:
@@ -26,18 +31,17 @@ env:
   # AppImage updates of a dev build follow this tag, see scripts/init_app_vars.sh
   PRERELEASE_TAG: continuous
 
+# Not after the tests: they run on every push (test.yml), and are waited for
+# before this is started by hand
 jobs:
-  test:
-    uses: ./.github/workflows/test.yml
-
   build:
-    needs: [ test ]
     uses: ./.github/workflows/build.yml
     with:
       dev: true
 
   prerelease:
     needs: [ build ]
+    if: ${{ !inputs.dry_run }}
     runs-on: ubuntu-latest
     permissions:
       contents: write

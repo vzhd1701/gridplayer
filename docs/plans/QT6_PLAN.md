@@ -3,7 +3,7 @@
 The move from PyQt5 (Qt 5.15) to PyQt6 on Qt 6.12, on the `qt6` branch. This file says what changes, in what order,
 and how each step is checked. Tick an item only once it has been seen working.
 
-**Status: stages 0-4 done (2026-11-19); macOS next.**
+**Status: stages 0-6 done (2026-11-19); packaging (7) and clean-up (8) under way.**
 
 | | Stage | State |
 |---|---|---|
@@ -11,10 +11,10 @@ and how each step is checked. Tick an item only once it has been seen working.
 | 1 | Rewrites that work on both: full enum names, `exec()`, flag values | **done 2026-11-18** |
 | 2 | The switch: PyQt6 6.12, imports, removed APIs, events; tests pass | **done 2026-11-18** |
 | 3 | Windows: DPI, native windows, GL, look, input | **done 2026-11-18**; hand checks left (DPI, keys, drag and drop, tray, SMTC) |
-| 4 | Linux: X11, Wayland, D-Bus | **done 2026-11-19**, uncommitted |
-| 5 | macOS | not started |
-| 6 | Translations: pylupdate6 | not started |
-| 7 | Packaging and CI | not started |
+| 4 | Linux: X11, Wayland, D-Bus | **done 2026-11-19** |
+| 5 | macOS | **done 2026-11-19** on the hackintosh (`test_macos` unreachable) |
+| 6 | Translations: pylupdate6 | **done 2026-11-19** |
+| 7 | Packaging and CI | **done 2026-11-19** but the arm64 AppImage and CI itself, which runs once pushed |
 | 8 | Clean-up and docs | not started |
 
 ## Decisions
@@ -418,27 +418,129 @@ PyQt6 in `/opt/venv6`. Outputs in `build/qt6-stage4/`.
 
 On `test_macos` (VM) and `test_macos_real` (hackintosh, real GPU).
 
+`test_macos` didn't resolve again (2026-11-19), so all on `test_macos_real` (macOS 15.8.3, Intel HD 4600, Python
+3.13): the PyQt5 baseline from `2d05022` in `~/gp-base` and the branch in `~/gp-qt6`, each with its own venv, run one
+after the other in real cocoa windows (`~/gp-tests/suite_in.sh`, `ab*.sh`).
+
 - 5.1 VLC hardware SP without `QMacCocoaViewContainer`: the native widget's NSView, resizing, the explicit resize
   after load (`video_frame_vlc_hw_sp.py`).
+  **Done 2026-11-19.** A scenario reading the view from inside the app (scratchpad `mac_vlc_view.py`): on PyQt6 the
+  cell's native `QWidget` is a `QNSView` in the player's `QNSWindow`, with VLC's view inside it, the widget's size
+  (1284x724), smaller and back again with the window, playing on; PyQt5's container the same. VLC Hardware on the
+  scenarios that use it (`playback`, `navigation`, `tracks`, `single_mode_show_big`, `aspect_ratio`, `crop_ratio`,
+  `pixel_shape`): the same 4 pass on both, the same 3 fail on both, where the driver can't read the picture of a
+  native view ("waiting until a picture is on show"). No screen was captured: it raised a macOS prompt before.
 - 5.2 MPV Shared on OpenGL 3.2 Core (`macos_gl_format`), sharing with Qt's context.
+  **Done 2026-11-19.** Hardware MPV with `mpv_output=gl` on its seven scenarios: `videotoolbox` decoding straight
+  into GL (the interop the 3.2 Core context is for), the same 6 pass on both, `mpv_transport` fails on both ("plays
+  at 0.5", the rate measured on this machine).
 - 5.3 Cmd+Q, Now Playing, the Accessory tray mode, keep-awake.
+  **Done 2026-11-19**, the same on both (scratchpad `mac_native.py`), with the menu bar icon, close to it and the Dock
+  hidden: an accessory app (no Dock icon) with its icon in the menu bar; a `NoDisplaySleepAssertion` "Playing media."
+  held while playing and gone while paused; the play key, posted as the media key macOS routes to the Now Playing
+  app, pausing and playing again; Cmd+Q, posted to the app, quitting it for good though closing goes to the menu bar.
+  `_QuitWatcher` takes `QEvent.Type.Quit` now, which PyQt5 left out (stage 8).
 - 5.4 Scenarios against stage 0.
+  **Done 2026-11-19.** PyQt5 baseline: 83 passed, 1 xfailed (`external_audio_jump`), 30 min. PyQt6: 82 passed, 1
+  xfailed, 1 failed, `mpv_deinterlace` on MPV Software ("film, off: combed", picked from a few grabs 70 ms apart);
+  run three more times on each binding, it passed all six.
 
 ## Stage 6: translations
 
 - 6.1 `scripts/translations/build_ts.sh` on `pylupdate6 --no-obsolete`; `flatten_translate_calls.py` removed.
+  **Done 2026-11-19.** Run from inside a copy of the package as before, so locations read `dialogs/about.py`, with
+  `\` turned to `/` (pylupdate6 writes the system's separator). It takes an optional `.ts` to write instead of
+  `resources/translations/en_US.ts`, which was used to try it and left untouched.
 - 6.2 `init_translator.py`: Qt's own `qtbase_*.qm` from `PyQt6/Qt6/translations` in the Windows package.
+  **Done in stage 2.** Every one of the 18 `.qm` files loads on Qt 6, with Qt's own `qtbase_` for 16 of them; Qt has
+  none for `no_NO` and `vi_VN`, as Qt 5 had none.
 - 6.3 A `.ts` made both ways compared; nothing uploaded (that's yours).
+  **Done 2026-11-19**, on the current code: pylupdate5 with the flattening finds 1,795 messages, pylupdate6 1,798, the
+  same 1,795 and three pylupdate5 dropped because the same text was already taken in another context: "Margins",
+  "Proxy address" and "Verify TLS certificates" in `SettingsDialog`. Plural forms the same. pylupdate6 writes one
+  message with a `<location>` for each place it's used (2,239) where pylupdate5 wrote one, and `<translation
+  type="unfinished" />` where pylupdate5 wrote an open and close tag: **see what Crowdin makes of it before the
+  first upload.**
 - 6.4 `lrelease` (Qt 6's tools) builds the `.qm` files; the app loads a translation.
+  **Done 2026-11-19.** Qt 6.12's `lrelease` (from PySide6-Essentials, in a scratch venv) and the 5.15 one in use make
+  byte-identical `.qm` files of `de_DE`, `ja_JP` and `ru_RU`, so the resources needn't be made again;
+  `build_resources.py` still takes `lrelease` from the PATH.
 
 ## Stage 7: packaging and CI
 
 - 7.1 Windows: specs, `build_win.sh` without its 32-bit branch, installer x64 only, CI matrix.
+  **Done 2026-11-19.** The spec excludes every PyQt6 module the app doesn't import, read from the installed wheel
+  (Qt 6 has many more than Qt 5 had), and drops `d3dcompiler_47`, `opengl32sw`, the unused image formats and
+  platforms, and the TUIO touch plugin with the `Qt6Network` it alone brought in: `PyQt6/Qt6/bin` holds Core, Gui,
+  Widgets, OpenGL, OpenGLWidgets, Svg and SvgWidgets. PyQt6's GL version functions are in `QtOpenGL`, so the
+  `_QOpenGLFunctions_*` imports went. `build_win.sh`, `build_packages.sh`, `libmpv_pins.sh` and CI are 64-bit only.
+  Built here: the installer 111 MB, the portable zip 161 MB; the portable's `--self-check` passes (Qt 6.12.0, VLC
+  3.0.24 and libmpv each play the clip). The 32-bit build's failure in the last pre-release (`OpenSSL internal
+  error: assertion failed: lock != NULL` at the self-check) went with it.
 - 7.2 macOS: specs, `build_mac.sh`'s Qt checks (`Qt6/lib`, `Versions/A`), the minimum system version in the bundle.
+  **Done 2026-11-19.** The spec as Windows', `LSMinimumSystemVersion` 14.0 in the bundle, and `build_mac.sh` checks
+  `Qt6/lib/QtCore.framework/Versions/A/QtCore`'s architecture, failing if it isn't there. Built on `test_macos_real`
+  (x86_64, the `.app`; no DMG, which takes create-dmg and GraphicsMagick the machine hasn't got): signed and verified,
+  302 MB, Qt's Core, Gui, Widgets, OpenGL, OpenGLWidgets, Svg, SvgWidgets and DBus frameworks, and its `--self-check`
+  passes (Qt 6.12.0 on cocoa, VLC 3.0.24, libmpv 0.41). The first build failed at signing: dropping `QtNetwork`'s
+  binary had left the framework's Info.plist, signature and links, and the bundle's own `QtNetwork` links, leading
+  nowhere; all of it goes now. The last pre-release's
+  arm64 DMG passed its self-check and then failed to detach ("Resource busy"): CI now tries five times, says what
+  holds it, then forces it.
 - 7.3 AppImage: Qt 6 blacklist, `AppRun.c`'s plugin path, `libxcb-cursor`; then the arm64 one on GitHub's arm runners.
+  **The last pre-release's failure:** AppRun puts the AppImage's libraries first on `LD_LIBRARY_PATH` and ran the
+  pip launcher, whose first lines are a shell's, running the system's `readlink` and `dirname`; on the runner's
+  Ubuntu those are Rust coreutils, which took EL9's older `libsystemd` and stopped (`undefined symbol:
+  sd_session_get_start_time`), and the runner's own Python 3.14 ran the app, without it. Now:
+  - AppRun starts the AppImage's Python on the script itself, and keeps the system's value of each variable it
+    changes (`GRIDPLAYER_HOST_*`); the app opens every URL (links, Open URL, a folder) with those back
+    (`utils/host_env.py`), so xdg-open and what it starts get the system's libraries, not ours. Seen in an Ubuntu
+    26.04 container: `readlink` fails with ours and works with the system's.
+  - AppRun no longer changes into `$APPDIR/usr` (from AppImageKit's sample AppRun): a file named on the command line
+    by a relative path wasn't found. CI's container check passes the clip that way.
+  - Packed by appimagetool 1.9.1 with the type2 runtime (release 20251108), both pinned by SHA-256: the static
+    runtime needs no `libfuse2`, which Ubuntu 22.04 and later, and Fedora, no longer have. The 2022 linuxdeploy
+    still gathers the libraries; its own packing used the old runtime.
+  - The Qt 6 blacklist keeps Core, Gui, Widgets, OpenGL, OpenGLWidgets, Svg, SvgWidgets, DBus, XcbQpa and Wayland
+    (the app picks Wayland itself on KDE when on Auto; Qt 5's AppImage had Wayland taken out), drops the rest of
+    the libraries, plugins, QML and translations but `qtbase_`. `libxcb-cursor` is bundled (Qt 6.5+ needs it), the
+    stale `QT_PLUGIN_PATH` (`python3.9/.../PyQt5`) gone.
+  - `libjack` joins the fallback libraries: EL9's libmpv links it and linuxdeploy leaves it to the system, so libmpv
+    wouldn't load on a system without JACK.
+  - The arm64 AppImage: built the same way on `manylinux_2_39_aarch64` (PyQt6's aarch64 wheels need glibc 2.39), on
+    `ubuntu-24.04-arm` in CI; `APPIMAGE_ARCH=aarch64` builds it elsewhere under QEMU.
+  - CI checks the AppImage in containers too (Ubuntu 24.04 and 26.04, Debian 13, Fedora), each with what a desktop
+    has and the AppImage leaves to it (glib, fontconfig, EGL, harfbuzz, ALSA, `libgpg-error`, `p11-kit`,
+    `libcom_err`...). Seen on `test_ubuntu` the same way (`--init`: `xvfb-run` as a container's first process never
+    hears Xvfb is up): **the x64 AppImage passes in all four**, Qt 6.12.0, VLC 3.0.24 and libmpv 0.39 each playing.
+    Each library a bare container lacked was one linuxdeploy leaves to the system on purpose; JACK was the one a
+    desktop can really lack.
+  - On the GNOME desktop of `test_ubuntu`, which has `fuse3` and no `libfuse2`: started from the file, mounted
+    through FUSE, two cells playing (`build/qt6-stage7/look/appimage.png`).
 - 7.4 Flatpak on KDE 6.11 and the PyQt BaseApp 6.11.
+  The manifest, `build.sh` and `generate_dependencies.sh` on `org.kde.Platform//6.11` and the BaseApp 6.11; `build.sh`
+  installs into the user's Flatpak, as CI does, so it needs no root. `release_flatpak.yml` has a `dry_run`: the bundle
+  built from the checkout and kept as the run's artifact, nothing pushed. **Done 2026-11-19**: built on `test_ubuntu`
+  (VLC, libmpv and FFmpeg from source, as before; the bundle 65 MB), its `--self-check` passes on **Qt 6.11.2**, VLC
+  3.0.23 and libmpv 0.42, so the code runs on 6.11 as decided; on the GNOME desktop, two cells playing.
 - 7.5 Snap on core24 with libmpv (MPV_PLAN 12.1).
+  core24 with the `gnome` extension (fonts, cursors, Mesa through `gpu-2404`) in place of kde-neon; Qt from PyQt6's
+  wheel, with the xcb libraries it needs that the extension's runtime hasn't got; `libmpv2` from Ubuntu 24.04 (mpv
+  0.37); `apt_dl.sh` (kde-neon's PyQt5 debs) gone. Built with LXD on `test_ubuntu`: snapcraft's linter found libmpv
+  missing `libdvdnav`, `liblua5.2` and `libsndio`, which `blacklist_snap.txt` took out for kde-neon's sake; kept now.
+  Installed, libmpv still didn't load: BLAS and LAPACK, which Ubuntu keeps in folders of their own and links in by
+  update-alternatives, as a snap can't; their folders are on its `LD_LIBRARY_PATH` now. Ubuntu 24.04's `librsvg`
+  was left out too, as the gnome runtime's newer one is what its pixbuf loader takes. **Done 2026-11-19**: the
+  `--self-check` of the installed snap passes (Qt 6.12.0, VLC 3.0.20, libmpv 0.37); on the GNOME desktop, two cells
+  playing, its icon in the dock.
 - 7.6 Each package started on a clean machine: Windows, Ubuntu 24.04, Debian 13, macOS 15.
+  **Done 2026-11-19, as far as there are machines:** Windows here (the portable's self-check), the AppImage in
+  Ubuntu 24.04 and 26.04, Debian 13 and Fedora containers and on the Ubuntu desktop, the Snap and Flatpak on the
+  Ubuntu desktop, the `.app` on macOS 15. None of it on GitHub: the branch isn't pushed, so the workflows are read,
+  not run. A `dry_run` pre-release on `qt6` is the first run of them.
+- 7.7 (asked 2026-11-19) The pre-release no longer runs the tests first, which run on every push and are waited for
+  before it's started; `dry_run` builds everything and keeps the files as the run's artifacts, releasing and tagging
+  nothing.
 
 ## Stage 8: clean-up and docs
 
