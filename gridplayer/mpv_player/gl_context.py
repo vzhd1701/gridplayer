@@ -42,7 +42,7 @@ class EGLContext:
     """Linux: a pbuffer context on a connection of its own to the display.
 
     mpv uses the display it is given for VAAPI interop, without which it goes
-    no further than vaapi-copy. PyQt5 doesn't give out Qt's on Wayland, and on
+    no further than vaapi-copy. PyQt doesn't give out Qt's on Wayland, and on
     X11 sharing it would have this thread on Qt's connection; both are happy
     with their own. One per renderer, closed along with it.
 

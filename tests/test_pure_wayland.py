@@ -84,7 +84,7 @@ def test_platform_picked(
 def test_auto_keeps_x11_where_qt_would_draw_the_frames(
     monkeypatch, display_server, expected
 ):
-    """GNOME: Qt 5's own frame is a thick flat band with no shadow."""
+    """GNOME: Qt's own frame has GNOME's colours, not the app's."""
 
     _desktop(monkeypatch, "wayland-0", ":0", frames=False)
 

@@ -1,9 +1,10 @@
 """Whether the Wayland compositor draws window frames, asked before Qt starts.
 
 Where it does (KDE, sway and most others), Qt's windows look as they do on
-X11. Where it doesn't (GNOME), Qt 5 draws the frame itself, and the only frame
-it has is a thick flat band in the window's colour with no shadow, dialogs and
-all. A compositor that draws them offers xdg-decoration, which Qt asks for.
+X11. Where it doesn't (GNOME), Qt draws the frame itself: Qt 6's adwaita
+decoration, in GNOME's colours and light or dark as GNOME is, not as the app's
+theme is (Qt 5's was a thick flat band with no shadow). A compositor that
+draws them offers xdg-decoration, which Qt asks for.
 
 Asked of the compositor itself, a connection of its own listing what it
 offers, with libwayland-client through ctypes: Qt can't be asked, as which

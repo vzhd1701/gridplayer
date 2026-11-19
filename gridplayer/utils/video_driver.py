@@ -108,8 +108,9 @@ def qt_platform_for(
     if display == DisplayServer.WAYLAND:
         return "wayland"
 
-    # Without a frame from the desktop, Qt 5's own is a thick flat band with
-    # no shadow, around dialogs too: Xwayland looks like every other app
+    # Without a frame from the desktop, Qt draws its own, in GNOME's colours
+    # rather than the app's, light or dark as GNOME is, whatever the app's
+    # theme: Xwayland looks like every other app
     return "wayland" if compositor_draws_frames() else "xcb"
 
 

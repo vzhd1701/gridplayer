@@ -16,9 +16,6 @@ from gridplayer.utils.taskbar import (
 )
 from gridplayer.widgets.video_overlay import OverlayBlock
 
-# QEvent::Quit, which PyQt5 leaves out of QEvent.Type
-QUIT_EVENT = 20
-
 
 class _QuitWatcher(QObject):
     """Sees the application asked to quit, as macOS asks it on Cmd+Q, before
@@ -30,7 +27,7 @@ class _QuitWatcher(QObject):
         self._on_quit = on_quit
 
     def eventFilter(self, event_object, event):
-        if event.type() == QUIT_EVENT:
+        if event.type() == QEvent.Type.Quit:
             self._on_quit()
 
         return False

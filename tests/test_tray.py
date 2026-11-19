@@ -970,7 +970,7 @@ def test_asked_to_quit_as_macos_asks_on_cmd_q():
     said = []
     watcher = window_state_module._QuitWatcher(lambda: said.append(True))
 
-    watcher.eventFilter(None, QEvent(QEvent.Type(window_state_module.QUIT_EVENT)))
+    watcher.eventFilter(None, QEvent(QEvent.Type.Quit))
     watcher.eventFilter(None, QEvent(QEvent.Type.Close))
 
     assert said == [True]

@@ -5,7 +5,7 @@ The findings and traps are in `C:\Projects\test_temp\test_mpv\HANDOFF.md`, and
 what we build and how far it has got. Tick items only once they have been seen
 working.
 
-**Status: open are 10.4 (other GPUs) and 11.4 (Macs with a real GPU). Packaged everywhere but the Snap, which waits for Qt 6.**
+**Status: open are 10.4 (other GPUs) and 11.4 (Macs with a real GPU). Packaged everywhere, the Snap too since the move to Qt 6 (2026-11-19).**
 
 **Load tests against VLC: `docs/findings/MPV_PERFORMANCE.md`.** No multi-process mode for MPV. New items 10.13-10.16. 10.16, the long run, ran
 overnight 2026-11-09: new items 10.21-10.23.
@@ -1413,7 +1413,8 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
 - [x] 12.2 PyInstaller, AppImage, Flatpak, Snap, Chocolatey as decided. Fail loudly, keep the
   existing tools. Flatpak and Snap can't see a system libmpv, so the README's "How to fix" won't
   work there unless they ship it: check, and say so in the README
-  - Done but the Snap, which gets libmpv once it moves to Qt 6 (see 12.1).
+  - Done but the Snap, which gets libmpv once it moves to Qt 6 (see 12.1). **Done 2026-11-19** with Qt 6: core24,
+    Ubuntu 24.04's `libmpv2` (0.37), see `QT6_PLAN.md` 7.5.
   - 2026-11-16: each package built is started once in `build.yml`, `GridPlayer --self-check tests/data/self_check.mp4`
     (`main/self_check.py`): Qt's platform, libVLC and libmpv found and loaded, a 1 s H.264 + AAC clip decoded by each,
     exit 1 otherwise. The Windows portable zip, the app in each DMG (with `codesign --verify --deep --strict` first) and

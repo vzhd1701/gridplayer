@@ -17,7 +17,7 @@ def test_modifiers_from_event_keyboard_modifiers():
     assert km.modifiers_from_event(event) == Qt.KeyboardModifier.ShiftModifier
 
 
-def test_modifiers_from_event_qt5_mouse_modifiers():
+def test_modifiers_from_event_mouse_modifiers():
     event = SimpleNamespace(modifiers=lambda: Qt.KeyboardModifier.ControlModifier)
     assert km.modifiers_from_event(event) == Qt.KeyboardModifier.ControlModifier
 

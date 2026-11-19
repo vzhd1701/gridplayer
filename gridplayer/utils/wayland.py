@@ -12,7 +12,7 @@ _GNOME_INTERFACE = "org.gnome.desktop.interface"
 def follow_desktop_cursor() -> None:
     """Draw the cursor from the theme the desktop uses.
 
-    On Wayland the client draws its own cursor, and Qt 5 takes the theme
+    On Wayland the client draws its own cursor, and Qt takes the theme
     from XCURSOR_THEME and XCURSOR_SIZE, falling back to "default" when
     unset -- on Ubuntu, the white DMZ theme. GNOME keeps its cursor in
     its own settings and exports neither, so they are read off the

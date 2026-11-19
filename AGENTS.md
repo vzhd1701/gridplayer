@@ -2,7 +2,7 @@
 
 ## Project
 
-GridPlayer is a cross-platform PyQt5 desktop app for playing multiple videos side-by-side, backed by VLC. Python 3.10+, using `uv` and `just`.
+GridPlayer is a cross-platform PyQt6 desktop app for playing multiple videos side-by-side, backed by MPV and VLC. Python 3.10+, using `uv` and `just`.
 
 ## Hard boundaries
 
@@ -179,9 +179,28 @@ page with `dialog.pages["id"]` and its form with `dialog.forms["id"]`.
 Search with `dialog.search("text")`, which runs at once; typing into the
 box waits for a pause.
 
+## PyQt6
+
+Qt 6.12 from PyQt6's wheels; the Flatpak runs on the KDE runtime's Qt 6.11, so
+use nothing newer than 6.11.
+
+* Enum members by their full names: `Qt.AlignmentFlag.AlignLeft`.
+* Where the C++ takes an int, PyQt6 refuses a plain enum: pass `.value`
+  (`postEvent`'s priority, `QDBusArgument`'s type). A flag as an int is
+  `flag_value()` (`utils/qt.py`).
+* A plain enum sent through `pyqtSignal(int)` arrives as an address: type the
+  signal with the enum.
+* Mouse and drop events: `position()` / `globalPosition()`, which are
+  `QPointF`.
+* `QTimer.singleShot(0, obj.signal.emit)` crashes the process if `obj` is
+  deleted before it runs: use a `QTimer` that is a child of `obj`.
+* An app-wide event filter keeps no Python reference to a window Qt made
+  itself (a combo box's list): it can go without Python knowing. Keep its
+  address (`sip.unwrapinstance`) and look it up in `topLevelWidgets()`.
+
 ## Translatable strings
 
-`pylupdate5` only extracts a string when it sees a literal context and a
+`pylupdate6` only extracts a string when it sees a literal context and a
 literal text in the call itself. Anything else still translates at runtime if
 the entry happens to exist, but never reaches translators.
 

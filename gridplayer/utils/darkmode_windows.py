@@ -58,7 +58,7 @@ class _ThemeEventFilter(QAbstractNativeEventFilter):
         if event_type in {b"windows_generic_MSG", b"windows_dispatcher_MSG"}:
             if _is_color_scheme_message(message):
                 self._on_change()
-        # PyQt5 requires (filter, result) — a bare bool raises TypeError.
+        # PyQt requires (filter, result): a bare bool raises TypeError
         return False, 0
 
 

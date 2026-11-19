@@ -285,7 +285,7 @@ def test_a_surface_put_in_another_window_leaves_the_old_one_s_grid():
 
 
 class _OpenGLESContext:
-    """Qt's context on OpenGL ES, which PyQt5 has no functions for: its calls
+    """Qt's context on OpenGL ES, which PyQt has no functions for: its calls
     are Python ones here."""
 
     def __init__(self):

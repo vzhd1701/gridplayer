@@ -65,22 +65,24 @@ What it would cost:
 
 ## Qt 6
 
-The next big step after MPV (said 2026-11-11). What it brings for Wayland:
+Moved to PyQt6 6.12 on the `qt6` branch (2026-11-19), stage by stage in `docs/plans/QT6_PLAN.md`. What it brought for
+Wayland:
 
-- Sharp windows at fractional scales (125%, 150%), from Qt 6.5. Qt 5 is blurry there, on Wayland and on Xwayland alike.
+- Sharp windows at fractional scales (125%, 150%): Qt 6 draws at 1.5 where Qt 5 drew at 2 and the compositor scaled it
+  down (seen on sway).
 - Fewer rough edges: focus and activation, popups, the clipboard.
 - Still no placing of windows: Wayland doesn't let an app put its own window anywhere, so the window's place isn't
   restored on any Qt.
 
 ### Our own window frame on GNOME
 
-GNOME draws no frames for apps on Wayland. Qt draws its own then, a thick flat band in the window's colour with no
-shadow, dialogs too, so they blend into the window behind. That's why Auto in Window system stays on X11 there
-(`utils/wayland_frames.py`).
+GNOME draws no frames for apps on Wayland. Qt draws its own then: on Qt 6 its adwaita decoration, in GNOME's colours
+and light or dark as GNOME is, not as the app's theme is, with a line of ours under its header. That's why Auto in
+Window system stays on X11 there (`utils/wayland_frames.py`).
 
 With Qt 6 the app could draw a frame of its own: a thin border, its own title bar (title, minimize, maximize, close,
 double-click to maximize, moved and resized by the desktop), and a shadow. Newer Qt 6 can tell the desktop where the
-window really ends inside the shadow, so maximizing and tiling leave no gaps; Qt 5 can't, which is why this waits.
+window really ends inside the shadow, so maximizing and tiling leave no gaps; Qt 5 couldn't. Left for after the move.
 Every dialog needs the same frame. Then Auto could take Wayland on GNOME too.
 
 Another way is the QAdwaitaDecorations plugin, GNOME's look for Qt's frame, but a packaged app has its own Qt and the

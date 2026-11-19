@@ -248,7 +248,7 @@ def test_linux_force_native_drag_uses_qdrag(mocker):
 
 
 def test_fake_drag_mouse_move_does_not_use_event_keyboard_modifiers(mocker):
-    """Qt5 QMouseEvent has modifiers(), not keyboardModifiers() — that used to crash."""
+    """A mouse event has modifiers(), not keyboardModifiers(): that used to crash."""
     manager, _parent = _make_manager()
     manager._is_fake_drag_active = True
     manager._ctx.is_drag_ui = True

@@ -55,7 +55,7 @@ def test_during_a_drag_the_drag_is_called_off(told, mocker):
 
 
 def test_on_macos_with_no_cancel_it_waits_for_the_drop(told, mocker):
-    # PyQt5 has QDrag.cancel on Windows and X11 only
+    # a Qt without QDrag.cancel, as PyQt5 was on macOS
     mocker.patch.object(hook_module, "QDrag", object())
 
     with hook_module.dragging():

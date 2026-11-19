@@ -56,7 +56,7 @@ Via [scoop](https://scoop.sh/):
 scoop install gridplayer
 ```
 
-**Compatible with Windows 10 and 11.**
+**Compatible with 64-bit Windows 10 (1809 or later) and 11.**
 
 ### Linux
 
@@ -66,12 +66,13 @@ scoop install gridplayer
 
 **For better system integration install via Flathub.**
 
-The Snap plays with VLC only for now. MPV comes to it with the move to Qt 6.
-
 #### Note on AppImage
 
 The AppImage is built on `manylinux_2_34` (glibc 2.34), so it runs on Ubuntu 22.04+, Debian 12+, Fedora 35+,
-RHEL / AlmaLinux / Rocky 9+ and other distros of the same age or newer.
+RHEL / AlmaLinux / Rocky 9+ and other distros of the same age or newer. The ARM one (`aarch64`) is built on
+`manylinux_2_39` (glibc 2.39): Ubuntu 24.04+, Debian 13+, Fedora 40+, RHEL 10+.
+
+It doesn't need `libfuse2`. Where FUSE isn't there at all, run it with `--appimage-extract-and-run`.
 
 You may need to set execute permissions on AppImage file in order to run it:
 
@@ -86,7 +87,7 @@ chmod +x GridPlayer-0.5.5-x86_64.AppImage
 The button gets the DMG for Apple Silicon (`arm64`). For an Intel Mac, get
 [GridPlayer.0.5.5_intel64.dmg](https://github.com/vzhd1701/gridplayer/releases/download/v0.5.5/GridPlayer.0.5.5_intel64.dmg).
 
-MPV needs macOS 12 or later. On older versions, VLC plays the videos.
+**Needs macOS 14 or later.**
 
 **DMG image is not signed.** You will have to add an exception to run this app.
 
@@ -111,7 +112,7 @@ This type of installation doesn't come with a player library. It needs libmpv or
 [libmpv not found](#when-a-mode-isnt-available) for libmpv, or the [VLC official page](https://www.videolan.org/vlc/)
 for VLC (on Linux, the `vlc` package).
 
-Some distros (e.g. Ubuntu) might also require `libxcb-xinerama0` package.
+Some distros (e.g. Ubuntu) might also require `libxcb-cursor0` package.
 
 ### From source
 
@@ -178,8 +179,8 @@ inside their own sandbox: `~/.var/app/com.vzhd1701.gridplayer/data/vzhd1701/Grid
 
 ## Video Decoder settings
 
-GridPlayer plays videos with MPV or VLC. The packages come with both (the Snap with VLC only, for
-now), and MPV is the default. Installed with UV or from source, it uses whichever you have.
+GridPlayer plays videos with MPV or VLC. The packages come with both, and MPV is the default. Installed
+with UV or from source, it uses whichever you have.
 
 Each can decode in two ways:
 
@@ -245,7 +246,7 @@ source. MPV needs libmpv, not only the MPV player:
 **VLC not found:** install [VLC](https://www.videolan.org/vlc/).
 
 **libmpv or VLC won't load, or libmpv is too old:** update it to the latest version. It also has to
-match GridPlayer's architecture (64-bit or 32-bit).
+match GridPlayer's architecture (x86-64 or ARM64).
 
 **VLC Hardware needs X11:** VLC can't draw into a Wayland window directly. Install Xwayland or
 log in to an X11 session, and GridPlayer will use it. Software and MPV work without it.

@@ -58,7 +58,7 @@ class _HeldButtonsFilter(QAbstractNativeEventFilter):
             msg = wintypes.MSG.from_address(int(message))
             if msg.message == _WM_MOUSEMOVE and not msg.wParam & _BUTTON_BITS:
                 msg.wParam |= _held_buttons()
-        # PyQt5 requires (filter, result)
+        # PyQt requires (filter, result)
         return False, 0
 
 

@@ -547,9 +547,16 @@ after the other in real cocoa windows (`~/gp-tests/suite_in.sh`, `ab*.sh`).
 - 8.1 Comments that speak of PyQt5 or Qt 5 bugs (`gl_context.py`, `darkmode_windows.py`, `mouse_windows.py`,
   `video_driver.py:111`, `wayland.py`, `wayland_frames.py`, `window_state.py:19`): updated, and workarounds Qt 6 made
   unnecessary removed only where seen to be so.
+  **Done 2026-11-19.** PyQt6 has `QEvent.Type.Quit`, so `window_state.py`'s own number for it went. The rest kept,
+  each still needed: PyQt6 gives out no Wayland display either (`gl_context.py`), wants `(filter, result)` from a
+  native event filter, and Qt 6 still takes the cursor theme from `XCURSOR_*` (stage 4). The GNOME frame comments
+  say what Qt 6 draws. Tests that spoke of PyQt5 reworded.
 - 8.2 AGENTS.md (PyQt6, the flag trap, the event positions), README (platforms, `libxcb-cursor0`, macOS 14),
   CONTRIBUTING, CHANGELOG, ROADMAP's Qt 6 section, `MPV_PLAN.md`'s Snap notes.
-- 8.3 `scripts/qt6_port/` removed.
+  **Done 2026-11-19** but the CHANGELOG, which waits for the commits' final hashes. AGENTS.md has a PyQt6 section of
+  the traps met here; the README says 64-bit Windows 10 1809+, macOS 14+, `libxcb-cursor0`, the arm64 AppImage and no
+  `libfuse2`, and the Snap has MPV. CONTRIBUTING had nothing of Qt 5.
+- 8.3 `scripts/qt6_port/` removed. **Done 2026-11-19**; they're in git before it.
 - 8.4 `/simplify` once PyQt5 is gone: `flag_value()` to `.value` where the kind is known, fallbacks for both bindings
   (`look.py`'s import among them) dropped.
 
