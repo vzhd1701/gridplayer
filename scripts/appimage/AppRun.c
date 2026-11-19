@@ -310,9 +310,6 @@ int main(int argc, char *argv[]) {
     keep_host("XDG_DATA_DIRS");
     SET_NEW_ENV(new_xdg_data_dirs, appdir_s + strlen(old_env), "XDG_DATA_DIRS=%s/usr/share/:%s", appdir, old_env);
 
-    keep_host("QT_QPA_PLATFORM");
-    putenv("QT_QPA_PLATFORM=xcb");
-
     keep_host("SSL_CERT_FILE");
     SET_NEW_ENV(ssl_cert_file_path, appdir_s, "SSL_CERT_FILE=%s/opt/_internal/certs.pem", appdir);
 

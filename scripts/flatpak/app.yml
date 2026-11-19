@@ -8,8 +8,11 @@ command: "{APP_MODULE}"
 finish-args:
 # OpenGL
 - "--device=dri"
-# GUI
+# GUI: Wayland, and X11 beside it, not only in its place: VLC Hardware and
+# MPV's Direct draw into an X11 window, Xwayland's on a Wayland desktop. The
+# app picks one of the two itself, by its Window system setting.
 - "--share=ipc"
+- "--socket=wayland"
 - "--socket=x11"
 # Sound
 - "--socket=pulseaudio"
@@ -24,8 +27,6 @@ finish-args:
 # Tray icon, and its note that the player is still running
 - "--talk-name=org.kde.StatusNotifierWatcher"
 - "--talk-name=org.freedesktop.Notifications"
-# Can't use Wayland
-- "--env=QT_QPA_PLATFORM=xcb"
 # Disable annoying warnings
 # Qt: Session managment error: Could not open network socket
 # https://stackoverflow.com/questions/986964/qt-session-management-error
