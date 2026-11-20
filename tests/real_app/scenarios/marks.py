@@ -80,7 +80,7 @@ def sponsorblock(d, b):
 
     # 2s before the sponsor, then watch it play past
     d.run(b, "active", "manual_seek", "seek", 38_000)
-    d.wait_until(lambda: 37_500 <= b.time < 40_000, "2s before the sponsor")
+    d.wait_until(lambda: _landed(b, 37_500, 40_000), "2s before the sponsor")
     seen = []
     passed = d.wait_until(
         lambda: seen.append(b.time) or b.time >= 44_000, "past the sponsor", timeout=15
@@ -90,8 +90,16 @@ def sponsorblock(d, b):
 
     # an intro is only marked, and plays through
     d.act(b, "0%")
-    d.wait_until(lambda: b.time < 1_500, "back at the start")
+    d.wait_until(lambda: _landed(b, 0, 1_500), "back at the start")
     seen.clear()
     d.wait_until(lambda: seen.append(b.time) or b.time >= 5_500, "past the intro")
     inside = [t for t in seen if 2_500 <= t <= 4_500]
     d.check("the intro is played", inside, seen[-20:])
+
+
+def _landed(b, start, end):
+    """The time is a seek's target from the moment it's made, and where the one
+    before it landed can still be reported after: the sponsor's skip, at 43990,
+    after 0% (on an arm64 runner, 2026-11-20)."""
+
+    return not b.is_seek_on_its_way and start <= b.time < end

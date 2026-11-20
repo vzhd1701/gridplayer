@@ -208,14 +208,19 @@ def _modes(d, flagged):
 
 
 def _most_comb_of_many(d, b) -> int:
-    """Only 2 frames of film in 5 come out combed, so one picture tells nothing."""
+    """Only 2 frames of film in 5 come out combed, so one picture tells nothing.
+
+    Nor do a dozen taken at one pace: a shot and a wait came to the five frames'
+    1/6 s on a Windows runner, and each shot found the same clean frames. Each
+    wait a little longer than the last, they land all over the five, at any
+    pace."""
 
     _wait_for_motion(d, b)
 
     most = 0
-    for _ in range(FILM_SHOTS):
+    for shot in range(FILM_SHOTS):
         most = max(most, _comb(d, b))
-        d.wait(0.07)
+        d.wait(0.07 + 0.013 * shot)
 
     return most
 
