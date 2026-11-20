@@ -76,6 +76,14 @@ generate-resources:
 test-real-app:
     uv run pytest -m real_app
 
+# the clips the screenshots show, into build/screenshot-media
+screenshots-clips:
+    ./scripts/screenshots/get_clips.sh
+
+# into resources/public, in a GNOME session on Ubuntu: see scripts/screenshots/make.sh
+screenshots:
+    ./scripts/screenshots/make.sh
+
 translations-build-main:
     ./scripts/translations/build_ts.sh
 
