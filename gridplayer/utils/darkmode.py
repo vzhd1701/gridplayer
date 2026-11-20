@@ -36,11 +36,9 @@ def is_dark_mode() -> bool:
 def is_system_dark_mode() -> bool:
     """The system's, asked only while the app follows it."""
 
-    if env.IS_MACOS:
-        return _macos_is_dark()
-    if env.IS_WINDOWS:
+    if not env.IS_LINUX:
         # Qt is told no scheme of its own then (theme._tell_qt_the_scheme),
-        # so it says the system's, in step with Windows' own switch
+        # so it says the system's, in step with the system's own switch
         return QGuiApplication.styleHints().colorScheme() == Qt.ColorScheme.Dark
 
     from gridplayer.utils.darkmode_linux import linux_is_dark
@@ -66,10 +64,3 @@ def watch_system_theme(callback, parent=None):
     except Exception:
         logging.getLogger(__name__).exception("Could not watch system theme")
         return None
-
-
-def _macos_is_dark() -> bool:
-    from Foundation import NSUserDefaults as NSUD
-
-    style = NSUD.standardUserDefaults().stringForKey_("AppleInterfaceStyle")
-    return style == "Dark"

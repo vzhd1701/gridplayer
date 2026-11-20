@@ -58,13 +58,16 @@ def test_on_system_theme_changed_applies_when_system(monkeypatch):
 def test_system_asked_once_until_the_theme_is_applied_again(monkeypatch):
     asked = []
 
-    def macos_is_dark():
+    def color_scheme():
         asked.append(True)
-        return True
+        return Qt.ColorScheme.Dark
 
     monkeypatch.setattr(darkmode, "Settings", lambda: _FakeSettings(ColorScheme.SYSTEM))
-    monkeypatch.setattr(darkmode.env, "IS_MACOS", True)
-    monkeypatch.setattr(darkmode, "_macos_is_dark", macos_is_dark)
+    monkeypatch.setattr(darkmode.env, "IS_LINUX", False)
+    hints = SimpleNamespace(colorScheme=color_scheme)
+    monkeypatch.setattr(
+        darkmode, "QGuiApplication", SimpleNamespace(styleHints=lambda: hints)
+    )
     # nothing to put the theme on: only what it asks again
     monkeypatch.setattr(theme, "QApplication", SimpleNamespace(instance=lambda: None))
     darkmode.is_system_dark_mode.cache_clear()
@@ -91,9 +94,8 @@ def test_system_asked_once_until_the_theme_is_applied_again(monkeypatch):
         (Qt.ColorScheme.Unknown, False),
     ],
 )
-def test_windows_system_scheme_is_qts(monkeypatch, qt_says, dark):
-    monkeypatch.setattr(darkmode.env, "IS_MACOS", False)
-    monkeypatch.setattr(darkmode.env, "IS_WINDOWS", True)
+def test_windows_and_macos_system_scheme_is_qts(monkeypatch, qt_says, dark):
+    monkeypatch.setattr(darkmode.env, "IS_LINUX", False)
     hints = SimpleNamespace(colorScheme=lambda: qt_says)
     monkeypatch.setattr(
         darkmode, "QGuiApplication", SimpleNamespace(styleHints=lambda: hints)
