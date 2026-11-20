@@ -37,6 +37,8 @@ THEME_LIGHT = MappingProxyType(
         "tooltip_text": "#000000",
         "link": "#0066cc",
         "border": "#aaaaaa",
+        # a dialog's title bar on Windows 11 (utils/win32_window.py)
+        "caption": "#ffffff",
         "background": "#eeeeee",
         "background_selected": "#aaaaaa",
         "scroll_handle": "#b4b4b4",
@@ -60,6 +62,7 @@ THEME_DARK = MappingProxyType(
         "tooltip_text": "#eeeeee",
         "link": "#6ab0ff",
         "border": "#888888",
+        "caption": "#333333",
         "background": "#444444",
         "background_selected": "#888888",
         "scroll_handle": "#6e6e6e",

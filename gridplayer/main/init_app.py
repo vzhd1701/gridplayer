@@ -79,6 +79,10 @@ def init_app():
         )
 
     draw_header_lines(app)
+    if env.IS_WINDOWS:
+        from gridplayer.utils.win32_window import color_title_bars
+
+        color_title_bars(app)
     open_urls_in_host_environment(app)
 
     init_icon(app)

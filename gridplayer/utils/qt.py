@@ -23,6 +23,10 @@ MILLISECONDS = "qint64"
 XCB_WM_WINDOW_TYPE = "_q_xcb_wm_window_type"
 XCB_WM_WINDOW_TYPE_NORMAL = 0x000001
 
+# a window's property: its title bar on Windows 11 the colour of its
+# background, as the player's is (utils/win32_window.py)
+CAPTION_AS_BACKGROUND = "caption_as_background"
+
 
 class QABC(type(QObject), ABCMeta):
     """Meta for abstract classes derived from QObject"""

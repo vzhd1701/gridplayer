@@ -37,6 +37,7 @@ from gridplayer.player.managers.video_blocks import VideoBlocksManager
 from gridplayer.player.managers.video_driver import VideoDriverManager
 from gridplayer.player.managers.window_state import WindowStateManager
 from gridplayer.player.managers.zoom_select import ZoomSelectManager
+from gridplayer.utils.qt import CAPTION_AS_BACKGROUND
 
 
 class Player(QWidget, ManagersManager):
@@ -48,6 +49,8 @@ class Player(QWidget, ManagersManager):
 
         self.setMouseTracking(True)
         self.setAcceptDrops(True)
+        # the title bar over the videos is the background, not a dialog's
+        self.setProperty(CAPTION_AS_BACKGROUND, True)
 
         self.managers = {
             "video_driver": VideoDriverManager,
@@ -342,13 +345,6 @@ class Player(QWidget, ManagersManager):
         ]
 
         self.init()
-
-    def showEvent(self, event):
-        super().showEvent(event)
-        if env.IS_WINDOWS:
-            from gridplayer.utils.win32_window import apply_native_background
-
-            apply_native_background(self)
 
     def process_arguments(self, argv):
         self.arguments_received.emit(argv)
