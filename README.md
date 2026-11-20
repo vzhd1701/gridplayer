@@ -11,6 +11,8 @@
 [![Screenshot 3](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-003-thumb.png)](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-003.png)
 [![Screenshot 4](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-004-thumb.png)](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/screenshot-004.png)
 
+The videos in the screenshots are [Blender's open movies](https://github.com/vzhd1701/gridplayer/blob/master/scripts/screenshots/CREDITS.md) (CC BY).
+
 ## About
 
 Simple media player that can play multiple videos at the same time, with MPV or VLC. You can
