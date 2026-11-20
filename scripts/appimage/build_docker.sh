@@ -245,6 +245,12 @@ FALLBACK_LIBS=(
     libwayland-client.so.0 libwayland-cursor.so.0 libwayland-egl.so.1
     libpipewire-0.3.so.0 libpulse.so.0 libjack.so.0 libgpg-error.so.0
 )
+# libusb, which linuxdeploy leaves to the system too, for the FireWire cameras
+# of EL9's libavdevice (libdc1394): a Debian or Ubuntu without it has none, and
+# libmpv wouldn't load there. EL10's libavdevice has no such cameras
+if ldd /usr/lib64/libmpv.so.2 | grep -q "libusb-1.0.so.0"; then
+    FALLBACK_LIBS+=(libusb-1.0.so.0)
+fi
 FALLBACK_EXCLUDES=()
 
 for lib in "${FALLBACK_LIBS[@]}"; do
