@@ -11,19 +11,16 @@ SCRIPT_DIR="$( cd "$( dirname $0 )" && pwd )"
 # 32-bit: Qt 6 has no 32-bit Windows build
 BUILD_ARCH="$APP_TARGET_ARCH_SUFFIX"
 
-# VideoLAN's own server: get.videolan.org can pick a mirror running at a
-# few KB/s. The SHA-256s are the ones published beside each file.
-VLC_VERSION="3.0.24"
-VLC_URL="https://download.videolan.org/pub/videolan/vlc/$VLC_VERSION/$BUILD_ARCH/vlc-$VLC_VERSION-$BUILD_ARCH.zip"
-# and the Python that builds it, as sysconfig names its own architecture
+# which VLC, also what CI's Windows arm64 tests play with
+BUILD_WIN_ARCH="$APP_TARGET_ARCH" . "scripts/windows/vlc_pins.sh"
+
+# the Python that builds it, as sysconfig names its own architecture
 # (platform.machine() names the CPU's, even to an x64 Python run on arm64)
 case "$APP_TARGET_ARCH" in
     x64)
-        VLC_SHA256="fcf30850371ad10c9373cc4f0f4501e7dee49e3e9ae9f20c72fb2661a1ca6323"
         PYTHON_PLATFORM="win-amd64"
         ;;
     arm64)
-        VLC_SHA256="f096226211f67f8e06e50cd0d6a948d842db128ff22a676dc1ca1cc6114baba5"
         PYTHON_PLATFORM="win-arm64"
         ;;
 esac

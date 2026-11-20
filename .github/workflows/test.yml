@@ -37,7 +37,13 @@ jobs:
           # 15 min is cancelled
           - { os: windows-latest, python-version: "3.14" }
           - { os: macos-15-intel, python-version: "3.14" }
+          # arm64, as the Windows and Linux packages are built for it too
+          - { os: windows-11-arm, python-version: "3.14", trial: true }
+          - { os: ubuntu-24.04-arm, python-version: "3.14", trial: true }
     runs-on: ${{ matrix.os }}
+    # A system new here goes in with trial: true, which holds no release
+    # up, until it has passed
+    continue-on-error: ${{ matrix.trial == true }}
     defaults:
       run:
         # Not pwsh, the Windows default: it carries on past a failed command
@@ -51,6 +57,7 @@ jobs:
         uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
+          architecture: ${{ runner.arch == 'ARM64' && 'arm64' || 'x64' }}
 
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
@@ -65,11 +72,17 @@ jobs:
             libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3
 
       - name: Install VLC
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && runner.arch == 'X64'
         # choco carries on when the feed fails to give it a package
         run: |
           choco install vlc --yes --no-progress
           test -f "/c/Program Files/VideoLAN/VLC/libvlc.dll"
+
+      - name: Install VLC
+        if: runner.os == 'Windows' && runner.arch == 'ARM64'
+        env:
+          BUILD_WIN_ARCH: arm64
+        run: scripts/windows/ci_unpack_vlc.sh
 
       - name: Install VLC
         if: runner.os == 'macOS'
@@ -85,7 +98,10 @@ jobs:
       matrix:
         # side by side: the oldest Ubuntu taken and the newest
         os: [ ubuntu-24.04, ubuntu-26.04 ]
+        include:
+          - { os: ubuntu-24.04-arm, trial: true }
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.trial == true }}
     env:
       UV_PYTHON: "3.14"
     steps:
@@ -108,8 +124,11 @@ jobs:
             libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3
 
       - name: Run the real app
-        # and the 15 slowest runs, to see where a job's time went
-        run: uv run --locked pytest -m real_app --basetemp=build/real-app --durations=15
+        # and the 15 slowest runs, to see where a job's time went. On trial,
+        # three failures are enough to say it's not there yet
+        run: >-
+          uv run --locked pytest -m real_app --basetemp=build/real-app
+          --durations=15 ${{ matrix.trial && '--maxfail=3' || '' }}
 
       # each run's report.json, app.log and screenshots
       - name: Keep what the runs left
@@ -128,7 +147,10 @@ jobs:
       matrix:
         # libmpv 0.37, the oldest taken, and 0.41
         os: [ ubuntu-24.04, ubuntu-26.04 ]
+        include:
+          - { os: ubuntu-24.04-arm, trial: true }
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.trial == true }}
     env:
       UV_PYTHON: "3.14"
     steps:
@@ -155,7 +177,7 @@ jobs:
       - name: Run the real app on MPV
         run: >-
           uv run --locked pytest -m real_app -k mpv --basetemp=build/real-app
-          --durations=15
+          --durations=15 ${{ matrix.trial && '--maxfail=3' || '' }}
 
       - name: Keep what the runs left
         if: failure() || cancelled()
@@ -178,6 +200,8 @@ jobs:
         include:
           - { os: windows-latest, part: vlc, select: "not mpv" }
           - { os: windows-latest, part: mpv, select: mpv }
+          - { os: windows-11-arm, part: vlc, select: "not mpv", trial: true }
+          - { os: windows-11-arm, part: mpv, select: mpv, trial: true }
           - { os: macos-15-intel, part: all, select: "" }
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.trial == true }}
@@ -199,18 +223,28 @@ jobs:
         uses: actions/setup-python@v7
         with:
           python-version: "3.14"
+          architecture: ${{ runner.arch == 'ARM64' && 'arm64' || 'x64' }}
 
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
 
       # libmpv as the Windows package has it, see scripts/windows/libmpv_pins.sh.
-      # choco carries on when the feed fails to give it a package
+      # choco carries on when the feed fails to give it a package. The arm
+      # image comes without 7-Zip, and Chocolatey's VLC is the x64 one
       - name: Install requirements
         if: runner.os == 'Windows'
+        env:
+          BUILD_WIN_ARCH: ${{ runner.arch == 'ARM64' && 'arm64' || 'x64' }}
         run: |
-          choco install vlc ffmpeg --yes --no-progress
-          test -f "/c/Program Files/VideoLAN/VLC/libvlc.dll"
+          if [ "$BUILD_WIN_ARCH" = arm64 ]; then
+            choco install ffmpeg 7zip --yes --no-progress
+            scripts/windows/ci_unpack_vlc.sh
+          else
+            choco install vlc ffmpeg --yes --no-progress
+            test -f "/c/Program Files/VideoLAN/VLC/libvlc.dll"
+          fi
           command -v ffmpeg
+          command -v 7z
           . scripts/windows/libmpv_pins.sh
           mkdir -p build/libmpv
           curl -fsSL -o "build/$LIBMPV_ARCHIVE" "$LIBMPV_URL"
