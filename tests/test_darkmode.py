@@ -1,5 +1,8 @@
 from types import SimpleNamespace
 
+import pytest
+from PyQt6.QtCore import Qt
+
 from gridplayer.params import theme
 from gridplayer.params.static import ColorScheme
 from gridplayer.utils import darkmode
@@ -77,3 +80,41 @@ def test_system_asked_once_until_the_theme_is_applied_again(monkeypatch):
         assert len(asked) == 2
     finally:
         darkmode.is_system_dark_mode.cache_clear()
+
+
+@pytest.mark.parametrize(
+    ("qt_says", "dark"),
+    [
+        (Qt.ColorScheme.Dark, True),
+        (Qt.ColorScheme.Light, False),
+        # high contrast, or nothing known
+        (Qt.ColorScheme.Unknown, False),
+    ],
+)
+def test_windows_system_scheme_is_qts(monkeypatch, qt_says, dark):
+    monkeypatch.setattr(darkmode.env, "IS_MACOS", False)
+    monkeypatch.setattr(darkmode.env, "IS_WINDOWS", True)
+    hints = SimpleNamespace(colorScheme=lambda: qt_says)
+    monkeypatch.setattr(
+        darkmode, "QGuiApplication", SimpleNamespace(styleHints=lambda: hints)
+    )
+    darkmode.is_system_dark_mode.cache_clear()
+
+    try:
+        assert darkmode.is_system_dark_mode() is dark
+    finally:
+        darkmode.is_system_dark_mode.cache_clear()
+
+
+@pytest.mark.parametrize(("is_linux", "watched"), [(True, True), (False, False)])
+def test_own_watcher_on_linux_alone(monkeypatch, is_linux, watched):
+    """Elsewhere init_app hears a switch from Qt's colorSchemeChanged."""
+
+    import gridplayer.utils.darkmode_linux as darkmode_linux
+
+    monkeypatch.setattr(darkmode.env, "IS_LINUX", is_linux)
+    monkeypatch.setattr(
+        darkmode_linux, "LinuxThemeWatcher", lambda callback, parent: "watcher"
+    )
+
+    assert (darkmode.watch_system_theme(lambda: None) == "watcher") is watched

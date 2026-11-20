@@ -207,27 +207,32 @@ def test_no_shade_is_left_to_the_system(role):
 
 
 @pytest.mark.parametrize(
-    ("is_macos", "setting", "is_dark", "told"),
+    ("is_linux", "setting", "is_dark", "told"),
     [
-        (False, ColorScheme.LIGHT, False, Qt.ColorScheme.Light),
-        (False, ColorScheme.DARK, True, Qt.ColorScheme.Dark),
-        # the system's as the app sees it, not as Qt guesses it
-        (False, ColorScheme.SYSTEM, True, Qt.ColorScheme.Dark),
-        (False, ColorScheme.SYSTEM, False, Qt.ColorScheme.Light),
-        # macOS hears of a switch through Qt alone
-        (True, ColorScheme.SYSTEM, True, Qt.ColorScheme.Unknown),
+        (True, ColorScheme.LIGHT, False, Qt.ColorScheme.Light),
         (True, ColorScheme.DARK, True, Qt.ColorScheme.Dark),
+        # Linux: the system's as the app's own watcher hears it, not as Qt
+        # guesses it
+        (True, ColorScheme.SYSTEM, True, Qt.ColorScheme.Dark),
+        (True, ColorScheme.SYSTEM, False, Qt.ColorScheme.Light),
+        # Windows and macOS: the system's is heard through Qt, which says
+        # only the one it's told, once told one
+        (False, ColorScheme.SYSTEM, True, Qt.ColorScheme.Unknown),
+        (False, ColorScheme.SYSTEM, False, Qt.ColorScheme.Unknown),
+        (False, None, False, Qt.ColorScheme.Unknown),
+        (False, ColorScheme.DARK, True, Qt.ColorScheme.Dark),
+        (False, ColorScheme.LIGHT, False, Qt.ColorScheme.Light),
     ],
 )
 def test_qt_is_told_the_scheme_of_the_palette(
-    monkeypatch, is_macos, setting, is_dark, told
+    monkeypatch, is_linux, setting, is_dark, told
 ):
     """Fusion draws some things (a check box's outline) by Qt's scheme rather
     than the palette."""
 
     import gridplayer.params.theme as theme
 
-    monkeypatch.setattr(theme.env, "IS_MACOS", is_macos)
+    monkeypatch.setattr(theme.env, "IS_LINUX", is_linux)
     monkeypatch.setattr(theme, "app_color_scheme", lambda: setting)
     monkeypatch.setattr(theme, "is_dark_mode", lambda: is_dark)
     monkeypatch.setattr(theme, "_told_scheme", [])

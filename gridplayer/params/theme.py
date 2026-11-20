@@ -412,10 +412,13 @@ _told_scheme: list = []
 def _tell_qt_the_scheme(app) -> None:
     """Qt 6 draws some of Fusion by its colour scheme rather than by the
     palette (a check box's outline): the one the palette is of. Following the
-    system on macOS, it's left to Qt, as Qt's colorSchemeChanged is how a
-    switch is heard there."""
+    system on Windows and macOS, it's left to Qt, as Qt is how the system's is
+    heard there: once told one, Qt says only that one. On Linux Qt doesn't
+    always know the system's (darkmode.watch_system_theme): it is told the
+    one the app's own watcher heard."""
 
-    if env.IS_MACOS and app_color_scheme() in {ColorScheme.SYSTEM, None}:
+    following = app_color_scheme() in {ColorScheme.SYSTEM, None}
+    if following and not env.IS_LINUX:
         scheme = Qt.ColorScheme.Unknown
     else:
         scheme = Qt.ColorScheme.Dark if is_dark_mode() else Qt.ColorScheme.Light

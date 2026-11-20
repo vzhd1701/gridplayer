@@ -71,8 +71,8 @@ def init_app():
     app.setAttribute(Qt.ApplicationAttribute.AA_DontShowIconsInMenus, False)
 
     apply_theme(app)
-    # the desktop's light or dark: our own watcher asks the system, retrying
-    # while its answer lags; where there is none (macOS), Qt says
+    # the desktop's light or dark: on Linux our own watcher asks the portal,
+    # elsewhere Qt says
     if watch_system_theme(lambda: on_system_theme_changed(app), app) is None:
         app.styleHints().colorSchemeChanged.connect(
             lambda _scheme: on_system_theme_changed(app)

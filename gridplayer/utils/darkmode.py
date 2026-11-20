@@ -1,6 +1,9 @@
 import functools
 import logging
 
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QGuiApplication
+
 from gridplayer.params import env
 from gridplayer.params.static import ColorScheme
 from gridplayer.settings import Settings
@@ -28,15 +31,17 @@ def is_dark_mode() -> bool:
 
 # Asked once, until the theme is applied again (apply_theme forgets it):
 # the colours are read on every paint of some widgets, and asking is a
-# registry read on Windows and a D-Bus call to the portal on Linux.
+# D-Bus call to the portal on Linux.
 @functools.cache
 def is_system_dark_mode() -> bool:
+    """The system's, asked only while the app follows it."""
+
     if env.IS_MACOS:
         return _macos_is_dark()
     if env.IS_WINDOWS:
-        from gridplayer.utils.darkmode_windows import windows_is_dark
-
-        return windows_is_dark()
+        # Qt is told no scheme of its own then (theme._tell_qt_the_scheme),
+        # so it says the system's, in step with Windows' own switch
+        return QGuiApplication.styleHints().colorScheme() == Qt.ColorScheme.Dark
 
     from gridplayer.utils.darkmode_linux import linux_is_dark
 
@@ -44,21 +49,23 @@ def is_system_dark_mode() -> bool:
 
 
 def watch_system_theme(callback, parent=None):
-    """Call *callback* when the OS color scheme changes."""
+    """Call *callback* when the OS color scheme changes, on Linux.
+
+    Qt 6.12 doesn't know it on every Linux desktop: Unknown on sway and other
+    window managers, and Light at the start on a GNOME that is dark by its
+    colour scheme alone (without a dark GTK theme). Elsewhere Qt's
+    colorSchemeChanged says it (None here)."""
+
+    if not env.IS_LINUX:
+        return None
+
     try:
-        if env.IS_LINUX:
-            from gridplayer.utils.darkmode_linux import LinuxThemeWatcher
+        from gridplayer.utils.darkmode_linux import LinuxThemeWatcher
 
-            return LinuxThemeWatcher(callback, parent)
-        if env.IS_WINDOWS:
-            from gridplayer.utils.darkmode_windows import WindowsThemeWatcher
-
-            return WindowsThemeWatcher(callback, parent)
+        return LinuxThemeWatcher(callback, parent)
     except Exception:
         logging.getLogger(__name__).exception("Could not watch system theme")
         return None
-
-    return None
 
 
 def _macos_is_dark() -> bool:
