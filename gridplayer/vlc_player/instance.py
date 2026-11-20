@@ -28,21 +28,62 @@ from gridplayer.vlc_player.vlc_errors import (
     note_vlc_object,
 )
 
-# Prepare `vsnprintf` function
-if env.IS_WINDOWS:
-    # Note: must use same version of libc as libvlc
-    vsnprintf = ctypes.cdll.msvcrt.vsnprintf
-else:
-    libc = ctypes.cdll.LoadLibrary(ctypes.util.find_library("c"))
-    vsnprintf = libc.vsnprintf
+# vsnprintf's: the length it would have written, the text cut to fit
+_CRT_INTERNAL_PRINTF_STANDARD_SNPRINTF_BEHAVIOR = 0x2
 
-vsnprintf.restype = ctypes.c_int
-vsnprintf.argtypes = (
-    ctypes.c_char_p,
-    ctypes.c_size_t,
-    ctypes.c_char_p,
-    ctypes.c_void_p,
-)
+
+def _crt_vsnprintf():
+    """The C library's vsnprintf, to put VLC's log lines together.
+
+    Windows on arm64 has no vsnprintf in msvcrt, and its VLC is built on the
+    UCRT, whose vsnprintf is a header's call to __stdio_common_vsprintf
+    """
+    if env.IS_WINDOWS:
+        # Note: must use same version of libc as libvlc
+        crt_vsnprintf = getattr(ctypes.cdll.msvcrt, "vsnprintf", None)
+        if crt_vsnprintf is None:
+            return _ucrt_vsnprintf()
+    else:
+        libc = ctypes.cdll.LoadLibrary(ctypes.util.find_library("c"))
+        crt_vsnprintf = libc.vsnprintf
+
+    crt_vsnprintf.restype = ctypes.c_int
+    crt_vsnprintf.argtypes = (
+        ctypes.c_char_p,
+        ctypes.c_size_t,
+        ctypes.c_char_p,
+        ctypes.c_void_p,
+    )
+    return crt_vsnprintf
+
+
+def _ucrt_vsnprintf():
+    common_vsprintf = ctypes.cdll.ucrtbase.__stdio_common_vsprintf
+    common_vsprintf.restype = ctypes.c_int
+    common_vsprintf.argtypes = (
+        ctypes.c_uint64,
+        ctypes.c_char_p,
+        ctypes.c_size_t,
+        ctypes.c_char_p,
+        ctypes.c_void_p,  # locale, none for the current one
+        ctypes.c_void_p,
+    )
+
+    def ucrt_vsnprintf(buffer, size, fmt, args):
+        written = common_vsprintf(
+            _CRT_INTERNAL_PRINTF_STANDARD_SNPRINTF_BEHAVIOR,
+            buffer,
+            size,
+            fmt,
+            None,
+            args,
+        )
+        return max(written, -1)
+
+    return ucrt_vsnprintf
+
+
+vsnprintf = _crt_vsnprintf()
 
 # The VLC object a log line was said as. vlc.py's binding of it takes the
 # object's id in, where the C function hands its type name, its header and
