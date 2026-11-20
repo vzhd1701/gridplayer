@@ -37,6 +37,7 @@ import sys
 import tempfile
 from pathlib import Path
 
+from gridplayer.utils.misc import end_process
 from tests.real_app import media
 
 HANG_FILE = "hung.txt"
@@ -146,4 +147,4 @@ if __name__ == "__main__":
     _say_where("exiting")
     # The player tears down VLC and its threads as it quits, which a run
     # has no use for and can hang on; it ends itself this way too
-    os._exit(code)
+    end_process(code)

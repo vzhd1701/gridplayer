@@ -1,5 +1,4 @@
 import logging
-import os
 import secrets
 import traceback
 from abc import ABC, abstractmethod
@@ -12,6 +11,7 @@ from gridplayer.multiprocess.command_loop import CommandLoop
 from gridplayer.multiprocess.parent_death_signal import arm_parent_death_signal
 from gridplayer.params.static import PLAYER_ID_LENGTH
 from gridplayer.utils.log_config import child_process_config
+from gridplayer.utils.misc import end_process
 
 ORPHANED_EXIT_CODE = 1
 
@@ -129,7 +129,7 @@ class InstanceProcess(CommandLoop, ABC):
 
         # No clean shutdown to be had: the window VLC draws into belongs to the
         # process that just died, and releasing the player would block on it.
-        os._exit(ORPHANED_EXIT_CODE)
+        end_process(ORPHANED_EXIT_CODE)
 
     # process
     def process_body(self):

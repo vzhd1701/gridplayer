@@ -6,7 +6,6 @@ hold without us: the kernel, which kills the children outright, and a watchdog
 in each child, for the moments the kernel cannot cover.
 """
 
-import os
 import signal
 import subprocess
 import sys
@@ -16,6 +15,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from gridplayer.multiprocess import instance_process as instance_process_module
 from gridplayer.multiprocess.instance_process import (
     ORPHANED_EXIT_CODE,
     InstanceProcess,
@@ -72,7 +72,9 @@ def instance():
 @pytest.fixture
 def no_exit(mocker):
     exit_codes = []
-    mocker.patch.object(os, "_exit", side_effect=exit_codes.append)
+    mocker.patch.object(
+        instance_process_module, "end_process", side_effect=exit_codes.append
+    )
 
     return exit_codes
 
