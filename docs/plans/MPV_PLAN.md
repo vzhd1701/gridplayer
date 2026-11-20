@@ -5,7 +5,8 @@ The findings and traps are in `C:\Projects\test_temp\test_mpv\HANDOFF.md`, and
 what we build and how far it has got. Tick items only once they have been seen
 working.
 
-**Status: open are 10.4 (other GPUs) and 11.4 (Macs with a real GPU). Packaged everywhere, the Snap too since the move to Qt 6 (2026-11-19).**
+**Status: done but 12.6, the move to `docs/archive/`. Packaged everywhere, the Snap too since the move to Qt 6
+(2026-11-19). What 10.4 and 11.4 couldn't run, with no such machine here, is in `docs/NEEDS_TESTING.md` (2026-11-20).**
 
 **Load tests against VLC: `docs/findings/MPV_PERFORMANCE.md`.** No multi-process mode for MPV. New items 10.13-10.16. 10.16, the long run, ran
 overnight 2026-11-09: new items 10.21-10.23.
@@ -21,11 +22,11 @@ overnight 2026-11-09: new items 10.21-10.23.
 | 7 | Subtitles: tracks, files, delay, encoding, style | **built**, macOS on a VM with no GPU |
 | 8 | Deinterlacing, chapters, bookmarks, SponsorBlock | **built**, macOS on a VM with no GPU |
 | 9 | Streams, live video, errors and recovery, lists | **built**, macOS on a VM with no GPU |
-| 10 | Hardening: long churn, memory, real drags, other GPUs | mostly done; open: 10.4 (other GPUs) |
-| 11 | macOS | **real GPU run 2026-11-15** (11.4): every scenario passes on a hackintosh; OpenGL 3.2 Core and Shared output on macOS now; Retina, two GPUs, Apple Silicon not run |
-| 12 | Packaging, docs, release | not started |
+| 10 | Hardening: long churn, memory, real drags, other GPUs | **done**; 10.4's other GPUs in `docs/NEEDS_TESTING.md` |
+| 11 | macOS | **real GPU run 2026-11-15** (11.4): every scenario passes on a hackintosh; OpenGL 3.2 Core and Shared output on macOS now; Retina, two GPUs, Apple Silicon in `docs/NEEDS_TESTING.md` |
+| 12 | Packaging, docs, release | **done 2026-11-16**; 12.6, the archive, left |
 | 13 | GL output, a choice beside readback | **built**, on macOS too since 2026-11-15 (the default there), resize shaking, NVIDIA's black line and a crash closing a cell fixed, one surface for the window (13.5), 120 fps (13.10) |
-| 14 | mpv drawing into its own windows, a third output | **started 2026-11-11**, Windows first |
+| 14 | mpv drawing into its own windows, a third output | **done 2026-11-15**, Windows and Linux X11 |
 
 ## Rules that hold in every stage
 
@@ -755,8 +756,9 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
 - [x] 10.3 By hand on a screen with X11 and Linux, if you have such a machine. Handoff open
   question 1
   - 2026-11-11: tested by you, looks alright. It raised 10.32
-- [ ] 10.4 AMD on Windows and any other GPU we can reach. HEVC and 10-bit through VAAPI needs
+- [x] 10.4 AMD on Windows and any other GPU we can reach. HEVC and 10-bit through VAAPI needs
   a newer chip than `test_gpu`
+  - **Closed 2026-11-20, your call:** what's left, Linux on NVIDIA or AMD and a newer Intel, is in `docs/NEEDS_TESTING.md`.
   - **AMD on Windows, run 2026-11-11** on your PC's AMD Radeon iGPU (a `python.exe` copy with no GPU preference, which
     Windows puts on the GPU the screen is on). Open: Linux on NVIDIA or AMD, and a newer Intel for VAAPI.
     - Every MPV scenario passes: the 42 of the suite with Steady, and 9 with Fast in a real window on the other desktop
@@ -1187,7 +1189,7 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
   that says to turn it), on the VM. Settings: the Video Decoder page shows as on Windows, with no Output or Processes rows.
 - [x] 11.3 Own CGL context only if the Qt one causes trouble. Closed 2026-11-15, not needed: Qt's context, asked as
   3.2 Core, does VideoToolbox, Copy and Shared on the real Mac (11.4)
-- [ ] 11.4 **On a Mac with a real GPU** (a hackintosh is Intel with an AMD or Intel GPU; Apple Silicon needs a real Mac of its own,
+- [x] 11.4 **On a Mac with a real GPU** (a hackintosh is Intel with an AMD or Intel GPU; Apple Silicon needs a real Mac of its own,
   its libmpv arm64 and its OpenGL on Metal):
   - **Ready 2026-11-14: `test_macos_real`**, a hackintosh: i7-4790K, Intel HD 4600 (Haswell, drivers put back by OpenCore
     Legacy Patcher), macOS 15.8.3, one 1080p screen. OpenGL in hardware, 2.1 and 4.1 Core; VideoToolbox decodes H.264 only
@@ -1266,6 +1268,7 @@ CPU took 0.5-5.5 s, against 0.2-1.1 s on the key frame, which is about what VLC 
   - Video memory: Auto reads none on macOS, so it never decodes on the CPU. Metal says how much a GPU has, if that's needed.
   - **Open (2026-11-15): only what this Mac can't run**, the "Not run" above. Everything it can is done; Apple
     Silicon needs a real Mac of its own.
+  - **Closed 2026-11-20, your call:** the "Not run" above is in `docs/NEEDS_TESTING.md`.
 
 ## Stage 12: Packaging and release
 
@@ -2027,6 +2030,7 @@ How it goes in, by what's there already:
 
 Newest first. What was finished and seen working, and anything that changed the plan.
 
+- 2026-11-20: 10.4 and 11.4 closed, what no machine here could run moved to `docs/NEEDS_TESTING.md`.
 - 2026-11-16: libmpv 0.41 with no sound server hung in PipeWire's output now and then: the audio device list is
   time-limited, PipeWire left out of `ao` with no server. Real-app jobs on Ubuntu 24.04 and 26.04, and on Windows and macOS (not blocking yet).
 - 2026-11-16: `real-app-mpv` passed on GitHub (12.4). `--self-check` for packages, run in CI on each one built (12.2);

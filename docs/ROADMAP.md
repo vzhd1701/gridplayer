@@ -1,6 +1,7 @@
 # Roadmap
 
-Ideas kept for later. Nothing here is planned yet or promised. Each one says where it came from.
+Ideas kept for later. Nothing here is planned yet or promised. Each one says where it came from. What's built but not
+yet tried on some hardware is in `NEEDS_TESTING.md`.
 
 ## Playback stats for a cell
 

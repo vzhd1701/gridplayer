@@ -3,7 +3,9 @@
 The move from PyQt5 (Qt 5.15) to PyQt6 on Qt 6.12, on the `qt6` branch. This file says what changes, in what order,
 and how each step is checked. Tick an item only once it has been seen working.
 
-**Status: stages 0-8 done (2026-11-19), the stage 3 hand checks too. Left: CI's first run (the branch isn't pushed: a `dry_run` pre-release).**
+**Status: done.** Stages 0-8 on 2026-11-19, the stage 3 hand checks too; CI's first runs on 2026-11-20, every test and
+package passing. The Flatpak's and the Snap's own workflows run with a release (7.4, 7.5). What no machine here
+could try is in `docs/NEEDS_TESTING.md`.
 
 | | Stage | State |
 |---|---|---|
@@ -14,7 +16,7 @@ and how each step is checked. Tick an item only once it has been seen working.
 | 4 | Linux: X11, Wayland, D-Bus | **done 2026-11-19** |
 | 5 | macOS | **done 2026-11-19** on the hackintosh (`test_macos` unreachable) |
 | 6 | Translations: pylupdate6 | **done 2026-11-19** |
-| 7 | Packaging and CI | **done 2026-11-19** but CI itself, which runs once the branch is pushed |
+| 7 | Packaging and CI | **done 2026-11-19**; CI ran 2026-11-20 |
 | 8 | Clean-up and docs | **done 2026-11-19** |
 
 ## Decisions
@@ -541,8 +543,9 @@ after the other in real cocoa windows (`~/gp-tests/suite_in.sh`, `ab*.sh`).
     EL10's `.relr.dyn` sections), SDL3 bundled (EL10's SDL2 is sdl2-compat, which loads SDL3 by name and aborts the
     app without it), and `libgpg-error` among the fallback libraries (EL10's `libgcrypt` needs a newer one than Ubuntu
     24.04's; linuxdeploy bundles the one and leaves the other). **Done 2026-11-19 under QEMU**: its `--self-check`
-    passes in an arm64 Ubuntu 24.04 container, Qt 6.12.0, VLC 3.0.24 and libmpv 0.40 each playing. Not run on a real
-    arm machine.
+    passes in an arm64 Ubuntu 24.04 container, Qt 6.12.0, VLC 3.0.24 and libmpv 0.40 each playing. **On GitHub
+    2026-11-20**: built on `ubuntu-24.04-arm` and its self-check passes there. Not yet on an arm desktop:
+    `docs/NEEDS_TESTING.md`.
   - CI checks the AppImage in containers too (Ubuntu 24.04 and 26.04, Debian 13, Fedora), each with what a desktop
     has and the AppImage leaves to it (glib, fontconfig, EGL, harfbuzz, ALSA, `libgpg-error`, `p11-kit`,
     `libcom_err`, `libOpenGL`...). Seen on `test_ubuntu` the same way (`--init`: `xvfb-run` as a container's first process never
@@ -556,7 +559,9 @@ after the other in real cocoa windows (`~/gp-tests/suite_in.sh`, `ab*.sh`).
   installs into the user's Flatpak, as CI does, so it needs no root. `release_flatpak.yml` has a `dry_run`: the bundle
   built from the checkout and kept as the run's artifact, nothing pushed. **Done 2026-11-19**: built on `test_ubuntu`
   (VLC, libmpv and FFmpeg from source, as before; the bundle 65 MB), its `--self-check` passes on **Qt 6.11.2**, VLC
-  3.0.23 and libmpv 0.42, so the code runs on 6.11 as decided; on the GNOME desktop, two cells playing.
+  3.0.23 and libmpv 0.42, so the code runs on 6.11 as decided; on the GNOME desktop, two cells playing. The GitHub
+  workflow first runs with the next release (your call, 2026-11-20): Flathub builds every pull request, so a failure
+  is fixed there.
 - 7.5 Snap on core24 with libmpv (MPV_PLAN 12.1).
   core24 with the `gnome` extension (fonts, cursors, Mesa through `gpu-2404`) in place of kde-neon; Qt from PyQt6's
   wheel, with the xcb libraries it needs that the extension's runtime hasn't got; `libmpv2` from Ubuntu 24.04 (mpv
@@ -566,12 +571,12 @@ after the other in real cocoa windows (`~/gp-tests/suite_in.sh`, `ab*.sh`).
   update-alternatives, as a snap can't; their folders are on its `LD_LIBRARY_PATH` now. Ubuntu 24.04's `librsvg`
   was left out too, as the gnome runtime's newer one is what its pixbuf loader takes. **Done 2026-11-19**: the
   `--self-check` of the installed snap passes (Qt 6.12.0, VLC 3.0.20, libmpv 0.37); on the GNOME desktop, two cells
-  playing, its icon in the dock.
+  playing, its icon in the dock. Its GitHub workflow, which has no dry run, first ran 2026-11-20.
 - 7.6 Each package started on a clean machine: Windows, Ubuntu 24.04, Debian 13, macOS 15.
   **Done 2026-11-19, as far as there are machines:** Windows here (the portable's self-check), the AppImage in
   Ubuntu 24.04 and 26.04, Debian 13 and Fedora containers and on the Ubuntu desktop, the Snap and Flatpak on the
-  Ubuntu desktop, the `.app` on macOS 15. None of it on GitHub: the branch isn't pushed, so the workflows are read,
-  not run. A `dry_run` pre-release on `qt6` is the first run of them.
+  Ubuntu desktop, the `.app` on macOS 15. **On GitHub 2026-11-20**, a `dry_run` pre-release: every package built
+  and its self-check passed, Windows and the AppImage on arm64 too, and the AppImage in the four containers.
 - 7.7 (asked 2026-11-19) The pre-release no longer runs the tests first, which run on every push and are waited for
   before it's started; `dry_run` builds everything and keeps the files as the run's artifacts, releasing and tagging
   nothing.
@@ -587,8 +592,8 @@ after the other in real cocoa windows (`~/gp-tests/suite_in.sh`, `ab*.sh`).
   `libvlc_waits.py` reads libvlccore's import table first and leaves it be when the three are imported (read right
   from both real DLLs); the 32-bit scanner went with the 32-bit build, as did the `GetWindowLongW` fallbacks. A
   change of driver that waits for a restart leaves the open videos be, so the VLC process managers are kept one for
-  each kind of process. **Not run anywhere yet**: there's no arm64 Windows here, and CI's first run is its
-  first build and self-check. OpenGL on Windows on Arm comes from the GPU's driver (Qualcomm's has it) or Microsoft's
+  each kind of process. **On GitHub 2026-11-20**: built, and its self-check passes on `windows-11-arm`, where the
+  unit tests and the real-app scenarios run too, on trial. Not by hand on an arm64 PC: `docs/NEEDS_TESTING.md`. OpenGL on Windows on Arm comes from the GPU's driver (Qualcomm's has it) or Microsoft's
   OpenCL and OpenGL Compatibility Pack; without either, MPV Shared can't draw (Copy and Direct don't need it).
 
 ## Stage 8: clean-up and docs
