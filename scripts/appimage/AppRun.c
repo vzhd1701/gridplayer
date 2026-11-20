@@ -287,6 +287,10 @@ int main(int argc, char *argv[]) {
     size_t length;
     const char *format;
 
+    // the AppImage's runtime sets it, but not to an AppDir run as it is (an
+    // AppImage unpacked with --appimage-extract): the app finds its VLC by it
+    setenv("APPDIR", appdir, 0);
+
     old_env = getenv("PATH") ?: "";
     keep_host("PATH");
     SET_NEW_ENV(new_path, appdir_s + strlen(old_env), "PATH=%s/usr/bin/:%s", appdir, old_env);

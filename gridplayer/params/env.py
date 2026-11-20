@@ -41,7 +41,9 @@ def has_wayland() -> bool:
 
 IS_PYINSTALLER = getattr(sys, "frozen", False)
 IS_SNAP = IS_LINUX and "SNAP" in os.environ
-IS_APPIMAGE = IS_LINUX and "APPIMAGE" in os.environ
+# APPDIR, not APPIMAGE: the AppRun sets it to an AppImage unpacked and run as
+# it is too, where there is no AppImage file
+IS_APPIMAGE = IS_LINUX and "APPDIR" in os.environ
 IS_FLATPAK = IS_LINUX and "FLATPAK_ID" in os.environ
 IS_KDE = _is_kde()
 
