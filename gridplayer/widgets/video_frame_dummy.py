@@ -120,6 +120,15 @@ class VideoFrameDummy(VideoFrameVLC):
     def get_ms_per_frame(self):
         return self._ms_per_frame
 
+    def cleanup_start(self) -> None:
+        # Stopped, as a player is: a frame let go of has no media, and is
+        # deleted only once the event loop gets to it. A tick in between,
+        # on a slow runner, raised in a slot and aborted the tests (macOS,
+        # 2026-11-20)
+        self._fake_player_timer.stop()
+
+        super().cleanup_start()
+
     def _fake_player_forward(self):
         if self._fake_player_time + self._ms_per_frame > self.length:
             self._fake_player_time = 0
