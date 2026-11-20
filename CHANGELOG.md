@@ -9,11 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Changed
 
 - Move to Qt 6: sharper windows at 125% and 150% on Wayland, macOS 14 or later needed, Windows 64-bit only ([3a900fb](https://github.com/vzhd1701/gridplayer/commit/3a900fbb2a5e573cb9e7bf0ce20986e6bc95a2e3)), ([5d2c0c2](https://github.com/vzhd1701/gridplayer/commit/5d2c0c28118bbb0e97637852fcd3986653c67088)), ([7d60c2b](https://github.com/vzhd1701/gridplayer/commit/7d60c2b259cbb181acad0d49cf3de387e86b55e4))
-- Build the Snap on core24, with MPV ([fe171fa](https://github.com/vzhd1701/gridplayer/commit/fe171fa0480774498add9ed1fd1cead99e0737c1))
-- Build the Flatpak on the KDE 6.11 runtime ([dcda27f](https://github.com/vzhd1701/gridplayer/commit/dcda27f257bc1ca2afb6a9b89ca19185ffb85492))
 - Keep open videos as they are when a changed setting waits for a restart, rather than reloading them twice ([31ba337](https://github.com/vzhd1701/gridplayer/commit/31ba3377c93749c23b93d49ea790a11914626ee7))
-- Let the Flatpak run on Wayland too ([ea12309](https://github.com/vzhd1701/gridplayer/commit/ea12309696ca70aeb926989aa9c5a2f653341b78))
-- Make the AppImage run without libfuse2 ([0c82636](https://github.com/vzhd1701/gridplayer/commit/0c82636af839045d51559cdc6e8778565aa19459))
 - Draw a line under the window's header on GNOME with Wayland ([ff74ec9](https://github.com/vzhd1701/gridplayer/commit/ff74ec90ffcd9e7b07c5d0a941c656c641c8ea23))
 - Make MPV the default video driver, VLC stays where libmpv is missing ([5a44d5f](https://github.com/vzhd1701/gridplayer/commit/5a44d5fe1e50af989adde21e97267d7b09b9ad3c)), ([c452f1e](https://github.com/vzhd1701/gridplayer/commit/c452f1e4c3da02b301853ee2bb68afac6df427ce)), ([2a1d41a](https://github.com/vzhd1701/gridplayer/commit/2a1d41a41cf6adbdc5cbf9e2908846979e5c7784))
 - Build the AppImage on a newer base, it now needs glibc 2.34 or newer (Ubuntu 22.04, Debian 12, RHEL 9) ([fb66034](https://github.com/vzhd1701/gridplayer/commit/fb660346c21b489aec11759c8863592830686658)), ([abecc8a](https://github.com/vzhd1701/gridplayer/commit/abecc8a56da5c8b50a663a0a3d093a0f865189a5))
@@ -39,8 +35,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
-- Add a Windows package for ARM64 ([4f72580](https://github.com/vzhd1701/gridplayer/commit/4f72580b88010e1f60d30d8808e2a7f751ca458c))
-- Add an AppImage for ARM64 ([0c82636](https://github.com/vzhd1701/gridplayer/commit/0c82636af839045d51559cdc6e8778565aa19459))
 - Add MPV video driver, Hardware and Software, playing every video in one process, with libmpv in every package ([a6cfed9](https://github.com/vzhd1701/gridplayer/commit/a6cfed9822c46a5c9357a2c32a8df21b2080a5ef)), ([ecd0d71](https://github.com/vzhd1701/gridplayer/commit/ecd0d7152b936e84f2a21129b657de86fd8f1990)), ([0ef0c91](https://github.com/vzhd1701/gridplayer/commit/0ef0c91dd81f29a8cc06f49bd1d037812b10e449))
 - Add MPV options: fast or exact seeking, picture quality, skipping frames to play more videos, and your own mpv.conf, the second and last after [Brick2892's fork](https://github.com/Brick2892/gridplayermpv) ([05e5201](https://github.com/vzhd1701/gridplayer/commit/05e52012622ba4e9c08991961f3e79898a2c8bd0)), ([dc63bb4](https://github.com/vzhd1701/gridplayer/commit/dc63bb4ffe86441318d95bacefce6049f1969800)), ([5eece0f](https://github.com/vzhd1701/gridplayer/commit/5eece0f7e382101b216e9df0c97b34da62ee3dbf))
 - Add MPV video outputs: Copy, Shared (one surface for the whole window) and Direct (mpv's own window, MPV's default output on Windows) ([9dbe08c](https://github.com/vzhd1701/gridplayer/commit/9dbe08cdbb7974f2c5f3eafe6cadd9625e16ef69)), ([6bf0105](https://github.com/vzhd1701/gridplayer/commit/6bf01050f1e2030b0d2652b36d0a909d07a0c478)), ([31801ea](https://github.com/vzhd1701/gridplayer/commit/31801eaa6dd971b9ca1ec7fc34353f9667e4570e))
@@ -106,7 +100,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Fixed
 
 - Fix videos stuttering while the mouse moves over them ([b958c14](https://github.com/vzhd1701/gridplayer/commit/b958c144bdb04f840779e863dcee3676bb23365e))
-- Fix links and folders not opening from the AppImage on newer distros, and files named by a relative path on its command line not opening ([0c82636](https://github.com/vzhd1701/gridplayer/commit/0c82636af839045d51559cdc6e8778565aa19459))
 - Fix signed-in YouTube videos stopping after a minute, reload network videos that stall or start over, say when a stream's sound fails ([679c92c](https://github.com/vzhd1701/gridplayer/commit/679c92c63ce54b3e310790597398a1d16a9a9071)), ([19f9461](https://github.com/vzhd1701/gridplayer/commit/19f946138e81e73cf9d69b64490d045d1448a2a0)), ([d16ce76](https://github.com/vzhd1701/gridplayer/commit/d16ce7691e9f543d8a50817e2a888652af720d22))
 - Fix macOS calling the downloaded app damaged ([e706f7c](https://github.com/vzhd1701/gridplayer/commit/e706f7c9a475161e06203d4c3eca34d010768388))
 - Fix black video for turned files with VLC Software on macOS ([351e2a7](https://github.com/vzhd1701/gridplayer/commit/351e2a780d58b6cd21689544169838a70e7c6e5e))
