@@ -23,6 +23,18 @@ license: GPL-3.0-or-later
 platforms:
   amd64:
 
+lint:
+  ignore:
+    # VLC's own plugins, named like the GPU libraries the linter looks for;
+    # libva and libvdpau themselves come from gpu-2404
+    - gpu:
+        - usr/lib/*/vlc/plugins/vaapi/*
+        - usr/lib/*/vlc/plugins/vdpau/*
+    # libmpv is loaded by ctypes, and the rest is what VLC's and mpv's
+    # packages bring along; a missing library is still told
+    - unused-library:
+        - "*"
+
 parts:
   # python multiprocessing fix
   snapcraft-preload:
