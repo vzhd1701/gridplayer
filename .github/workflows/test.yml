@@ -40,6 +40,8 @@ jobs:
           # arm64, as the Windows and Linux packages are built for it too
           - { os: windows-11-arm, python-version: "3.14", trial: true }
           - { os: ubuntu-24.04-arm, python-version: "3.14", trial: true }
+    # by what tells them apart: GitHub's own name lists every value of the row
+    name: test (${{ matrix.os }}, ${{ matrix.python-version }}${{ matrix.trial && ', trial' || '' }})
     runs-on: ${{ matrix.os }}
     # A system new here goes in with trial: true, which holds no release
     # up, until it has passed
@@ -100,6 +102,7 @@ jobs:
         os: [ ubuntu-24.04, ubuntu-26.04 ]
         include:
           - { os: ubuntu-24.04-arm, trial: true }
+    name: real-app (${{ matrix.os }}${{ matrix.trial && ', trial' || '' }})
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.trial == true }}
     env:
@@ -149,6 +152,7 @@ jobs:
         os: [ ubuntu-24.04, ubuntu-26.04 ]
         include:
           - { os: ubuntu-24.04-arm, trial: true }
+    name: real-app-mpv (${{ matrix.os }}${{ matrix.trial && ', trial' || '' }})
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.trial == true }}
     env:
@@ -203,6 +207,7 @@ jobs:
           - { os: windows-11-arm, part: vlc, select: "not mpv", trial: true }
           - { os: windows-11-arm, part: mpv, select: mpv, trial: true }
           - { os: macos-15-intel, part: all, select: "" }
+    name: real-app-desktop (${{ matrix.os }}, ${{ matrix.part }}${{ matrix.trial && ', trial' || '' }})
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.trial == true }}
     timeout-minutes: 60
