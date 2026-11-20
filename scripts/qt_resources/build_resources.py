@@ -1,6 +1,7 @@
 import argparse
 import csv
 import shutil
+import struct
 import subprocess
 from pathlib import Path
 
@@ -29,6 +30,31 @@ class ResourceBuilder:
             f.write(content)
 
         return f_dst
+
+
+def drop_icns_toc(icns_path):
+    """The icns without its table of contents, which is optional.
+
+    Qt's reader (to 6.12 and its dev branch at least) adds the table up 8
+    bytes short, warns on every launch that the last entry is bad, and then
+    reads the file block by block all the same. Only Qt reads this copy: the
+    app bundle's icon is taken from resources/ as it is.
+    """
+
+    data = icns_path.read_bytes()
+
+    blocks = []
+    pos = 8
+    while pos < len(data):
+        block_type, length = struct.unpack(">4sI", data[pos : pos + 8])
+        if length < 8:
+            raise ValueError(f"Bad block in {icns_path} at {pos}")
+        if block_type != b"TOC ":
+            blocks.append(data[pos : pos + length])
+        pos += length
+
+    body = b"".join(blocks)
+    icns_path.write_bytes(b"icns" + struct.pack(">I", 8 + len(body)) + body)
 
 
 def make_dark(svg_path):
@@ -76,7 +102,10 @@ if __name__ == "__main__":
 
         dst_path = Path("icons") / f_name
 
-        builder.copy_file(f_path, dst_path)
+        f_dst = builder.copy_file(f_path, dst_path)
+
+        if f_dst.suffix == ".icns":
+            drop_icns_toc(f_dst)
 
     if icons_symbolic:
         for theme in ("dark", "light"):
