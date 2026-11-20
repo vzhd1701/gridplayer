@@ -151,17 +151,30 @@ def test_mpv_scenario_on_software(scenario, tmp_path):
 
 
 def _run_scenario(scenario, out, env=None):
-    run = subprocess.run(
-        [sys.executable, "-m", "tests.real_app.run", scenario, "--out", str(out)],
-        cwd=media.REPO,
-        env={**(env or os.environ), "REAL_APP_HANG_S": str(HANG_SEC)},
-        capture_output=True,
-        text=True,
-        timeout=RUN_TIMEOUT_SEC,
-        check=False,
-    )
-
     report_file = out / "report.json"
+
+    try:
+        run = subprocess.run(
+            [sys.executable, "-m", "tests.real_app.run", scenario, "--out", str(out)],
+            cwd=media.REPO,
+            env={**(env or os.environ), "REAL_APP_HANG_S": str(HANG_SEC)},
+            capture_output=True,
+            text=True,
+            timeout=RUN_TIMEOUT_SEC,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as hung:
+        # Hung past the hang watch, which a run turns off once its scenario
+        # is done (seen on a Windows arm64 runner, 2026-11-20). Its last
+        # word says where: run.py's "run: closing" or "run: exiting"
+        if not report_file.exists():
+            raise
+        pytest.fail(
+            f"the scenario was done, but the run didn't end in {RUN_TIMEOUT_SEC} s;"
+            f" the last it said:\n{_text(hung.stdout)[-1500:]}"
+            f"{_text(hung.stderr)[-1500:]}"
+        )
+
     hang_file = out / HANG_FILE
     if not report_file.exists() and hang_file.exists() and hang_file.stat().st_size:
         pytest.fail(
@@ -178,3 +191,12 @@ def _run_scenario(scenario, out, env=None):
     assert report["ok"], "\n".join(
         [f"see {out}", *report["failures"], *report["errors"]]
     )
+
+
+def _text(output) -> str:
+    """What a stopped run said, which comes as text, bytes or nothing."""
+
+    if isinstance(output, bytes):
+        return output.decode("utf-8", errors="replace")
+
+    return output or ""

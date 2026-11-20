@@ -128,15 +128,22 @@ def main() -> int:
     for text in report["errors"]:
         print(f"  error: {text}")
 
+    # The hang watch is off from here: should the run hang, its last word
+    # says where
+    _say_where("closing")
     driver.close()
 
     return 0 if report["ok"] else 1
 
 
+def _say_where(step: str) -> None:
+    print(f"run: {step}", file=sys.stderr, flush=True)
+
+
 if __name__ == "__main__":
     code = main()
     sys.stdout.flush()
-    sys.stderr.flush()
+    _say_where("exiting")
     # The player tears down VLC and its threads as it quits, which a run
     # has no use for and can hang on; it ends itself this way too
     os._exit(code)
