@@ -3,13 +3,13 @@
 The move from PyQt5 (Qt 5.15) to PyQt6 on Qt 6.12, on the `qt6` branch. This file says what changes, in what order,
 and how each step is checked. Tick an item only once it has been seen working.
 
-**Status: done.** Stages 0-8 on 2026-11-19, the stage 3 hand checks too; CI's first runs on 2026-11-20, every test and
-package passing. The Flatpak's and the Snap's own workflows run with a release (7.4, 7.5). What no machine here
-could try is in `docs/NEEDS_TESTING.md`.
+**Status: done, archived 2026-11-20.** Stages 0-8 on 2026-11-19, the stage 3 hand checks too; CI's first runs on 2026-11-20, every test and
+package passing, the Snap's own workflow too (7.5); the Flatpak's runs with the next release (7.4). What no machine
+here could try is in `docs/NEEDS_TESTING.md`; what Qt 6 opens up, in `docs/ROADMAP.md`.
 
 | | Stage | State |
 |---|---|---|
-| 0 | Baseline on PyQt5: tests, scenarios, benches, screenshots | **done 2026-11-18** but the Macs (before stage 5) and benches (stage 3) |
+| 0 | Baseline on PyQt5: tests, scenarios, benches, screenshots | **done 2026-11-18**; the benches in stage 3, the Macs in stage 5 |
 | 1 | Rewrites that work on both: full enum names, `exec()`, flag values | **done 2026-11-18** |
 | 2 | The switch: PyQt6 6.12, imports, removed APIs, events; tests pass | **done 2026-11-18** |
 | 3 | Windows: DPI, native windows, GL, look, input | **done 2026-11-18**; hand checks done 2026-11-19 |
@@ -384,7 +384,7 @@ PyQt6 in `/opt/venv6`. Outputs in `build/qt6-stage4/`.
   the compositor's frames. MPV Shared, MPV Copy and VLC Software play on Wayland. Sway at 1.5: **Qt 6 draws at 1.5**
   (`wp_fractional_scale`), 1280x720 physical pixels for the 853x480 window, where Qt 5 draws at 2 and the compositor
   scales it down: the sharp 125%/150% the ROADMAP expected, same layout. Not tried: GNOME's own fractional scaling
-  (experimental there).
+  (experimental there), in `docs/NEEDS_TESTING.md`.
   **The header on GNOME** (Wayland chosen; Auto takes X11 there): Qt 6 picks its `adwaita` decoration on GNOME
   instead of Qt 5's `bradient`, with GNOME's thin border, but its colours are its own (white over our #eeeeee, near
   black over #444444), it follows GNOME's light or dark rather than the app's, and draws no line between header and
@@ -409,7 +409,7 @@ PyQt6 in `/opt/venv6`. Outputs in `build/qt6-stage4/`.
   its own xcb connection), which takes most of it away. What's left was the VM's Mesa: on Ubuntu 24.04's Mesa 25.2.8
   (VMware's SVGA3D) the cells still jump, the same on Qt 6.11 and 6.12; on Mesa 26.2.6 (kisak-mesa, unpacked into
   `/opt/mesa_new`, `run.sh`) and in the Flatpak (Mesa 26.2.7 of its runtime) the resize is smooth. Not tried on a real
-  GPU.
+  GPU: `docs/NEEDS_TESTING.md`.
   Both are listed in `docs/findings/KNOWN_ISSUES.md`.
 - 4.3 D-Bus: MPRIS with `@pyqtClassInfo`, the portal's dark mode (`darkmode_linux.py`), the tray.
   **Done 2026-11-19**, GNOME, X11 and Wayland: MPRIS named, Identity, PlaybackStatus, Metadata, PlayPause and Play
@@ -571,7 +571,8 @@ after the other in real cocoa windows (`~/gp-tests/suite_in.sh`, `ab*.sh`).
   update-alternatives, as a snap can't; their folders are on its `LD_LIBRARY_PATH` now. Ubuntu 24.04's `librsvg`
   was left out too, as the gnome runtime's newer one is what its pixbuf loader takes. **Done 2026-11-19**: the
   `--self-check` of the installed snap passes (Qt 6.12.0, VLC 3.0.20, libmpv 0.37); on the GNOME desktop, two cells
-  playing, its icon in the dock. Its GitHub workflow, which has no dry run, first ran 2026-11-20.
+  playing, its icon in the dock. **Built on GitHub 2026-11-20** (its workflow has no dry run); the linter's false
+  alarms ignored since, VLC's GPU plugins named like GPU libraries and the unused libraries.
 - 7.6 Each package started on a clean machine: Windows, Ubuntu 24.04, Debian 13, macOS 15.
   **Done 2026-11-19, as far as there are machines:** Windows here (the portable's self-check), the AppImage in
   Ubuntu 24.04 and 26.04, Debian 13 and Fedora containers and on the Ubuntu desktop, the Snap and Flatpak on the
@@ -631,4 +632,5 @@ after the other in real cocoa windows (`~/gp-tests/suite_in.sh`, `ab*.sh`).
 
 What Qt 6 opens up, from ROADMAP: sharp windows at 125% and 150% on Wayland (comes with the move, seen in 4.2), our own
 window frame on GNOME, Wayland as Auto there. Also possible: the system colour scheme from
-`QStyleHints.colorScheme()` instead of our own watchers. Then the architecture refactor.
+`QStyleHints.colorScheme()` instead of our own watchers. Then the architecture refactor. All of it in
+`docs/ROADMAP.md` since 2026-11-20.

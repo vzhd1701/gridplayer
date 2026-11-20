@@ -78,7 +78,7 @@ single-instance check hands it back to the old one.
 
 ## Qt 6
 
-Moved to PyQt6 6.12 on the `qt6` branch (2026-11-19), stage by stage in `docs/plans/QT6_PLAN.md`. What it brought for
+Moved to PyQt6 6.12 on the `qt6` branch (2026-11-19), stage by stage in `docs/archive/QT6_PLAN.md`. What it brought for
 Wayland:
 
 - Sharp windows at fractional scales (125%, 150%): Qt 6 draws at 1.5 where Qt 5 drew at 2 and the compositor scaled it
@@ -104,6 +104,15 @@ from 2026-11-09, which should end it too: try each Qt release.
 
 Another way is the QAdwaitaDecorations plugin, GNOME's look for Qt's frame, but a packaged app has its own Qt and the
 plugin must be built for exactly that one: a compiled part to keep up for every Qt release and CPU.
+
+### The system's light or dark from Qt
+
+From the Qt 6 plan's "After the move" (2026-11-19). On Windows and Linux the app has watchers of its own for the
+system's light or dark (`utils/darkmode_windows.py`, the registry and its messages; `utils/darkmode_linux.py`, the
+portal over D-Bus), about 300 lines. Qt 6 says it too (`QStyleHints.colorScheme()` and `colorSchemeChanged`), which
+macOS already goes by. To find out first: whether Qt still says the system's once the app has told it a scheme of its
+own (`theme._tell_qt_the_scheme`, for Fusion's parts drawn by scheme), and whether Qt's answer lags a switch, as the
+system's did on Windows (the watcher asks again for up to 0.8 s).
 
 ## Architecture refactor
 

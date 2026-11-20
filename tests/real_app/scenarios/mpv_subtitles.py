@@ -3,7 +3,7 @@ files kept beside a video and a VobSub pair, what's picked coming back after a
 reload, delays and character sets, what they look like changing as it plays, and
 staying on show and the right way round whatever the view does to the picture.
 mpv's own word is what's checked for the text, the picture for the rest. How it all
-compares with VLC is in docs/plans/MPV_PLAN.md.
+compares with VLC is in docs/findings/MPV.md.
 """
 
 import shutil

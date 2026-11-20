@@ -7,7 +7,7 @@ a row on an odd height. Those that halve it leave mpv thinking the pixels are tw
 wide, which shows nowhere: the picture is drawn by the size from before the filters.
 
 Bob and Linear can't start on an odd height, and only a log line says so. Not seen on a
-video that's really interlaced, so that's left: see docs/plans/MPV_PLAN.md.
+video that's really interlaced, so that's left: see docs/findings/MPV.md.
 """
 
 from gridplayer.params.static import VideoDeinterlace, VideoDeinterlaceMode

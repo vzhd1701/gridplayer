@@ -4,7 +4,7 @@ Found 2026-11-11 to 2026-11-13 on the `mpv` branch, with MPV's Direct output (ea
 own). The app crashed, all of it, now and then as videos were opened, closed or reloaded. The causes are in graphics drivers and
 libraries, not in mpv or GridPlayer; what sets them off is GridPlayer's way of using them. Avoided by
 `MpvRenderService.add_own_window` and `_start_next` in `gridplayer/mpv_player/renderer.py`. Plan items 14.11 and 14.12 in
-`docs/plans/MPV_PLAN.md` have the runs as they went.
+`docs/archive/MPV_PLAN.md` have the runs as they went.
 
 ## The common ground
 

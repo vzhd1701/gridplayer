@@ -20,7 +20,7 @@ When one ends (a new Qt, a driver), check it and take it out, saying so in the c
   6.11, doesn't. Staying on 6.12 rather than 6.11 on Linux was decided 2026-11-19.
 - **What would end it:** qtbase `94f9621051` (dev, 2026-11-09: the header in subsurfaces) should; or our own window frame
   (ROADMAP). Check each Qt release.
-- **Measured:** `docs/plans/QT6_PLAN.md`, 4.2.
+- **Measured:** `docs/archive/QT6_PLAN.md`, 4.2.
 
 ## MPV Shared on X11: the picture lags a window being made bigger
 
@@ -33,7 +33,7 @@ When one ends (a new Qt, a driver), check it and take it out, saying so in the c
   (asked over its own xcb connection), which takes most of it away.
 - **What would end it:** a newer Mesa on the system. The AppImage, Snap and pip install use the system's drivers.
 - **Not known:** real GPUs; only the VM's was tried.
-- **Measured:** `docs/plans/QT6_PLAN.md`, 4.2.
+- **Measured:** `docs/archive/QT6_PLAN.md`, 4.2.
 
 ## Others
 
@@ -45,7 +45,7 @@ When one ends (a new Qt, a driver), check it and take it out, saying so in the c
 - **Hardware VLC on Linux X11 held the GUI over a minute loading 36 cells of 1080p30**, single and multi-process; the X
   server's path, not Windows. Measured 2026-11-09, not again since. `MPV_PERFORMANCE.md`, "VLC's freeze at 36 cells".
 - **Qt's header on GNOME's Wayland has GNOME's colours, not the app's theme,** and follows GNOME's light or dark. Qt has
-  no way to give it ours; the app draws a line under it. Our own frame would end it (ROADMAP). `docs/plans/QT6_PLAN.md`,
+  no way to give it ours; the app draws a line under it. Our own frame would end it (ROADMAP). `docs/archive/QT6_PLAN.md`,
   4.2.
 - **On Wayland the window's place isn't restored.** Wayland doesn't let an app place its own window. ROADMAP, Qt 6.
-- **Hiding the taskbar button does nothing under sway:** its X11 doesn't take the request. `docs/plans/QT6_PLAN.md`, 4.1.
+- **Hiding the taskbar button does nothing under sway:** its X11 doesn't take the request. `docs/archive/QT6_PLAN.md`, 4.1.

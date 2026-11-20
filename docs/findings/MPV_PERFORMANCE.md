@@ -1,7 +1,7 @@
 # VLC and MPV under load: findings
 
 Measured 2026-11-06, on the `mpv` branch as of Stage 3. The bench is in `tests/real_app/bench`.
-Plan items that come out of it are in `docs/plans/MPV_PLAN.md`, Stage 10.
+Plan items that come out of it are in `docs/archive/MPV_PLAN.md`, Stage 10; what was decided, in `MPV.md`.
 
 ## The answers
 

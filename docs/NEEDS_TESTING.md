@@ -6,7 +6,7 @@ has been checked, what hasn't, and what to look at. With such a machine: use the
 
 ## Windows on arm64
 
-From `docs/plans/QT6_PLAN.md` 7.8 (2026-11-19).
+From `docs/archive/QT6_PLAN.md` 7.8 (2026-11-19).
 
 - **Checked:** GitHub's `windows-11-arm` runner builds the installer and the portable zip and plays a clip on each
   driver (`--self-check`), and runs the unit tests and the real-app scenarios on VLC and MPV (on trial, passing since
@@ -21,7 +21,7 @@ From `docs/plans/QT6_PLAN.md` 7.8 (2026-11-19).
 
 ## Linux on arm64
 
-From `docs/plans/QT6_PLAN.md` 7.3 (2026-11-19).
+From `docs/archive/QT6_PLAN.md` 7.3 (2026-11-19).
 
 - **Checked:** the AppImage is built on GitHub's `ubuntu-24.04-arm` runner and plays a clip there on each driver,
   under Xvfb. From source on that runner: the unit tests and the real-app scenarios on VLC and MPV (on trial).
@@ -30,9 +30,20 @@ From `docs/plans/QT6_PLAN.md` 7.3 (2026-11-19).
 - **Look at:** OpenGL through the board's Mesa driver, MPV's outputs, and what hardware decoding VLC and MPV pick
   there.
 
+## Linux desktops
+
+From `docs/archive/QT6_PLAN.md` 4.2 (2026-11-19).
+
+- **Checked:** Wayland at 1.5 on sway (Qt 6 draws at 1.5, sharp); GNOME 46 on the Ubuntu VM, X11 and Wayland.
+- **Not tried:**
+  - GNOME's own fractional scaling (experimental there), at 125% and 150%.
+  - On X11, MPV Shared's picture as the window is made bigger, on a real GPU. On the VM's Mesa 25.2.8 the cells
+    jump down and back; on Mesa 26.2 and in the Flatpak they don't.
+- **Look at:** text and lines sharp, the layout the same as at 100%; the cells staying put during a resize.
+
 ## Linux on NVIDIA or AMD GPUs
 
-From `docs/plans/MPV_PLAN.md` 10.4 and 10.12 (2026-11-11).
+From `docs/archive/MPV_PLAN.md` 10.4 and 10.12 (2026-11-11).
 
 - **Checked:** Linux on `test_gpu` (Intel, VAAPI, X11 and Wayland). Windows on NVIDIA (RTX 3060) and on an AMD
   iGPU.
@@ -44,7 +55,7 @@ From `docs/plans/MPV_PLAN.md` 10.4 and 10.12 (2026-11-11).
 
 ## Macs
 
-From `docs/plans/MPV_PLAN.md` 11.4 (2026-11-15).
+From `docs/archive/MPV_PLAN.md` 11.4 (2026-11-15).
 
 - **Checked:** every real-app scenario on Hardware MPV, Software MPV and VLC, with Copy and Shared output, on
   `test_macos_real`: a hackintosh with an Intel HD 4600 (VideoToolbox decodes H.264 only), macOS 15 and one 1080p
