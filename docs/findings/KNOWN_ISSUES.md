@@ -35,6 +35,28 @@ When one ends (a new Qt, a driver), check it and take it out, saying so in the c
 - **Not known:** real GPUs; only the VM's was tried.
 - **Measured:** `docs/archive/QT6_PLAN.md`, 4.2.
 
+## MPV Shared on Windows: the window opens white for a moment
+
+- **Seen:** Windows, MPV's Shared output, OpenGL drawn by one GPU while the screen is on another (an NVIDIA card, with
+  the screen on the CPU's AMD graphics): the window opens white, and the empty cells come ~140 ms later. Not on the
+  screen's own GPU, nor with Copy or Direct.
+- **Why:** the first frame Qt draws with OpenGL in a window crosses to the other GPU late. A bare Qt window with a
+  `QOpenGLWidget` and nothing of ours does it too. The app paints its first frame ~65 ms after the window shows, the
+  same as with Copy; that frame then reaches the screen ~140 ms later.
+- **What the app does:** nothing. With Shared the window is drawn with OpenGL from the start (`main/run.py`, the grid's
+  surface made before the window is shown), since a window shown without it is made again as the first video comes:
+  gone from the screen for a moment, on Windows and Linux both. The white at the start was the better of the two.
+  Tried 2026-11-20 and dropped:
+  - keeping the window out of sight until drawn: the app can't tell when its frame is on the screen, so the window came
+    later and still white;
+  - drawing a first frame ahead, in a window of a pixel nobody sees (on a thread of its own, and with Qt before the
+    player is made): white down to ~35 ms, but the app was slower to start;
+  - a window off the screen or out of sight drawing first, a context without a window, no alpha channel in the window
+    (the black line fix off): no change.
+- **What would end it:** OpenGL on the screen's GPU (Windows' Graphics settings, or the NVIDIA Control Panel, for
+  Python or the app's exe), though MPV then decodes on that GPU too.
+- **Measured:** 2026-11-20, an RTX with the screen on an AMD iGPU, by filming the window on the screen; only here.
+
 ## Others
 
 - **Hardware VLC resizes slowly.** VLC can't redraw its picture at a new size; it catches up only with its next frame.
