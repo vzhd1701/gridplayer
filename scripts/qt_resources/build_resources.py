@@ -148,7 +148,8 @@ if __name__ == "__main__":
                     "-silent",
                     "-qm",
                     args.build_dir / dst_path,
-                ]
+                ],
+                check=True,
             )
         else:
             raise ValueError(f"Unknown translation file type: {f_path}")

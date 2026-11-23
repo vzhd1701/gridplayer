@@ -9,6 +9,8 @@ Dependencies:
 - [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) (for release workflow)
 - [conventional-changelog](https://github.com/conventional-changelog/conventional-changelog)
 - [VLC](https://www.videolan.org/)
+- `lrelease` from Qt 6's Linguist tools, on the PATH (for `just generate-resources`); on Windows, the
+  standalone [Qt Linguist](https://github.com/thurask/Qt-Linguist/releases) builds
 - (Optional)[Deno JS Runtime](https://github.com/yt-dlp/yt-dlp/wiki/EJS)
 
 ## Dev install & run
