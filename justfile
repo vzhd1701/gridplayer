@@ -84,17 +84,65 @@ screenshots-clips:
 screenshots:
     ./scripts/screenshots/make.sh
 
-translations-build-main:
+# Translations: only when updating them is the job, see docs/TRANSLATIONS.md.
+# What ships: approved on Crowdin, else AI (marked for review), else English.
+
+# en_US.ts from the code
+translations-extract:
     ./scripts/translations/build_ts.sh
 
-translations-upload-main:
+# en_US.ts to Crowdin
+translations-upload:
     ./scripts/translations/upload.sh
 
-translations-download-approved:
-    ./scripts/translations/download.sh
+# approved translations and suggestions from Crowdin
+translations-pull *ARGS:
+    uv run --frozen python scripts/translations/tr.py pull {{ARGS}}
+
+# the languages rebuilt against en_US.ts
+translations-merge *ARGS:
+    uv run --frozen python scripts/translations/tr.py merge {{ARGS}}
+
+# AI for what is missing: --provider claude|codex|openrouter, --lang, --limit
+translations-ai *ARGS:
+    uv run --frozen python scripts/translations/tr.py ai {{ARGS}}
+
+# AI review of the AI strings, whole file in view: --lang, --report-only
+translations-ai-review *ARGS:
+    uv run --frozen python scripts/translations/tr.py review {{ARGS}}
+
+# QA, report in build/translations/report.md
+translations-check *ARGS:
+    uv run --frozen python scripts/translations/tr.py check {{ARGS}}
+
+# AI translations to Crowdin, for people to check
+translations-push *ARGS:
+    uv run --frozen python scripts/translations/tr.py push {{ARGS}}
+
+# the shares in the language list
+translations-stats:
+    uv run --frozen python scripts/translations/tr.py stats
+
+# context screenshots: --upload sends them to Crowdin
+translations-screenshots *ARGS:
+    uv run --frozen python scripts/translations/tr.py screenshots {{ARGS}}
 
 translations-update-contributors:
     ./scripts/translations/update_contributors.sh
+
+# all of it, in order; AI options as for translations-ai
+translations-all *ARGS:
+    just translations-extract
+    just translations-upload
+    just translations-pull
+    just translations-merge
+    just translations-ai {{ARGS}}
+    just translations-check
+    just translations-push
+    just translations-screenshots --upload
+    just translations-stats
+    just translations-update-contributors
+    just generate-resources
 
 changelog:
     conventional-changelog -p conventionalcommits -u -i /dev/null --stdout

@@ -1,0 +1,48 @@
+# The translations pipeline: `uv run scripts/translations/tr.py --help`
+
+[ai]
+# claude | codex | openrouter, unless --provider says otherwise
+provider = "claude"
+# strings in one request, and requests at the same time
+batch_size = 50
+parallel = 3
+
+# Each provider's model and effort (low, medium, high, ...), said here so a
+# run doesn't change with a CLI's own defaults; a translation's mark keeps
+# both.
+[providers.claude]
+# the Claude Code CLI, on its own login
+model = "claude-opus-5-5"
+effort = "high"
+
+[providers.codex]
+# the Codex CLI, on its own login
+model = "gpt-6.2-sol"
+effort = "high"
+
+[providers.openrouter]
+# key in OPENROUTER_API_KEY or .local/openrouter.yml (api_key: ...)
+model = "anthropic/claude-opus-5.5"
+effort = "high"
+
+# The languages that ship: the file's name, Crowdin's id, the name the AI is
+# told. A new one needs its flag in resources/icons (flag_<file>.svg).
+[languages]
+ar_SA = { crowdin = "ar", name = "Arabic" }
+cs_CZ = { crowdin = "cs", name = "Czech" }
+de_DE = { crowdin = "de", name = "German" }
+es_ES = { crowdin = "es-ES", name = "Spanish (Spain)" }
+fr_FR = { crowdin = "fr", name = "French" }
+hu_HU = { crowdin = "hu", name = "Hungarian" }
+it_IT = { crowdin = "it", name = "Italian" }
+ja_JP = { crowdin = "ja", name = "Japanese" }
+ko_KR = { crowdin = "ko", name = "Korean" }
+nl_NL = { crowdin = "nl", name = "Dutch" }
+no_NO = { crowdin = "no", name = "Norwegian (Bokmål)" }
+pl_PL = { crowdin = "pl", name = "Polish" }
+pt_BR = { crowdin = "pt-BR", name = "Portuguese (Brazil)" }
+ru_RU = { crowdin = "ru", name = "Russian" }
+sv_SE = { crowdin = "sv-SE", name = "Swedish" }
+vi_VN = { crowdin = "vi", name = "Vietnamese" }
+zh_CN = { crowdin = "zh-CN", name = "Chinese (Simplified)" }
+zh_TW = { crowdin = "zh-TW", name = "Chinese (Traditional)" }

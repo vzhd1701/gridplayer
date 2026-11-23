@@ -1,0 +1,33 @@
+# What GridPlayer's words mean, for the AI translating them. Translate a term
+# the same way everywhere; the language's approved translations show how
+# people already did.
+
+keep = [
+    "GridPlayer", "VLC", "MPV", "libmpv", "FFmpeg", "yt-dlp", "Streamlink",
+    "SponsorBlock", "YouTube", "Twitch", "Crowdin", "GitHub", "URL", "HLS",
+    "DASH", "IPTV", "m3u", "pls", "xspf",
+    # the word browsers and sites use; translated, it came out three ways
+    "cookies",
+]
+
+[terms]
+"cell" = "one video's place in the window; the window is split into cells"
+"tile" = "a cell in the Free Tiles and Mosaic modes, where cells can be moved and overlap"
+"grid" = "the way the window is split into rows and columns of cells"
+"Fixed Grid" = "a grid mode: a set number of rows and columns"
+"Fit Shapes" = "a grid mode that sizes cells to the shapes of their videos"
+"Mosaic" = "a grid mode that packs tiles of different sizes edge to edge"
+"Free Tiles" = "a grid mode where tiles are placed freely and may overlap"
+"Single Mode" = "one video fills the window, the others wait (or keep playing) behind it"
+"playlist" = "the saved set of videos, their cells and settings (a .gpls file)"
+"list" = "the files one cell plays one after another (an m3u, a folder, a YouTube playlist)"
+"bookmark" = "a saved moment in a video to jump back to"
+"snapshot" = "a saved state of a video (position, zoom…) to return to, not a screenshot"
+"screenshot" = "a picture of the current frame saved to a file"
+"seek" = "jump to another moment of the video"
+"loop" = "play a part (or the whole video) again and again"
+"Fit / Fill / Stretch" = "how a video is shown in its cell: whole with bars, cropped to fill, distorted to fill"
+"output" = "how MPV draws the video (Copy, Shared, Direct are names of outputs)"
+"overlay" = "the controls and info drawn over a video"
+"Sync" = "make the other videos follow this one (position, play/pause, speed, zoom)"
+"[ALL]" = "a menu tag: the command acts on every video; keep the square brackets and capitals, translate the word"
