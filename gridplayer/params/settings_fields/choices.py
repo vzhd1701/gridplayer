@@ -208,7 +208,7 @@ def mpv_cpu_decodings() -> dict:
 def mpv_picture_qualities() -> dict:
     return {
         MpvPictureQuality.AUTO: translate("SettingsDialog", "Auto"),
-        MpvPictureQuality.FAST: translate("SettingsDialog", "Fast"),
+        MpvPictureQuality.FAST: translate("SettingsDialog", "Fast", "Picture quality"),
         MpvPictureQuality.HIGH: translate("SettingsDialog", "High"),
     }
 
@@ -227,7 +227,7 @@ def seek_precisions() -> dict:
         SeekPrecision.EXACT_MARKS: translate(
             "SettingsDialog", "Exact for bookmarks and chapters"
         ),
-        SeekPrecision.FAST: translate("SettingsDialog", "Fast"),
+        SeekPrecision.FAST: translate("SettingsDialog", "Fast", "Seeking"),
     }
 
 
