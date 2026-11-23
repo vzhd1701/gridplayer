@@ -35,10 +35,13 @@ class Translation:
     provider: str | None
 
 
-def string_key(text: str, context: str) -> tuple[str, str, str]:
-    lines = context.split("\n")
-    rest = [line for line in lines[1:] if not _LOCATION.match(line)]
-    return lines[0], unescape(text), "\n".join(rest)
+def string_key(text: str, context: str, identifier: str = "") -> tuple[str, str, str]:
+    """A translator note (`#:`) comes before the Qt context, which the
+    identifier ("Context['text']") names."""
+    lines = [line for line in context.split("\n") if not _LOCATION.match(line)]
+    qt_context = identifier.split("['", 1)[0]
+    start = lines.index(qt_context) if qt_context in lines else 0
+    return lines[start], unescape(text), "\n".join(lines[start + 1 :])
 
 
 class Crowdin:
@@ -99,7 +102,9 @@ class Crowdin:
 
     def strings(self, file_id: int) -> list[CrowdinString]:
         return [
-            CrowdinString(s["id"], string_key(s["text"], s["context"]))
+            CrowdinString(
+                s["id"], string_key(s["text"], s["context"], s.get("identifier", ""))
+            )
             for s in self.pages("/strings", fileId=file_id)
         ]
 

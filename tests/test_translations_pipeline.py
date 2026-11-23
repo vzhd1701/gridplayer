@@ -573,6 +573,12 @@ def test_crowdin_key_reads_comment_and_unescapes():
         "&lt;b&gt;Media&lt;/b&gt;", "Dialog - Add Files\nFile formats\nplayer/x.py:64"
     ) == ("Dialog - Add Files", "<b>Media</b>", "File formats")
     assert string_key("Play", "Actions\nparams/actions.py:7") == ("Actions", "Play", "")
+    # a translator note comes first
+    assert string_key(
+        "{PERCENT}% AI",
+        "share translated by AI\nLanguageList\nwidgets/language_list.py:76",
+        "LanguageList['{PERCENT}% AI']",
+    ) == ("LanguageList", "{PERCENT}% AI", "")
     assert escape('<a href="{URL}">') == "&lt;a href=&quot;{URL}&quot;&gt;"
 
 
