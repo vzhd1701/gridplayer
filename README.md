@@ -38,10 +38,15 @@ information about the position, sound volume, loops, aspect ratio, etc.
 
 ## Translation
 
-GridPlayer now supports internationalization! Anyone with a handful of free time and
+GridPlayer speaks many languages. Anyone with a handful of free time and
 desire to support this project is [welcome to contribute](https://crowdin.com/project/gridplayer).
-No coding skills or special software required, all dialogs are well documented and
-there are not many strings to translate.
+No coding skills or special software required.
+
+Strings no one has translated yet are translated by AI, so the app is never half
+in English. On Crowdin they are marked as AI suggestions: checking and approving
+them, or writing better ones, is a great way to help. An approved translation
+always replaces the AI's. Settings shows for each language how much people
+have checked.
 
 Huge thanks to [every contributor](https://github.com/vzhd1701/gridplayer#translations)!
 

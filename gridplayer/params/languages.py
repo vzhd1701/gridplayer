@@ -4,6 +4,7 @@ from PyQt6.QtCore import QLocale
 
 from gridplayer.params import env
 from gridplayer.params.languages_contrib import LANGUAGES_CONTRIB
+from gridplayer.params.languages_progress import LANGUAGES_PROGRESS
 
 
 class LanguageAuthor(NamedTuple):
@@ -13,8 +14,10 @@ class LanguageAuthor(NamedTuple):
 
 class Language(NamedTuple):
     code: str
-    completion: int
     authors: list[LanguageAuthor]
+    # shares of the strings: approved by people on Crowdin, translated by AI
+    checked: int = 100
+    ai: int = 0
 
     @property
     def author_names(self):
@@ -52,13 +55,14 @@ def get_system_language() -> str:
 LANGUAGES = (
     Language(
         code=lang_id,
-        completion=lang["completion"],
         authors=[
             LanguageAuthor(user["full_name"], user["profile_url"])
-            for user in lang["authors"]
+            for user in LANGUAGES_CONTRIB.get(lang_id, {}).get("authors", [])
         ],
+        checked=progress["checked"],
+        ai=progress["ai"],
     )
-    for lang_id, lang in LANGUAGES_CONTRIB.items()
+    for lang_id, progress in LANGUAGES_PROGRESS.items()
 )
 
 LANGUAGES = tuple(sorted(LANGUAGES, key=lambda lng: lng.code))

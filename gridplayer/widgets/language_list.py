@@ -1,3 +1,5 @@
+import html
+
 from PyQt6.QtCore import QEvent, QSize, Qt
 from PyQt6.QtGui import QColor, QFont, QFontMetrics, QIcon, QPainter, QPixmap
 from PyQt6.QtSvgWidgets import QSvgWidget
@@ -19,6 +21,9 @@ from gridplayer.params.theme import current_colors, selection_fill
 from gridplayer.utils.qt import translate
 
 _MIN_TEXT_WIDTH = 80
+# first strong isolate ... pop directional isolate
+_ISOLATE = "\u2068"
+_ISOLATE_END = "\u2069"
 _LTR_ALIGN = (
     Qt.AlignmentFlag.AlignLeft
     | Qt.AlignmentFlag.AlignAbsolute
@@ -50,14 +55,35 @@ def _ltr_html(inner: str) -> str:
     return f'<div dir="ltr">{inner}</div>'
 
 
-def _language_title_html(language: Language) -> str:
-    if language.completion == 100:
-        completion_txt = ""
-    else:
-        completion_txt = f" [{language.completion} %]"
+def _progress_text(language: Language) -> str:
+    """ " · 72% checked · 28% AI": nothing when people checked it all."""
 
+    if language.checked >= 100:
+        return ""
+
+    parts = []
+    # none at all: the language is still mostly English, which shows
+    if language.checked or not language.ai:
+        parts.append(
+            #: share of the app's text people checked on Crowdin
+            translate("LanguageList", "{PERCENT}% checked").format(
+                PERCENT=language.checked
+            )
+        )
+    if language.ai:
+        parts.append(
+            #: share of the app's text translated by AI, not yet checked
+            translate("LanguageList", "{PERCENT}% AI").format(PERCENT=language.ai)
+        )
+
+    return "".join(f" · {part}" for part in parts)
+
+
+def _language_title_html(language: Language) -> str:
+    # isolated, or a right-to-left name pulls the numbers after it to its side
     return _ltr_html(
-        f"<b>{language.title_native}</b> ({language.country_native}){completion_txt}"
+        f"{_ISOLATE}<b>{language.title_native}</b> ({language.country_native})"
+        f"{_ISOLATE_END}{html.escape(_progress_text(language))}"
     )
 
 

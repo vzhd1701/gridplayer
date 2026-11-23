@@ -16,6 +16,7 @@ from gridplayer.widgets.language_list import (
     _author_credit_html,
     _author_plain,
     _author_tooltip,
+    _progress_text,
     _selection_tint,
     _shown_author_count,
 )
@@ -32,9 +33,10 @@ def _qapp():
 def _language(
     code: str,
     authors: list[LanguageAuthor] | None = None,
-    completion: int = 100,
+    checked: int = 100,
+    ai: int = 0,
 ) -> Language:
-    return Language(code=code, completion=completion, authors=authors or [])
+    return Language(code=code, authors=authors or [], checked=checked, ai=ai)
 
 
 def _has_checkmark(row) -> bool:
@@ -88,7 +90,7 @@ def test_value_roundtrip_and_left_checkmark():
     widget = LanguageList()
     widget.add_language_row(_language("en_US"))
     widget.add_language_row(_language("de_DE", _many_authors(2)))
-    widget.add_language_row(_language("zh_CN", _many_authors(7), completion=84))
+    widget.add_language_row(_language("zh_CN", _many_authors(7), checked=84, ai=16))
 
     widget.setValue("de_DE")
     assert widget.value() == "de_DE"
@@ -206,3 +208,17 @@ def test_clicking_authors_selects_row_without_text_selection():
         row.authors.textInteractionFlags()
         & Qt.TextInteractionFlag.TextSelectableByMouse
     )
+
+
+@pytest.mark.parametrize(
+    ("checked", "ai", "text"),
+    [
+        (100, 0, ""),
+        (72, 28, " · 72% checked · 28% AI"),
+        (90, 0, " · 90% checked"),
+        (0, 100, " · 100% AI"),
+        (0, 0, " · 0% checked"),
+    ],
+)
+def test_progress_says_what_people_checked_and_what_ai_did(checked, ai, text):
+    assert _progress_text(_language("cs_CZ", checked=checked, ai=ai)) == text

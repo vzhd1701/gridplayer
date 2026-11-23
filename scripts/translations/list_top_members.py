@@ -174,7 +174,8 @@ def get_languages_top(token, project_id, min_words, admin_username):
     #  'winning': 874
     # },
 
-    result = {"en_US": {"completion": 100, "authors": []}}
+    # the shares checked and AI-made come from the files: tr.py stats
+    result = {"en_US": {"authors": []}}
 
     for item in progress_list:
         lang_id = item["data"]["languageId"]
@@ -212,10 +213,7 @@ def get_languages_top(token, project_id, min_words, admin_username):
         # keep order of contribution (already sorted by report)
         print(f"{len(authors)} authors", file=sys.stderr)
 
-        result[code] = {
-            "completion": completion,
-            "authors": authors,
-        }
+        result[code] = {"authors": authors}
 
     return result
 
