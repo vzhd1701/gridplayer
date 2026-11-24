@@ -524,6 +524,8 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
         return stream, None
 
     time_changed = pyqtSignal(MILLISECONDS)
+    # see VLCVideoDriver.frame_stepped
+    frame_stepped = pyqtSignal()
     playback_status_changed = pyqtSignal(bool)
 
     video_ready = pyqtSignal()
@@ -877,6 +879,7 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
                 self.playback_status_changed_emit,
             ),
             (self.video_driver.time_changed, self.time_changed_emit),
+            (self.video_driver.frame_stepped, self.frame_stepped),
             (self.video_driver.load_finished, self.load_video_finish),
             (self.video_driver.tracks_changed, self._on_tracks_changed),
             (self.video_driver.chapters_changed, self._on_chapters_changed),
@@ -1634,6 +1637,11 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
     def set_playback_rate(self, rate) -> None:
         self.video_driver.set_playback_rate(rate)
+
+    def steps_own_frames(self) -> bool:
+        """See VLCVideoDriver.steps_own_frames."""
+
+        return self.video_driver.steps_own_frames()
 
     def get_ms_per_frame(self) -> float:
         # Not rounded to whole milliseconds: at 23.976 fps a frame lasts

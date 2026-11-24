@@ -80,3 +80,23 @@ def deinterlace_options(
         return {"deinterlace": "yes", "vf": ""}
 
     return {"deinterlace": "no", "vf": f"lavfi=[{mode_filter}]"}
+
+
+# what of a filter makes a picture of each field
+_FIELD_FILTERS = ("separatefields", "mode=send_field")
+
+
+def makes_field_pictures(options: dict[str, str], is_own_active: bool | None) -> bool:
+    """Whether the deinterlacing told to mpv makes a picture of each field, twice as
+    many as there are frames: then mpv's own frame step goes half a frame.
+
+    mpv's own deinterlacer does, on whatever is going through it: with "auto", only
+    while it's at work, which is_own_active says where mpv has said (None before)."""
+
+    if any(field in options["vf"] for field in _FIELD_FILTERS):
+        return True
+
+    if options["deinterlace"] == "auto":
+        return is_own_active is not False
+
+    return options["deinterlace"] == "yes"

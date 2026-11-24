@@ -69,6 +69,8 @@ _FAST_SEEK_AIMS = {
     SeekPrecision.FAST: frozenset({SeekAim.HAND, SeekAim.MARK}),
 }
 
+_FRAME_STEPS = {SeekAim.NEXT_FRAME: 1, SeekAim.PREVIOUS_FRAME: -1}
+
 # Across and up and down, after whatever turn there is: see player._TURNS. For
 # a file that says to turn the picture on its side, the other way round: a flip
 # is of the frame as the file stores it, as on the VLC drivers.
@@ -346,6 +348,7 @@ class VideoDriverMpv(VLCVideoDriver):
             (self._player.media_loaded, self._on_media_loaded),
             (self._player.playback_restarted, self._on_playback_restarted),
             (self._player.time_changed, self._on_time),
+            (self._player.frame_stepped, self.frame_stepped),
             (self._player.paused_changed, self.playback_status_changed_emit),
             (self._player.video_size_changed, self._on_video_size),
             (self._player.failed, self.error_state),
@@ -608,8 +611,21 @@ class VideoDriverMpv(VLCVideoDriver):
         self._time_ms = time_ms
         self.time_changed.emit(time_ms)
 
+    def steps_own_frames(self) -> bool:
+        return (
+            self._player is not None
+            and not self._player.media_input.is_live
+            and not self._player.is_stepping_fields
+        )
+
     def set_time(self, seek_ms, aim=SeekAim.EXACT):
         if self._player is None or self._player.media_input.is_live:
+            return
+
+        # what the block made of steps_own_frames, not asked again: it waits for
+        # frame_stepped
+        if aim in _FRAME_STEPS:
+            self._player.step_frame(_FRAME_STEPS[aim])
             return
 
         from_ms, self._time_ms = self._time_ms, seek_ms

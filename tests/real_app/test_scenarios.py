@@ -39,6 +39,7 @@ NEEDS_LIBMPV = {
     "mpv_audio",
     "mpv_basics",
     "mpv_deinterlace",
+    "mpv_frame_steps",
     "mpv_hidden_cells",
     "mpv_low_video_memory",
     "mpv_seeking",
@@ -78,7 +79,13 @@ MPV_DRIVERS_RUN = os.environ.get("REAL_APP_MPV_DRIVERS", ",".join(MPV_DRIVERS)).
 
 # The MPV scenarios written for Hardware MPV that Software MPV is held to too:
 # with libmpv's software renderer it turns, flips and deinterlaces by filters.
-ALSO_ON_SOFTWARE_MPV = ("mpv_basics", "mpv_deinterlace", "mpv_subtitles", "mpv_view")
+ALSO_ON_SOFTWARE_MPV = (
+    "mpv_basics",
+    "mpv_deinterlace",
+    "mpv_frame_steps",
+    "mpv_subtitles",
+    "mpv_view",
+)
 
 RUN_TIMEOUT_SEC = 300
 # a run gone this long says where each thread was stuck, before it's killed

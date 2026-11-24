@@ -126,6 +126,8 @@ _MANUAL_SEEK_AIMS = {
     "seek": SeekAim.MARK,
 }
 
+_FRAME_STEP_COMMANDS = {"next_frame", "previous_frame"}
+
 # VLC's adaptive demuxer turns a seek down while it is still restarting its
 # streams for the one before -- "not seekable" in its own log, and nothing
 # else to say so -- and plays on from where that one took it. Made again once
@@ -164,6 +166,9 @@ class VideoBlock(QWidget):
     sync_time = pyqtSignal(MILLISECONDS)
     # the others paused for a step to the next or the previous frame
     sync_paused = pyqtSignal(bool)
+    # A step to the next or the previous frame by the player's own frames
+    # landed, for the others to go where it did (see step_frame)
+    sync_stepped = pyqtSignal()
     # what the viewer had this one do, for the others to follow where that
     # is synced: played or paused, zoomed or moved (a SyncedView), the speed
     sync_pause = pyqtSignal(bool)
@@ -274,6 +279,10 @@ class VideoBlock(QWidget):
         # the seek before the last, when the last was made before it landed
         self._seek_behind: int | None = None
 
+        # a step by the player's own frames on its way, for the others to
+        # follow once it lands
+        self._is_step_sync_due = False
+
         self.video_driver: VideoFrameVLC | None = None
 
         # before the resolver, which is wired to them as it is made
@@ -335,6 +344,7 @@ class VideoBlock(QWidget):
             (video_driver.tracks_changed, self.audio.tracks_changed),
             (video_driver.chapters_changed, self.chapters.update),
             (video_driver.time_changed, self.time_changed),
+            (video_driver.frame_stepped, self._frame_stepped),
             (video_driver.playback_status_changed, self.playback_status_changed),
             (video_driver.error, self.video_driver_error),
             (video_driver.crash, self.crash),
@@ -388,6 +398,7 @@ class VideoBlock(QWidget):
         # a seek made on it has nothing left to land on
         self._seek_target = None
         self._seek_behind = None
+        self._is_step_sync_due = False
 
         self._release_video_driver()
 
@@ -407,6 +418,7 @@ class VideoBlock(QWidget):
         self.video_driver.view_followed.disconnect()
         self.video_driver.picture_shape_changed.disconnect()
         self.video_driver.time_changed.disconnect()
+        self.video_driver.frame_stepped.disconnect()
         self.video_driver.playback_status_changed.disconnect()
         self.video_driver.error.disconnect()
         self.video_driver.crash.disconnect()
@@ -792,6 +804,9 @@ class VideoBlock(QWidget):
         seek = attrgetter(command)(self)
         aim = _MANUAL_SEEK_AIMS.get(command)
 
+        # a step still on its way is left behind
+        self._is_step_sync_due = False
+
         # the others go exactly where this one is said to be, so it has to be there
         if aim is not None and self._ctx.seek_sync_mode == SeekSyncMode.DISABLED:
             is_done = seek(*args, aim=aim)
@@ -808,8 +823,16 @@ class VideoBlock(QWidget):
         if not self.is_video_initialized:
             return
 
-        if command in {"next_frame", "previous_frame"} and self.video_tracks:
-            self.sync_paused.emit(True)
+        if command in _FRAME_STEP_COMMANDS:
+            if self.video_tracks:
+                self.sync_paused.emit(True)
+
+            # a step by the player's own frames, which lands who knows where
+            if is_done:
+                self._is_step_sync_due = (
+                    self._ctx.seek_sync_mode != SeekSyncMode.DISABLED
+                )
+                return
 
         self.sync_percent.emit(self.position)
         self.sync_time.emit(int(self.video_driver.length * self.position))
@@ -2229,6 +2252,10 @@ class VideoBlock(QWidget):
         if seek_ms < self.loop_start or seek_ms > self.loop_end:
             seek_ms = self.loop_start
 
+        # a step this takes the place of lands nowhere, for the others to follow
+        if aim not in {SeekAim.NEXT_FRAME, SeekAim.PREVIOUS_FRAME}:
+            self._is_step_sync_due = False
+
         # the viewer going back into the video stays in it, whatever file
         # its end was looking for
         if is_viewers:
@@ -2286,21 +2313,25 @@ class VideoBlock(QWidget):
     @only_seekable
     @only_initialized
     def next_frame(self):
-        self.step_frame(1)
+        return self.step_frame(1)
 
     @only_with_video_tacks
     @only_seekable
     @only_initialized
     def previous_frame(self):
-        self.step_frame(-1)
+        return self.step_frame(-1)
 
     @only_with_video_tacks
     @only_seekable
     @only_initialized
     def step_frame(self, frames):
+        """Pause, or go a frame on (1) or back (-1) when paused. True where the
+        player goes by the video's own frames, which can come at any rate: it
+        says once it has landed (_frame_stepped)."""
+
         if not self.video_params.is_paused:
             self.set_pause(True)
-            return
+            return None
 
         ms_per_frame = self.video_driver.get_ms_per_frame()
 
@@ -2312,7 +2343,35 @@ class VideoBlock(QWidget):
         frame_no = int(self.time // ms_per_frame)
         new_time = round((frame_no + frames + 0.5) * ms_per_frame)
 
-        self.seek_shift_ms(new_time - self.time)
+        # A step that leaves the loop goes round it or ends it, by the time.
+        # Otherwise the time is the player's to go by where it has nothing
+        # better, the frame rate being only an average.
+        is_own = (
+            abs(frames) == 1
+            and self.loop_start <= new_time <= self.loop_end
+            and self.video_driver.steps_own_frames()
+        )
+
+        if is_own:
+            aim = SeekAim.NEXT_FRAME if frames > 0 else SeekAim.PREVIOUS_FRAME
+        else:
+            aim = SeekAim.EXACT
+
+        self.seek_shift_ms(new_time - self.time, aim)
+
+        # not False, which manual_seek takes for a seek that went nowhere
+        return True if is_own else None
+
+    def _frame_stepped(self):
+        """A step by the player's own frames landed, at the time it said last."""
+
+        # where it landed is where the step went, nowhere near the time guessed
+        self._seek_target = None
+        self._seek_landed_at = None
+
+        if self._is_step_sync_due:
+            self._is_step_sync_due = False
+            self.sync_stepped.emit()
 
     def manual_view(self, command, *args):
         """Zoom or move the picture as the viewer asked, for the others to

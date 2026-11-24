@@ -34,6 +34,10 @@ What there is (every video a test pattern with a tone, small and short):
     dash/manifest.mpd         60s of DASH, picture and sound apart, in segments
                               of 2s, for serving as a live stream (see
                               Driver.serve_live_dash)
+    frames/vfr.mp4            8s, no sound: 5 frames a second for 4s, then 25,
+                              its only key frame at the start; each frame one
+                              flat colour of its own (see VFR_FRAMES,
+                              frame_shown)
 
 The HLS ones are for serving over HTTP; see Driver.serve.
 """
@@ -47,6 +51,11 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 ROOT = REPO / "build" / "test-media"
+
+# when each frame of frames/vfr.mp4 starts, in ms
+VFR_FRAMES = tuple(i * 200 for i in range(20)) + tuple(
+    4000 + i * 40 for i in range(100)
+)
 
 CHAPTERS = (
     (0, 15_000, "Intro"),
@@ -97,6 +106,16 @@ class Media:
     @property
     def dash(self) -> Path:
         return self.root / "dash"
+
+    @property
+    def vfr(self) -> Path:
+        return self.root / "frames" / "vfr.mp4"
+
+
+def frame_shown(color) -> int:
+    """Which frame of frames/vfr.mp4 a QColor of it is."""
+
+    return round((color.green() - 10) / 20) * 12 + round((color.red() - 10) / 20)
 
 
 def is_ffmpeg_installed() -> bool:
@@ -186,6 +205,7 @@ def _make(media: Media) -> None:
     _make_dubs(media.dubs)
     _make_shapes(media.shapes)
     _make_dash(media.dash)
+    _make_vfr(media.vfr.parent)
 
 
 def _make_feature(where: Path) -> None:
@@ -333,6 +353,23 @@ def _make_shapes(where: Path) -> None:
         *("-display_rotation:v:0", "90"),
         *("-i", "wide_pixels.mp4", "-c", "copy"),
         "phone.mp4",
+        cwd=where,
+    )
+
+
+def _make_vfr(where: Path) -> None:
+    where.mkdir()
+
+    # the frame's number in red and green, steps of 20 well apart for H.264
+    coded = r"format=rgb24,geq=r='mod(N\,12)*20+10':g='floor(N/12)*20+10':b=128"
+
+    _ffmpeg(
+        *("-f", "lavfi", "-i", "color=c=black:size=320x180:rate=5:duration=4"),
+        *("-f", "lavfi", "-i", "color=c=black:size=320x180:rate=25:duration=4"),
+        *("-filter_complex", f"[0:v][1:v]concat=n=2:v=1,{coded},format=yuv420p[v]"),
+        *("-map", "[v]", "-fps_mode", "passthrough"),
+        *("-c:v", "libx264", "-preset", "ultrafast", "-g", "300"),
+        "vfr.mp4",
         cwd=where,
     )
 

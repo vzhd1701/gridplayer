@@ -624,6 +624,22 @@ class VideoBlocksManager(ManagerBase):
         if self._ctx.is_pause_sync or self._ctx.seek_sync_mode != SeekSyncMode.DISABLED:
             self.set_pause.emit(is_paused)
 
+    def sync_frame_step(self, leader: VideoBlock):
+        """The others to where the leader's step by its own frames landed, where
+        seeks are synced. Not the leader, whom a seek by the time could take off
+        the frame it stepped to: its frames come at no steady rate."""
+
+        mode = self._ctx.seek_sync_mode
+
+        for vb in self._ctx.video_blocks:
+            if vb is leader:
+                continue
+
+            if mode == SeekSyncMode.PERCENT:
+                vb.seek_percent(leader.position)
+            elif mode == SeekSyncMode.TIMECODE:
+                vb.seek(leader.time)
+
     def sync_rate(self, leader: VideoBlock, rate: float):
         """The others to play at the leader's speed, where that is synced."""
 
@@ -878,6 +894,7 @@ class VideoBlocksManager(ManagerBase):
             (vb.sync_percent_single, self.all_seek_percent),
             (vb.sync_time_single, self.all_seek),
             (vb.sync_paused, self.sync_frame_step_pause),
+            (vb.sync_stepped, partial(self.sync_frame_step, vb)),
             (vb.sync_pause, partial(self.sync_pause, vb)),
             (vb.sync_view, partial(self.sync_view, vb)),
             (vb.sync_view_single, partial(self.sync_view_single, vb)),

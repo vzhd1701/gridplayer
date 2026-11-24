@@ -35,7 +35,11 @@ from gridplayer.mpv_player.conf import (
     log_skipped,
     resolve,
 )
-from gridplayer.mpv_player.deinterlace import deinterlace_options, unavailable_modes
+from gridplayer.mpv_player.deinterlace import (
+    deinterlace_options,
+    makes_field_pictures,
+    unavailable_modes,
+)
 from gridplayer.mpv_player.quality import FAST, high_options, is_high
 from gridplayer.mpv_player.subtitles import (
     SubtitleView,
@@ -114,6 +118,15 @@ _FLIP_COORDS = {
 # How often the time goes to the GUI at most: mpv says every frame, VLC about
 # four times a second, and what hangs off it was written for that.
 TIME_REPORT_MS = 200
+
+# An exact seek keeps a frame up to 5 ms short of its aim: a little more than that
+# from the frame shown is the next one, however close it is.
+_NEXT_FRAME_S = 0.006
+
+# A step still not landed after this long is taken for one that never will, so as not
+# to hold the next back for good. A step back far from a key frame of a big video can
+# take a second.
+_STEP_GIVE_UP_S = 5
 
 # vd-lavc-skipframe: the decoder leaves out frames nothing else depends on,
 # about half of them, where they're there to leave out. mpv's own frame drop
@@ -535,6 +548,8 @@ class MpvPlayer(QObject):
     media_loaded = pyqtSignal(Media)
     playback_restarted = pyqtSignal()
     time_changed = pyqtSignal(MILLISECONDS)
+    # a step_frame landed, the time where said just before
+    frame_stepped = pyqtSignal()
     paused_changed = pyqtSignal(bool)
     video_size_changed = pyqtSignal(int, int, object)
     failed = pyqtSignal(str, tuple)
@@ -655,6 +670,14 @@ class MpvPlayer(QObject):
         # seek_key_frame. Counted, so only the last one made is.
         self._forward_seek: tuple[float, float] | None = None
         self._seeks_made = 0
+        # The seek that is a step_frame on its way, the same once mpv has taken it
+        # (a restart before that is another seek's), and the steps asked for since,
+        # to go one after another: mpv adds a seek to one on its way, and turns down
+        # a step back.
+        self._step_seek: int | None = None
+        self._step_taken: int | None = None
+        self._steps_due: collections.deque[int] = collections.deque()
+        self._step_sent_at = 0.0
         # a live stream stopped for being paused, or opening again after it, with the
         # last picture still up: mpv only has black to draw until it's playing again
         self.is_picture_held = False
@@ -673,6 +696,8 @@ class MpvPlayer(QObject):
         self._has_auto_deinterlace = False
         # a frame has said so, for as long as this video is open
         self._is_interlaced = False
+        # mpv's own deinterlacer at work, with "auto": None until mpv says
+        self._is_own_deinterlacing: bool | None = None
         self._hwdec_current = hwdec
         # Held for anything sent to mpv or read from it, from whichever thread, with
         # _is_closing looked at inside. What's worked out goes in that order, and never
@@ -720,6 +745,9 @@ class MpvPlayer(QObject):
         self.mpv.observe_property("hwdec-current", self._on_hwdec)
         self.mpv.observe_property("chapter-list", self._on_chapter_list)
         self.mpv.observe_property("eof-reached", self._on_eof)
+
+        if self._has_auto_deinterlace:
+            self.mpv.observe_property("deinterlace-active", self._on_deinterlace_active)
 
         if self._wid is not None:
             self.mpv.observe_property("vo-configured", self._on_vo_configured)
@@ -1016,6 +1044,7 @@ class MpvPlayer(QObject):
     def seek_exact(self, at_s: float) -> None:
         self._seeks_made += 1
         self._forward_seek = None
+        self._drop_steps()
 
         self.command("seek", at_s, "absolute+exact")
 
@@ -1031,6 +1060,7 @@ class MpvPlayer(QObject):
 
         self._seeks_made += 1
         self._forward_seek = None
+        self._drop_steps()
 
         if from_s is None or at_s <= from_s:
             self.command("seek", at_s, "absolute+keyframes")
@@ -1047,6 +1077,69 @@ class MpvPlayer(QObject):
                 self._on_forward_seek_taken, self._seeks_made, (from_s, exact_s)
             ),
         )
+
+    @property
+    def is_stepping_fields(self) -> bool:
+        """Whether step_frame would go half a frame, a picture being made of each
+        field: see makes_field_pictures."""
+
+        return makes_field_pictures(
+            self._deinterlace_options, self._is_own_deinterlacing
+        )
+
+    def step_frame(self, direction: int) -> None:
+        """To the next frame of the video's own (1) or the one before (-1), however
+        long either lasts. Asked for again before it has landed, after it: each a
+        frame. frame_stepped says once the last has landed.
+
+        Not mpv's frame-step forwards, which plays the frame: as long as the frame
+        lasts, unpaused for that long."""
+
+        with self._telling:
+            is_stuck = time.monotonic() - self._step_sent_at > _STEP_GIVE_UP_S
+
+            if self._step_seek is not None and not is_stuck:
+                self._steps_due.append(direction)
+            else:
+                self._steps_due.clear()
+                self._send_step(direction)
+
+    def _send_step(self, direction: int) -> None:
+        self._seeks_made += 1
+        self._forward_seek = None
+        self._step_seek = self._seeks_made
+        self._step_sent_at = time.monotonic()
+
+        taken = partial(self._on_step_taken, self._seeks_made)
+
+        if direction > 0:
+            self.command("seek", _NEXT_FRAME_S, "relative+exact", callback=taken)
+        else:
+            self.command("frame-back-step", callback=taken)
+
+    def _on_step_taken(self, seek_no, error, _result) -> None:
+        with self._telling:
+            if seek_no != self._step_seek:
+                return
+
+            if error is None:
+                self._step_taken = seek_no
+            else:
+                # nothing to land: where it is is where the steps got to
+                self._drop_steps()
+                self._ask_time(is_step=True)
+
+    def _on_step_landed(self) -> None:
+        self._step_seek = self._step_taken = None
+
+        if self._steps_due:
+            self._send_step(self._steps_due.popleft())
+        else:
+            self._ask_time(is_step=True)
+
+    def _drop_steps(self) -> None:
+        self._step_seek = None
+        self._steps_due.clear()
 
     def _on_forward_seek_taken(self, seek_no, forward_seek, error, _result) -> None:
         if error is None and seek_no == self._seeks_made:
@@ -1587,7 +1680,9 @@ class MpvPlayer(QObject):
                 self._wake_renderer()
                 self.playback_restarted.emit()
                 # where a seek landed, with no wait for the next read
-                if not self.is_paused:
+                if self._step_seek is not None and self._step_taken == self._step_seek:
+                    self._on_step_landed()
+                elif not self.is_paused:
                     self._ask_time()
                 self._check_forward_seek()
                 # the frame a deinterlacer coming off leaves, paused or not
@@ -1908,24 +2003,28 @@ class MpvPlayer(QObject):
         if self._is_media_read and not self.is_paused:
             self._ask_time(is_seek_landed=False)
 
-    def _ask_time(self, is_seek_landed: bool = True) -> None:
+    def _ask_time(self, is_seek_landed: bool = True, is_step: bool = False) -> None:
         # the time, or nothing while there's none
         self.command(
             "expand-text",
             "${=time-pos:}",
-            callback=partial(self._on_time_read, is_seek_landed),
+            callback=partial(self._on_time_read, is_seek_landed, is_step),
         )
 
-    def _on_time_read(self, is_seek_landed: bool, error, text) -> None:
-        if error is not None or not text:
-            return
-
+    def _on_time_read(self, is_seek_landed: bool, is_step: bool, error, text) -> None:
         try:
-            seconds = float(text)
+            seconds = float(text) if error is None and text else None
         except ValueError:
-            return
+            seconds = None
 
-        self._on_time("time-pos", seconds, is_asked=True, is_seek_landed=is_seek_landed)
+        if seconds is not None:
+            self._on_time(
+                "time-pos", seconds, is_asked=True, is_seek_landed=is_seek_landed
+            )
+
+        # landed all the same, wherever that is
+        if is_step:
+            self.frame_stepped.emit()
 
     def _on_time(self, _name, seconds, is_asked=False, is_seek_landed=False) -> None:
         if seconds is None or not self._is_media_read:
@@ -1958,6 +2057,9 @@ class MpvPlayer(QObject):
         self.time_changed.emit(new_time)
 
         self._check_frames_interlaced()
+
+    def _on_deinterlace_active(self, _name, is_active) -> None:
+        self._is_own_deinterlacing = None if is_active is None else bool(is_active)
 
     def _on_eof(self, _name, is_at_end) -> None:
         if is_at_end and not self._is_closing:

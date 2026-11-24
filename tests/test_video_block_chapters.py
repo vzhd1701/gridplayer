@@ -25,6 +25,7 @@ from gridplayer.params.static import (
 )
 from gridplayer.player.managers.active_block import ActiveBlockManager
 from gridplayer.player.managers.lists import MediaListsRegistry
+from gridplayer.player.managers.video_blocks import VideoBlocksManager
 from gridplayer.settings import Settings
 from gridplayer.utils.url_resolve.static import ResolvedVideo
 from gridplayer.widgets import video_block as video_block_module
@@ -587,3 +588,137 @@ class TestWhatASeekIsFor:
         Bookmarker(block)._seek(0)
 
         block.seek.assert_called_once_with(7000, aim=SeekAim.MARK)
+
+
+class TestAStepByThePlayersOwnFrames:
+    """MPV's: it lands on the video's next frame or the one before, wherever that
+    is, and says once it has. The others follow it there, not to a guess."""
+
+    @pytest.fixture
+    def stepping(self, block, mocker):
+        mocker.patch.object(block.video_driver, "steps_own_frames", return_value=True)
+        set_time = mocker.spy(block.video_driver, "set_time")
+
+        sent = []
+        for name in ("sync_percent", "sync_time", "sync_stepped"):
+            getattr(block, name).connect(lambda *args, n=name: sent.append(n))
+
+        block.seek(5000)
+        set_time.reset_mock()
+
+        return SimpleNamespace(
+            aims=lambda: [call.args[1] for call in set_time.call_args_list],
+            sent=sent,
+        )
+
+    def _land(self, block, at_ms):
+        block.video_driver.time_changed.emit(at_ms)
+        block.video_driver.frame_stepped.emit()
+
+    def test_it_says_which_way(self, block, stepping):
+        block._ctx.seek_sync_mode = SeekSyncMode.DISABLED
+
+        block.manual_seek("next_frame")
+        block.manual_seek("previous_frame")
+
+        assert stepping.aims() == [SeekAim.NEXT_FRAME, SeekAim.PREVIOUS_FRAME]
+
+    def test_the_others_follow_once_it_lands(self, block, stepping):
+        block._ctx.seek_sync_mode = SeekSyncMode.TIMECODE
+
+        block.manual_seek("next_frame")
+        assert stepping.sent == []
+
+        self._land(block, 5200)
+        assert stepping.sent == ["sync_stepped"]
+
+        # and only that once
+        self._land(block, 5200)
+        assert stepping.sent == ["sync_stepped"]
+
+    def test_with_nothing_synced_nobody_follows(self, block, stepping):
+        block._ctx.seek_sync_mode = SeekSyncMode.DISABLED
+
+        block.manual_seek("next_frame")
+        self._land(block, 5200)
+
+        assert "sync_stepped" not in stepping.sent
+
+    def test_a_seek_made_before_it_lands_is_followed_instead(self, block, stepping):
+        block._ctx.seek_sync_mode = SeekSyncMode.TIMECODE
+
+        block.manual_seek("next_frame")
+        block.manual_seek("seek", 20000)
+        self._land(block, 20000)
+
+        assert stepping.sent == ["sync_percent", "sync_time"]
+
+    def test_one_overtaken_by_another_seek_is_followed_by_nobody(self, block, stepping):
+        """Another cell's synced seek reaches it before it lands: the step never
+        will, and a step of its own later, as Next frame [ALL] makes, isn't one
+        for the others to follow."""
+
+        block._ctx.seek_sync_mode = SeekSyncMode.TIMECODE
+
+        block.manual_seek("next_frame")
+        block.seek(20000)
+        block.next_frame()
+        self._land(block, 20040)
+
+        assert stepping.sent == []
+
+    def test_where_it_lands_is_where_it_is(self, block, stepping):
+        block._ctx.seek_sync_mode = SeekSyncMode.DISABLED
+
+        block.manual_seek("next_frame")
+        self._land(block, 5200)
+
+        assert not block.is_seek_on_its_way
+        assert block.arriving_time == 5200
+
+    def test_by_time_the_others_follow_at_once(self, block, stepping, mocker):
+        """VLC's."""
+        mocker.patch.object(block.video_driver, "steps_own_frames", return_value=False)
+        block._ctx.seek_sync_mode = SeekSyncMode.TIMECODE
+
+        block.manual_seek("next_frame")
+
+        assert stepping.aims() == [SeekAim.EXACT]
+        assert stepping.sent == ["sync_percent", "sync_time"]
+
+
+class TestTheOthersFollowingAStep:
+    @pytest.fixture
+    def cells(self):
+        leader = SimpleNamespace(time=5200, position=0.25)
+        others = [MagicMock(), MagicMock()]
+        manager = SimpleNamespace(
+            _ctx=SimpleNamespace(video_blocks=[others[0], leader, others[1]])
+        )
+
+        return manager, leader, others
+
+    @pytest.mark.parametrize(
+        ("mode", "method", "arg"),
+        [
+            (SeekSyncMode.TIMECODE, "seek", 5200),
+            (SeekSyncMode.PERCENT, "seek_percent", 0.25),
+        ],
+    )
+    def test_all_but_the_leader_go_there(self, cells, mode, method, arg):
+        manager, leader, others = cells
+        manager._ctx.seek_sync_mode = mode
+
+        VideoBlocksManager.sync_frame_step(manager, leader)
+
+        for vb in others:
+            getattr(vb, method).assert_called_once_with(arg)
+
+    def test_none_where_seeks_are_not_synced(self, cells):
+        manager, leader, others = cells
+        manager._ctx.seek_sync_mode = SeekSyncMode.DISABLED
+
+        VideoBlocksManager.sync_frame_step(manager, leader)
+
+        for vb in others:
+            assert not vb.method_calls

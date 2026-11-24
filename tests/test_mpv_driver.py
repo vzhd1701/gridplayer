@@ -2191,13 +2191,224 @@ def test_the_last_time_reported_goes_on_to_the_block(monkeypatch):
     assert told == [5000]
 
 
-@pytest.mark.parametrize("aim", list(SeekAim))
+_FRAME_STEP_AIMS = (SeekAim.NEXT_FRAME, SeekAim.PREVIOUS_FRAME)
+
+
+@pytest.mark.parametrize("aim", [aim for aim in SeekAim if aim not in _FRAME_STEP_AIMS])
 def test_every_seek_is_exact_when_set_so(monkeypatch, aim):
     driver = _seeking(monkeypatch, SeekPrecision.EXACT)
 
     driver.set_time(27_000, aim)
 
     assert driver._player.mpv.commands == [("seek", 27.0, "absolute+exact")]
+
+
+@pytest.mark.parametrize(
+    ("aim", "command"),
+    [
+        # a little past the frame on show, 5 ms being kept short of an exact seek
+        (SeekAim.NEXT_FRAME, ("seek", 0.006, "relative+exact")),
+        (SeekAim.PREVIOUS_FRAME, ("frame-back-step",)),
+    ],
+)
+def test_a_frame_step_goes_by_the_videos_own_frames(monkeypatch, aim, command):
+    driver = _seeking(monkeypatch, SeekPrecision.FAST)
+
+    assert driver.steps_own_frames()
+
+    driver.set_time(27_000, aim)
+
+    assert driver._player.mpv.commands == [command]
+
+
+@pytest.mark.parametrize(
+    "options",
+    [
+        {"deinterlace": "no", "vf": "lavfi=[yadif=mode=send_field]"},
+        {"deinterlace": "yes", "vf": ""},
+        # mpv's own, before it has said whether it's at work
+        {"deinterlace": "auto", "vf": ""},
+    ],
+)
+def test_no_frames_of_its_own_to_step_by_with_a_picture_for_each_field(
+    monkeypatch, options
+):
+    """mpv's own step would go a field, half a frame: the block steps by time."""
+
+    driver = _seeking(monkeypatch, SeekPrecision.EXACT)
+    driver._player._deinterlace_options.update(options)
+
+    assert not driver.steps_own_frames()
+
+
+def test_a_step_goes_as_the_block_had_it_whatever_has_changed_since(monkeypatch):
+    """The block waits for frame_stepped once it has taken the player's step."""
+
+    driver = _seeking(monkeypatch, SeekPrecision.EXACT)
+    driver._player._deinterlace_options["deinterlace"] = "yes"
+
+    driver.set_time(27_000, SeekAim.NEXT_FRAME)
+
+    assert driver._player.mpv.commands == [("seek", 0.006, "relative+exact")]
+
+
+def test_mpv_s_own_deinterlacer_idle_leaves_its_frames_to_step_by(monkeypatch):
+    driver = _seeking(monkeypatch, SeekPrecision.EXACT)
+    player = driver._player
+    player._deinterlace_options["deinterlace"] = "auto"
+
+    assert not driver.steps_own_frames()
+
+    player.mpv.observers["deinterlace-active"]("deinterlace-active", False)
+    assert driver.steps_own_frames()
+
+    player.mpv.observers["deinterlace-active"]("deinterlace-active", True)
+    assert not driver.steps_own_frames()
+
+
+def test_a_live_stream_has_no_frames_to_step_by(monkeypatch):
+    driver = _seeking(monkeypatch, SeekPrecision.EXACT)
+    driver._player.media_input.is_live = True
+
+    assert not driver.steps_own_frames()
+
+
+_STEPS = {1: ("seek", 0.006, "relative+exact"), -1: ("frame-back-step",)}
+
+
+def _stepping_player():
+    player = _player()
+    player._is_media_read = True
+    player.is_paused = True
+    said = []
+    player.time_changed.connect(lambda ms: said.append(ms))
+    player.frame_stepped.connect(lambda: said.append("stepped"))
+
+    return player, said
+
+
+def _step_taken(player, direction, error=None):
+    """mpv saying it has the step's command, before the step lands."""
+
+    player.mpv.callbacks[_STEPS[direction]](error, None)
+
+
+def _steps_sent(player):
+    return [command for command in player.mpv.commands if command in _STEPS.values()]
+
+
+def test_a_step_says_where_it_landed_once_it_has():
+    player, said = _stepping_player()
+    player.mpv.time_says = "4.52"
+
+    player.step_frame(1)
+    _step_taken(player, 1)
+    assert said == []
+
+    _restart(player)
+    assert said == [4521, "stepped"]
+
+    # the next restart isn't the step's
+    _restart(player)
+    assert said == [4521, "stepped"]
+
+
+def test_a_restart_before_mpv_has_the_step_is_another_seek_s():
+    """A seek before it, still landing as the step is asked for."""
+
+    player, said = _stepping_player()
+
+    player.step_frame(1)
+    _restart(player)
+    assert "stepped" not in said
+
+    _step_taken(player, 1)
+    _restart(player)
+    assert said[-1] == "stepped"
+
+
+def test_steps_asked_for_before_one_lands_go_one_after_another():
+    """A key held down: mpv would add a seek to one on its way, and turn a step back
+    down, a frame for several presses."""
+
+    player, said = _stepping_player()
+
+    for direction in (1, 1, -1):
+        player.step_frame(direction)
+    assert _steps_sent(player) == [_STEPS[1]]
+
+    _step_taken(player, 1)
+    _restart(player)
+    assert _steps_sent(player) == [_STEPS[1], _STEPS[1]]
+    assert "stepped" not in said
+
+    _step_taken(player, 1)
+    _restart(player)
+    assert _steps_sent(player) == [_STEPS[1], _STEPS[1], _STEPS[-1]]
+
+    _step_taken(player, -1)
+    _restart(player)
+    assert said.count("stepped") == 1
+
+
+def test_a_step_turned_down_lands_where_it_is():
+    player, said = _stepping_player()
+
+    player.step_frame(-1)
+    player.step_frame(-1)
+    _step_taken(player, -1, error=RuntimeError("no"))
+
+    assert said[-1] == "stepped"
+    assert _steps_sent(player) == [_STEPS[-1]]
+
+
+def test_a_step_landed_with_no_time_to_read_says_so_all_the_same():
+    player, said = _stepping_player()
+    player.mpv.time_says = ""
+
+    player.step_frame(1)
+    _step_taken(player, 1)
+    _restart(player)
+
+    assert said == ["stepped"]
+
+
+def test_a_step_that_never_lands_holds_the_next_back_only_so_long(monkeypatch):
+    player, _said = _stepping_player()
+    clock = [100.0]
+    monkeypatch.setattr(
+        player_module, "time", SimpleNamespace(monotonic=lambda: clock[0])
+    )
+
+    player.step_frame(1)
+    player.step_frame(1)
+    assert _steps_sent(player) == [_STEPS[1]]
+
+    clock[0] += player_module._STEP_GIVE_UP_S + 1
+    player.step_frame(-1)
+
+    assert _steps_sent(player) == [_STEPS[1], _STEPS[-1]]
+
+
+@pytest.mark.parametrize(
+    "seek",
+    [
+        lambda player: player.seek_exact(10.0),
+        lambda player: player.seek_key_frame(10.0, 10.0, None),
+    ],
+)
+def test_a_seek_made_after_a_step_lands_as_a_seek(seek):
+    player, said = _stepping_player()
+
+    player.step_frame(-1)
+    player.step_frame(-1)
+    _step_taken(player, -1)
+    seek(player)
+    _restart(player)
+
+    assert "stepped" not in said
+    # the press waiting goes with it
+    assert _steps_sent(player) == [_STEPS[-1]]
 
 
 @pytest.mark.parametrize("precision", list(SeekPrecision))

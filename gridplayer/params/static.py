@@ -599,12 +599,17 @@ class GLLineFix(AutoName):
 class SeekAim(Enum):
     """What a seek is for, which says how exact it has to be."""
 
-    # a frame step, other videos following one, a loop, a skip, a place put back
+    # other videos following one, a loop, a skip, a place put back
     EXACT = auto()
     # a bookmark, a chapter, a time typed in
     MARK = auto()
     # the bar, a seek key, a random place
     HAND = auto()
+    # A frame step. The time is worked out from the frame rate, which is only an
+    # average: a driver that can step by the video's own frames does that instead,
+    # and says where it landed (see VideoBlock.step_frame).
+    NEXT_FRAME = auto()
+    PREVIOUS_FRAME = auto()
 
 
 class UnsavedChangesMode(AutoName):

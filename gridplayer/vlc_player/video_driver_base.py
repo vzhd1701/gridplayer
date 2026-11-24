@@ -10,6 +10,9 @@ from gridplayer.vlc_player.static import Media, MediaInput
 
 class VLCVideoDriver(QObject, metaclass=QABC):
     time_changed = pyqtSignal(MILLISECONDS)
+    # a frame step of the player's own landed, the time where said just before:
+    # see steps_own_frames
+    frame_stepped = pyqtSignal()
     playback_status_changed = pyqtSignal(int)
     load_finished = pyqtSignal(Media)
     tracks_changed = pyqtSignal(Media)
@@ -101,6 +104,15 @@ class VLCVideoDriver(QObject, metaclass=QABC):
     def set_time(self, seek_ms, aim=SeekAim.EXACT):
         """Go to a time, as exactly as what the seek is for needs where the driver
         has a choice: see SeekPrecision. VLC has none."""
+
+    def steps_own_frames(self) -> bool:
+        """Whether a seek for a frame step goes to the video's next frame or the one
+        before by the player's own reckoning, the time given being left aside: then
+        frame_stepped says once it has landed.
+
+        Not VLC's: VLC 3 steps forwards only, and says no time with it."""
+
+        return False
 
     @abstractmethod
     def set_playback_rate(self, rate): ...

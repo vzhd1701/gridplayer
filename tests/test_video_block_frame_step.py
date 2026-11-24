@@ -5,7 +5,8 @@ from PyQt6.QtCore import QSettings
 from PyQt6.QtWidgets import QApplication
 
 from gridplayer.models.video import Video
-from gridplayer.params.static import VideoInitialState
+from gridplayer.mpv_player.deinterlace import makes_field_pictures
+from gridplayer.params.static import SeekAim, VideoInitialState
 from gridplayer.settings import Settings
 from gridplayer.widgets.video_block import VideoBlock
 from gridplayer.widgets.video_frame_vlc_base import DEFAULT_FPS, VideoFrameVLC
@@ -24,7 +25,7 @@ def _isolated_settings(tmp_path):
     )
 
 
-def _stepping_block(mocker, fps, time=0):
+def _stepping_block(mocker, fps, time=0, steps_own_frames=False):
     block = mocker.Mock()
     block.video_params = Video(
         uri="http://example.com/a.mp4", playback_state=VideoInitialState.PAUSED
@@ -33,9 +34,12 @@ def _stepping_block(mocker, fps, time=0):
     block.is_live = False
     block.video_tracks = [mocker.Mock()]
     block.time = time
+    block.loop_start = 0
+    block.loop_end = 600_000
     block.video_driver.get_ms_per_frame.return_value = 1000 / fps
+    block.video_driver.steps_own_frames.return_value = steps_own_frames
 
-    def _seek_shift_ms(shift_ms):
+    def _seek_shift_ms(shift_ms, aim=SeekAim.EXACT):
         block.time += shift_ms
 
     block.seek_shift_ms.side_effect = _seek_shift_ms
@@ -121,3 +125,77 @@ def test_frame_duration_falls_back_without_a_frame_rate(mocker):
     frame.media.cur_video_track.fps = None
 
     assert VideoFrameVLC.get_ms_per_frame(frame) == 1000 / DEFAULT_FPS
+
+
+def _aims(block):
+    return [call.args[1] for call in block.seek_shift_ms.call_args_list]
+
+
+def test_by_time_where_the_player_has_no_frames_of_its_own(mocker):
+    """VLC: the time is all it goes by, and the others follow it at once."""
+    block = _stepping_block(mocker, fps=25, time=5000)
+
+    assert VideoBlock.step_frame(block, 1) is None
+    assert VideoBlock.step_frame(block, -1) is None
+
+    assert _aims(block) == [SeekAim.EXACT, SeekAim.EXACT]
+
+
+def test_by_the_players_own_frames_where_it_has_them(mocker):
+    block = _stepping_block(mocker, fps=25, time=5000, steps_own_frames=True)
+
+    assert VideoBlock.step_frame(block, 1) is True
+    assert VideoBlock.step_frame(block, -1) is True
+
+    assert _aims(block) == [SeekAim.NEXT_FRAME, SeekAim.PREVIOUS_FRAME]
+
+
+@pytest.mark.parametrize(
+    ("time", "frames", "loop"),
+    [
+        # back from the first frame goes round to the end
+        (20, -1, (0, 600_000)),
+        # on from the last of a loop goes round to its start
+        (9_990, 1, (0, 10_000)),
+        (5_000, 1, (5_000, 5_030)),
+    ],
+)
+def test_a_step_out_of_the_loop_goes_by_time(mocker, time, frames, loop):
+    block = _stepping_block(mocker, fps=25, time=time, steps_own_frames=True)
+    block.loop_start, block.loop_end = loop
+
+    assert VideoBlock.step_frame(block, frames) is None
+
+    assert _aims(block) == [SeekAim.EXACT]
+
+
+@pytest.mark.parametrize(
+    ("options", "is_own_active", "is_fields"),
+    [
+        ({"deinterlace": "no", "vf": ""}, None, False),
+        # mpv's own, on everything or only on what's interlaced
+        ({"deinterlace": "yes", "vf": ""}, None, True),
+        ({"deinterlace": "auto", "vf": ""}, True, True),
+        ({"deinterlace": "auto", "vf": ""}, False, False),
+        # not said yet
+        ({"deinterlace": "auto", "vf": ""}, None, True),
+        # the modes by name
+        ({"deinterlace": "no", "vf": "lavfi=[yadif=mode=send_frame]"}, None, False),
+        ({"deinterlace": "no", "vf": "lavfi=[yadif=mode=send_field]"}, None, True),
+        ({"deinterlace": "no", "vf": "lavfi=[bwdif=mode=send_field]"}, None, True),
+        (
+            {"deinterlace": "no", "vf": "lavfi=[separatefields,scale=h=ih*2]"},
+            None,
+            True,
+        ),
+        (
+            {"deinterlace": "no", "vf": "lavfi=[fieldmatch,yadif,decimate]"},
+            None,
+            False,
+        ),
+    ],
+)
+def test_mpv_steps_a_field_where_a_picture_is_made_of_each(
+    options, is_own_active, is_fields
+):
+    assert makes_field_pictures(options, is_own_active) is is_fields
