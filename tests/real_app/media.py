@@ -41,6 +41,9 @@ What there is (every video a test pattern with a tone, small and short):
     short/clip.mp4            45 frames at 25 fps, no sound, coloured the
                               same way: a short clip as #129 made it
     short/sound.wav           a 1 s tone, 22 kHz mono, nothing else
+    from_one/finished.m3u8    60s of HLS in segments of 1s numbered from 1,
+                              as some hosts number a finished video; vod.m3u8
+                              the same, said to be one
 
 The HLS ones are for serving over HTTP; see Driver.serve.
 """
@@ -121,6 +124,10 @@ class Media:
     @property
     def short_sound(self) -> Path:
         return self.root / "short" / "sound.wav"
+
+    @property
+    def from_one(self) -> Path:
+        return self.root / "from_one"
 
 
 def frame_shown(color) -> int:
@@ -218,6 +225,7 @@ def _make(media: Media) -> None:
     _make_dash(media.dash)
     _make_vfr(media.vfr.parent)
     _make_short(media.short_clip.parent)
+    _make_from_one(media.from_one)
 
 
 def _make_feature(where: Path) -> None:
@@ -407,6 +415,31 @@ def _make_short(where: Path) -> None:
         *("-ac", "1", "-c:a", "pcm_s16le"),
         "sound.wav",
         cwd=where,
+    )
+
+
+def _make_from_one(where: Path) -> None:
+    where.mkdir()
+
+    # more segments than a live stream's window keeps (LIVESTREAM_EDGE)
+    _ffmpeg(
+        *_pattern(60, source="testsrc2"),
+        *_tone(440, 60),
+        *("-c:v", "libx264", "-preset", "ultrafast", "-g", "25", "-c:a", "aac"),
+        *("-f", "hls", "-hls_time", "1", "-hls_list_size", "0"),
+        *("-start_number", "1", "-hls_segment_filename", "seg%d.ts"),
+        "finished.m3u8",
+        cwd=where,
+    )
+
+    finished = (where / "finished.m3u8").read_text(encoding="utf-8")
+    (where / "vod.m3u8").write_text(
+        finished.replace(
+            "#EXT-X-MEDIA-SEQUENCE:1\n",
+            "#EXT-X-MEDIA-SEQUENCE:1\n#EXT-X-PLAYLIST-TYPE:VOD\n",
+        ),
+        encoding="utf-8",
+        newline="\n",
     )
 
 

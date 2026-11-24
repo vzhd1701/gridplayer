@@ -53,10 +53,12 @@ NEEDS_LIBMPV = {
 # the scenarios written for VLC that the MPV drivers are held to as well
 ALSO_ON_MPV = (
     "aspect_ratio",
+    "click_events_off",
     "cookies",
     "crop_ratio",
     "dubs",
     "external_audio_jump",
+    "hls_numbered_from_one",
     "list_shape",
     "live",
     "live_dash",
