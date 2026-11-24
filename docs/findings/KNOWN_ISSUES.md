@@ -57,6 +57,25 @@ When one ends (a new Qt, a driver), check it and take it out, saying so in the c
   Python or the app's exe), though MPV then decodes on that GPU too.
 - **Measured:** 2026-11-20, an RTX with the screen on an AMD iGPU, by filming the window on the screen; only here.
 
+## VLC on Windows: a sound of 1.2 s or less is cut to its first 100 ms
+
+- **Seen:** Windows, any VLC driver, a file of sound alone (a WAV from a soundboard) of 1.2 s or less: on each pass only
+  about its first 100 ms plays, and its time never moves off 0. MPV plays it out, and so does the VLC app.
+- **Why:** on Windows the app sends VLC's sound out through DirectSound (`--aout=directsound`, `vlc_player/instance.py`);
+  the VLC app uses WASAPI. VLC 3 reads 1000 ms of a file ahead (`file-caching`), so a sound that short is read to its
+  end before any of it has played. VLC's DirectSound output can wait for its sound to play out only once some of it has,
+  so the input ends, or goes round, at once. With a video track the picture holds it back, so a short video's sound
+  plays.
+- **What the app does:** nothing. Reading less ahead for short sounds alone (`:file-caching=50`, given after parsing every
+  small local file first) made one of 0.3 s or more play out, but was dropped (2026-11-24): another step in loading
+  every small file, numbers found on one machine, sounds under 0.3 s still cut, and MPV, the default, plays them right.
+  Given to every file, that cache costs a short video about 7 of 45 frames a pass.
+- **What would end it:** MPV, for anyone playing such files. Or VLC's WASAPI output, if the reason for DirectSound (likely
+  that WASAPI's volume is the whole process's, so cells couldn't have their own) no longer held.
+- **Measured:** 2026-11-24, libVLC 3.0.24 alone and in the app, tones and a 1.05 s WAV: any rate and channels, looped by
+  `:input-repeat` or by the media list player or not at all; 1.3 s and longer play out; WASAPI plays them all. The
+  real-app scenario `short_loops` holds MPV to playing a 1 s sound out.
+
 ## Others
 
 - **Hardware VLC resizes slowly.** VLC can't redraw its picture at a new size; it catches up only with its next frame.

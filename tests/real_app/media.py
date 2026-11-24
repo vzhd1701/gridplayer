@@ -38,6 +38,9 @@ What there is (every video a test pattern with a tone, small and short):
                               its only key frame at the start; each frame one
                               flat colour of its own (see VFR_FRAMES,
                               frame_shown)
+    short/clip.mp4            45 frames at 25 fps, no sound, coloured the
+                              same way: a short clip as #129 made it
+    short/sound.wav           a 1 s tone, 22 kHz mono, nothing else
 
 The HLS ones are for serving over HTTP; see Driver.serve.
 """
@@ -111,9 +114,17 @@ class Media:
     def vfr(self) -> Path:
         return self.root / "frames" / "vfr.mp4"
 
+    @property
+    def short_clip(self) -> Path:
+        return self.root / "short" / "clip.mp4"
+
+    @property
+    def short_sound(self) -> Path:
+        return self.root / "short" / "sound.wav"
+
 
 def frame_shown(color) -> int:
-    """Which frame of frames/vfr.mp4 a QColor of it is."""
+    """Which frame of frames/vfr.mp4 or short/clip.mp4 a QColor of it is."""
 
     return round((color.green() - 10) / 20) * 12 + round((color.red() - 10) / 20)
 
@@ -206,6 +217,7 @@ def _make(media: Media) -> None:
     _make_shapes(media.shapes)
     _make_dash(media.dash)
     _make_vfr(media.vfr.parent)
+    _make_short(media.short_clip.parent)
 
 
 def _make_feature(where: Path) -> None:
@@ -357,19 +369,43 @@ def _make_shapes(where: Path) -> None:
     )
 
 
+# the frame's number in red and green, steps of 20 well apart for H.264
+FRAME_COLOURS = r"format=rgb24,geq=r='mod(N\,12)*20+10':g='floor(N/12)*20+10':b=128"
+
+
 def _make_vfr(where: Path) -> None:
     where.mkdir()
-
-    # the frame's number in red and green, steps of 20 well apart for H.264
-    coded = r"format=rgb24,geq=r='mod(N\,12)*20+10':g='floor(N/12)*20+10':b=128"
 
     _ffmpeg(
         *("-f", "lavfi", "-i", "color=c=black:size=320x180:rate=5:duration=4"),
         *("-f", "lavfi", "-i", "color=c=black:size=320x180:rate=25:duration=4"),
-        *("-filter_complex", f"[0:v][1:v]concat=n=2:v=1,{coded},format=yuv420p[v]"),
+        *(
+            "-filter_complex",
+            f"[0:v][1:v]concat=n=2:v=1,{FRAME_COLOURS},format=yuv420p[v]",
+        ),
         *("-map", "[v]", "-fps_mode", "passthrough"),
         *("-c:v", "libx264", "-preset", "ultrafast", "-g", "300"),
         "vfr.mp4",
+        cwd=where,
+    )
+
+
+def _make_short(where: Path) -> None:
+    where.mkdir()
+
+    # with the encoder settings of #129
+    _ffmpeg(
+        *("-f", "lavfi", "-i", "color=c=black:size=320x180:rate=25"),
+        *("-frames:v", "45", "-vf", f"{FRAME_COLOURS},format=yuv420p"),
+        *("-c:v", "libx264", "-preset", "slow", "-crf", "26", "-pix_fmt", "yuv420p"),
+        "clip.mp4",
+        cwd=where,
+    )
+
+    _ffmpeg(
+        *("-f", "lavfi", "-i", "sine=frequency=440:sample_rate=22050:duration=1"),
+        *("-ac", "1", "-c:a", "pcm_s16le"),
+        "sound.wav",
         cwd=where,
     )
 

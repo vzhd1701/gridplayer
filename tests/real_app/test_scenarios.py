@@ -64,6 +64,7 @@ ALSO_ON_MPV = (
     "navigation",
     "pixel_shape",
     "playback",
+    "short_loops",
     "stream_errors",
     "stream_stalls",
     "streams",
