@@ -1,3 +1,7 @@
+import errno
+import mmap
+import sys
+import threading
 from pathlib import Path
 
 import pytest
@@ -718,3 +722,38 @@ def test_review_leaves_out_what_crowdin_has():
     sync.set_crowdin_id(ts.live()[1], 77)
 
     assert [m.source for m in review.targets(ts)] == ["Fill gaps", "Show {name}"]
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows refuses to truncate it")
+def test_write_waits_for_a_mapped_file(tmp_path):
+    """git maps a changed file to hash it; meanwhile Windows won't open it
+    for writing (EINVAL), so the write waits until it is let go."""
+    path = tmp_path / "de_DE.ts"
+    path.write_text("old " * 1000, encoding="utf-8")
+    ts = _lang(_human("Open", "Öffnen"))
+
+    with path.open("rb") as f:
+        mapped = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
+        threading.Timer(0.3, mapped.close).start()
+        ts_file.write(ts, path)
+
+    assert path.read_text(encoding="utf-8") == ts_file.dumps(ts)
+
+
+def test_write_gives_up_on_a_file_held_too_long(tmp_path, monkeypatch):
+    monkeypatch.setattr(ts_file, "WRITE_WAIT_S", 0.2)
+    calls = []
+
+    def refuse(self, *args, **kwargs):
+        calls.append(self)
+        raise OSError(errno.EINVAL, "Invalid argument")
+
+    monkeypatch.setattr(Path, "write_text", refuse)
+    with pytest.raises(OSError, match="Invalid argument"):
+        ts_file.write(_lang(), tmp_path / "de_DE.ts")
+    assert len(calls) > 1
+
+
+def test_write_does_not_wait_on_other_errors(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        ts_file.write(_lang(), tmp_path / "missing" / "de_DE.ts")

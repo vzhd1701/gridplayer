@@ -13,10 +13,15 @@ from:
   whose English is gone, kept as a hint for the string that replaced it.
 """
 
+import errno
+import time
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from pathlib import Path
 from xml.sax.saxutils import escape as _xml_escape
+
+# how long a write waits for a file another program holds (see write)
+WRITE_WAIT_S = 10
 
 AI_EXTRA = "gp-ai"
 REJECTED_EXTRA = "gp-rejected"
@@ -142,7 +147,24 @@ def dumps(ts: TsFile) -> str:
 
 
 def write(ts: TsFile, path: Path) -> None:
-    path.write_text(dumps(ts), encoding="utf-8", newline="\n")
+    """On Windows a file another program holds for a moment can't be
+    written: git (an editor's, after each change) maps it to hash it, which
+    makes the open fail with EINVAL, and a lock with EACCES. The open fails
+    before anything is written, so it is tried again for a while."""
+
+    text = dumps(ts)
+    deadline = time.monotonic() + WRITE_WAIT_S
+    pause = 0.05
+    while True:
+        try:
+            path.write_text(text, encoding="utf-8", newline="\n")
+            return
+        except OSError as e:
+            held = isinstance(e, PermissionError) or e.errno == errno.EINVAL
+            if not held or time.monotonic() >= deadline:
+                raise
+        time.sleep(pause)
+        pause = min(pause * 2, 1.0)
 
 
 def _grouped(messages: list[Message]):
