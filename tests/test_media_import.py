@@ -1,5 +1,6 @@
 """What is added is read into files, links and lists, and put into cells."""
 
+import ssl
 from pathlib import Path
 
 import pytest
@@ -158,6 +159,26 @@ class TestReadingWhatIsAdded:
 
         assert expanded.groups == ()
         assert expanded.failed == (("https://host/list.m3u", "HTTP 404"),)
+
+    def test_a_network_failure_is_said_in_a_few_words(self):
+        """Not the client library's own long line (#239: a stream whose
+        certificate wasn't trusted)."""
+
+        def fetch(_url):
+            try:
+                raise ssl.SSLCertVerificationError(
+                    1, "[SSL: CERTIFICATE_VERIFY_FAILED] self-signed certificate"
+                )
+            except ssl.SSLError as e:
+                raise OSError(
+                    "HTTPSConnectionPool(host='host', port=443): Max retries"
+                ) from e
+
+        expanded = _expand(["https://host/live.m3u8"], fetch)
+
+        ((where, why),) = expanded.failed
+        assert where == "https://host/live.m3u8"
+        assert why.startswith("certificate not trusted")
 
     def test_without_fetching_a_link_is_a_video_as_always(self):
         (group,) = _expand(["https://host/list.m3u"]).groups

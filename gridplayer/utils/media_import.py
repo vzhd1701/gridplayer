@@ -276,7 +276,7 @@ def _expand_web_list(url: str, read_web, expanding) -> None:
         raise
     except Exception as e:
         _log.error(f"Failed to read list {url}: {failure_txt(e)}")
-        expanding.failed.append((url, str(e)))
+        expanding.failed.append((url, failure_txt(e)))
         return
 
     if isinstance(read, ListInput) and read.source is not None:
@@ -300,7 +300,7 @@ def _expand_list_url(url: str, fetch, expanding) -> None:
         return
     except Exception as e:
         _log.error(f"Failed to read list {url}: {failure_txt(e)}")
-        expanding.failed.append((url, str(e)))
+        expanding.failed.append((url, failure_txt(e)))
         return
 
     parsed = urllib.parse.urlparse(url)

@@ -69,6 +69,7 @@ ALSO_ON_MPV = (
     "stream_errors",
     "stream_stalls",
     "streams",
+    "tls_untrusted",
     "tracks",
 )
 MPV_DRIVERS = ("mpv_hw", "mpv_sw")
