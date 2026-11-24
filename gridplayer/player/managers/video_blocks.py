@@ -500,13 +500,29 @@ class VideoBlocksManager(ManagerBase):
         self._is_layout_drag = is_layout_drag
         self.set_layout_drag.emit(is_layout_drag)
 
-    def seek_sync_percent(self, percent):
-        if self._ctx.seek_sync_mode == SeekSyncMode.PERCENT:
-            self.all_seek_percent.emit(percent)
+    def seek_sync_percent(self, leader: VideoBlock, percent):
+        """The others to where the leader went, by percent, where seeks are
+        synced that way. Not the leader, already on its way there: a second
+        seek of each move doubles what a quick drag asks of it, and VLC
+        lands so much later that the two play on apart."""
 
-    def seek_sync_timecode(self, timecode):
-        if self._ctx.seek_sync_mode == SeekSyncMode.TIMECODE:
-            self.all_seek.emit(timecode)
+        if self._ctx.seek_sync_mode != SeekSyncMode.PERCENT:
+            return
+
+        for vb in self._ctx.video_blocks:
+            if vb is not leader:
+                vb.seek_percent(percent)
+
+    def seek_sync_timecode(self, leader: VideoBlock, timecode):
+        """The others to where the leader went, by its time; see
+        seek_sync_percent."""
+
+        if self._ctx.seek_sync_mode != SeekSyncMode.TIMECODE:
+            return
+
+        for vb in self._ctx.video_blocks:
+            if vb is not leader:
+                vb.seek(timecode)
 
     def is_seek_sync_mode_set_to(self, mode):
         return self._ctx.seek_sync_mode == mode
@@ -889,8 +905,8 @@ class VideoBlocksManager(ManagerBase):
             (vb.about_to_close, self.close_single),
             (vb.is_paused_change, self.playing_count_change),
             (vb.picture_shape_change, self.picture_shape_changed),
-            (vb.sync_percent, self.seek_sync_percent),
-            (vb.sync_time, self.seek_sync_timecode),
+            (vb.sync_percent, partial(self.seek_sync_percent, vb)),
+            (vb.sync_time, partial(self.seek_sync_timecode, vb)),
             (vb.sync_percent_single, self.all_seek_percent),
             (vb.sync_time_single, self.all_seek),
             (vb.sync_paused, self.sync_frame_step_pause),

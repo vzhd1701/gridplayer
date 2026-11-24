@@ -76,6 +76,19 @@ When one ends (a new Qt, a driver), check it and take it out, saying so in the c
   `:input-repeat` or by the media list player or not at all; 1.3 s and longer play out; WASAPI plays them all. The
   real-app scenario `short_loops` holds MPV to playing a 1 s sound out.
 
+## VLC with seek sync: a quick drag of the bar can leave the videos apart
+
+- **Seen:** any VLC driver, seek sync on, a cell's bar dragged quickly: now and then the videos play on from the last
+  seek up to about a second apart, and stay so until the next seek. About 1 drag in 50. MPV keeps them together.
+- **Why:** a drag makes a seek for every move of the mouse. Each VLC player works through them and plays on from the last
+  in its own time, 0.5 s to 2 s after it, so one can start playing a second after the other. Seek sync sends the
+  others to the same time, once, and doesn't look again.
+- **What the app does:** the cell dragged is no longer sought a second time by the sync (2026-11-24), which had it 1 drag
+  in 14.
+- **What would end it:** MPV. Or syncing again once a drag is over.
+- **Measured:** 2026-11-24, Software VLC, two 20 s H.264 clips, timecode sync, 150 quick drags (a move every 10 ms)
+  each way; the real-app scenario `seek_sync_scrub` writes down how far apart VLC's are.
+
 ## Others
 
 - **Hardware VLC resizes slowly.** VLC can't redraw its picture at a new size; it catches up only with its next frame.
