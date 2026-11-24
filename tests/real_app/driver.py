@@ -698,6 +698,8 @@ def start(media: Media, out: Path, settings: dict) -> Driver:
     if not prepare_video_libs(store.get("player/video_driver")):
         raise RuntimeError("No video library to play with")
 
+    _need_libmpv_if_asked(store.get("player/video_driver"))
+
     from gridplayer.player import Player
 
     player = Player()
@@ -706,6 +708,24 @@ def start(media: Media, out: Path, settings: dict) -> Driver:
     player.show()
 
     return Driver(app, player, media, out)
+
+
+def _need_libmpv_if_asked(driver) -> None:
+    """A run asked to play with MPV stops here if there's no libmpv. The app
+    would play with VLC instead and say so in a box nobody answers, which
+    holds the run until the hang watchdog ends it."""
+
+    from gridplayer.utils.media_libs import MediaLib, lib_of_driver, lib_problem
+
+    if lib_of_driver(driver) != MediaLib.MPV:
+        return
+
+    problem = lib_problem(MediaLib.MPV)
+    if problem is not None:
+        raise RuntimeError(
+            f"{driver.value} needs libmpv ({problem.name}): set GP_LIBMPV_PATH"
+            " to libmpv-2.dll (build/libmpv-win64 in a checkout on Windows)"
+        )
 
 
 def _move_pointer_quietly() -> None:

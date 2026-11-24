@@ -74,6 +74,9 @@ than writing a harness of your own.
     set `gridplayer.params.env.QT_PLATFORM`.
   * Hardware video needs an X11 window: offscreen takes the `vlc_sw_sp`
     video driver.
+  * On Windows a checkout finds libmpv only through `GP_LIBMPV_PATH`
+    (`build\libmpv-win64\libmpv-2.dll`). A run on an MPV driver without it
+    stops at the start.
   * Closing the player asks "do you want to save?", which nobody answers
     (set `playlist/unsaved_changes` to `discard`), and ends the process with
     `os._exit`.
