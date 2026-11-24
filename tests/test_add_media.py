@@ -196,10 +196,44 @@ class TestFiles:
         manager._ctx.commands.add_recent_uris.assert_called_once_with([a])
 
     def test_one_that_is_gone_tells_so(self, manager, tmp_path):
-        _add(manager, [tmp_path / "gone.mp4"])
+        """Named, with why, not taken for something that isn't a video
+        (#240: a file on a share that couldn't be reached)."""
+
+        gone = tmp_path / "gone.mp4"
+
+        _add(manager, [gone])
 
         assert manager.added == []
-        assert manager.errors
+        assert len(manager.errors) == 1
+        assert str(gone) in manager.errors[0]
+
+    def test_one_that_is_gone_beside_one_that_is_there_is_warned_of(
+        self, manager, tmp_path
+    ):
+        (a,) = _touch(tmp_path, "a.mp4")
+        gone = tmp_path / "gone.mp4"
+
+        videos = _add(manager, [a, gone])
+
+        assert [video.uri for video in videos] == [a]
+        assert manager.errors == []
+        assert len(manager.warnings) == 1
+        assert str(gone) in manager.warnings[0]
+
+    def test_one_that_cannot_be_reached_says_why(self, manager, tmp_path, monkeypatch):
+        gone = tmp_path / "share" / "gone.mp4"
+        stat = Path.stat
+
+        def unreachable(path, *args, **kwargs):
+            if path == gone:
+                raise OSError(0, "The semaphore timeout period has expired")
+            return stat(path, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "stat", unreachable)
+
+        _add(manager, [gone])
+
+        assert "The semaphore timeout period has expired" in manager.errors[0]
 
     def test_and_is_not_remembered_as_recent(self, manager, tmp_path):
         _add(manager, [tmp_path / "gone.mp4"])

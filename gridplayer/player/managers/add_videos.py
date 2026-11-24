@@ -936,8 +936,10 @@ class AddVideosManager(ManagerBase):
                 recent_uris(group for group in groups if _is_openable(group))
             )
 
-        if expanded.failed:
-            self.failed.emit(expanded.failed, False)
+        failed = (*expanded.failed, *_files_not_there(groups))
+
+        if failed:
+            self.failed.emit(failed, not is_opened)
 
     def _add_mode(self, groups, drop, ask=None):
         """How to put the groups into cells, as the playlist says or as the
@@ -1028,8 +1030,8 @@ class AddVideosManager(ManagerBase):
     def _open_in_cells(self, cells, drop) -> bool:
         videos = [video for video in map(self._video_for, cells) if video is not None]
 
+        # what could not be opened is told along with the rest
         if not videos:
-            self.failed.emit((), True)
             return False
 
         self._put_in_cells(videos, drop)
@@ -1211,6 +1213,28 @@ def _places_to_try(count: int, start: int):
     places = itertools.chain(range(start, count), range(start))
 
     return itertools.islice(places, MAX_MISSING_FILES)
+
+
+def _files_not_there(groups) -> list[tuple[str, str]]:
+    """The files added that can't be opened, as (where, why): gone, or on a
+    drive or share that can't be reached, saying which."""
+
+    failed = []
+
+    for group in groups:
+        if isinstance(group, ListInput) or _is_openable(group):
+            continue
+
+        try:
+            Path(group.uri).stat()
+        except OSError as e:
+            why = e.strerror or str(e)
+        else:
+            why = "not a file"
+
+        failed.append((str(group.uri), why))
+
+    return failed
 
 
 def _is_openable(group) -> bool:
