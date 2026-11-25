@@ -7,6 +7,7 @@ path of a .py file anywhere, such as one written for a single debug run.
 It defines
 
     SETTINGS = {"video_defaults/network_retry_times": 2}   (optional)
+    SCREEN = (1920, 1600)    (optional: the offscreen screen's size)
 
     def scenario(d):    # d is a tests.real_app.driver.Driver
         d.open(d.media.feature)
@@ -107,7 +108,12 @@ def main() -> int:
 
     from tests.real_app.driver import start
 
-    driver = start(media.ensure(), out, getattr(module, "SETTINGS", {}))
+    driver = start(
+        media.ensure(),
+        out,
+        getattr(module, "SETTINGS", {}),
+        screen=getattr(module, "SCREEN", None),
+    )
 
     # An exception in a Qt slot goes here; with Python's own hook PyQt
     # aborts the process instead

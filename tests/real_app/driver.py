@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import re
+import shutil
 import sys
 import threading
 import time
@@ -638,9 +639,48 @@ STATE = {
 _STARTED = time.monotonic()
 
 
-def start(media: Media, out: Path, settings: dict) -> Driver:
+def _offscreen_with_screen(home: Path, screen: tuple[int, int]) -> str:
+    """The offscreen platform with a screen of this size, by a config file
+    of Qt's. Its path goes after a colon, which also parts Qt's options: a
+    path with none of its own, relative or from the drive's root."""
+
+    width, height = screen
+    config = home / "offscreen.json"
+    config.parent.mkdir(parents=True, exist_ok=True)
+    config.write_text(
+        json.dumps(
+            {
+                "screens": [
+                    {
+                        "name": "screen",
+                        "x": 0,
+                        "y": 0,
+                        "width": width,
+                        "height": height,
+                        "logicalDpi": 96,
+                        "logicalBaseDpi": 96,
+                        "dpr": 1,
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    try:
+        path = os.path.relpath(config)
+    except ValueError:  # another drive
+        path = str(config.resolve())
+    if ":" in path:
+        path = path.split(":", 1)[1]
+    return f"offscreen:configfile={Path(path).as_posix()}"
+
+
+def start(
+    media: Media, out: Path, settings: dict, screen: tuple[int, int] | None = None
+) -> Driver:
     """The app, as run.py starts it: offscreen, with settings and data of its
-    own under out, and these settings over the defaults above."""
+    own under out, and these settings over the defaults above; on a screen
+    of this width and height, else Qt's own (800 by 800)."""
 
     from gridplayer.utils.glibc_malloc import limit_malloc_arenas
 
@@ -649,6 +689,9 @@ def start(media: Media, out: Path, settings: dict) -> Driver:
         limit_malloc_arenas()
 
     home = out / "home"
+    # a folder used before: none of that run's settings, recent files or
+    # caches, and no runtime folder in the way
+    shutil.rmtree(home, ignore_errors=True)
     os.environ["GP_USER_DATA_DIR"] = str(home / "data")
     os.environ["XDG_DATA_HOME"] = str(home / "data")
     os.environ["XDG_CONFIG_HOME"] = str(home / "config")
@@ -675,6 +718,8 @@ def start(media: Media, out: Path, settings: dict) -> Driver:
 
     # The app picks X11 or Wayland itself, whatever QT_QPA_PLATFORM says:
     # "auto" leaves it to do so, by the Display setting and the decoder
+    if qt_platform == "offscreen" and screen is not None:
+        qt_platform = _offscreen_with_screen(home, screen)
     if qt_platform != "auto":
         env.QT_PLATFORM = qt_platform
 
