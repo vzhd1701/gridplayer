@@ -54,6 +54,13 @@ DATA_DIR_STAND_IN = (
     if sys.platform == "win32"
     else "/home/name/.local/share/gridplayer"
 )
+# a file added that is not there, made up: a real one would show where
+# the run is
+MISSING_FILE = (
+    r"C:\Users\Name\Videos\gone.mp4"
+    if sys.platform == "win32"
+    else "/home/name/Videos/gone.mp4"
+)
 # the sound devices the menu lists, in place of the computer's own
 STAND_IN_DEVICES = ("Speakers", "Headphones")
 # a key added to an action, to show it changed
@@ -83,10 +90,8 @@ CELL_DIALOGS = [
     ("Set Position", "position"),
     ("Set Crop", "crop"),
     ("Audio Delay: %v", "audio-delay"),
-    ("Subtitle Delay: %v", "subtitle-delay"),
     ("On Network Error Attempts: %v", "network-attempts"),
     ("When Video Fails Next After: %v", "next-after"),
-    ("Auto Reload: %v", "auto-reload"),
     ("Fixed Grid", "grid-size"),
     ("Manage Bookmarks", "bookmarks"),
     ("Bookmarks in Playlist", "playlist-bookmarks"),
@@ -192,6 +197,8 @@ def scenario(d):
         window(name, lambda action=action: d.act(block, action))
 
     if feature is not None:
+        # only a cell with subtitles has it
+        window("subtitle-delay", lambda: d.act(feature, "Subtitle Delay: %v"))
         _bookmark_states(d, feature, window, capture, capture_layers, seen_menus)
 
     def pages(prefix, extra=None):
@@ -642,10 +649,12 @@ def _cut(picture, texts, focus, offset):
 
 
 def _broken_cell(d, capture, window, base):
-    """What adding a file that is gone says; a cell whose file is no video,
-    its error and the details of it."""
-    window("add-missing", lambda: d.open(f"{base}/missing/gone.mp4"))
-    window("add-broken", lambda: d.open(f"{base}/broken.mp4"))
+    """What adding a file that is gone says (a made-up path: a link is
+    always taken); a cell whose file is no video, its error and the details
+    of it."""
+    window("add-missing", lambda: d.open(MISSING_FILE))
+    # no window: the cell says it itself, shot below
+    d.open(f"{base}/broken.mp4")
 
     def failed():
         try:
@@ -710,7 +719,18 @@ def _until(d, predicate, timeout) -> bool:
 
 def _list_cell(d, window, base):
     """A cell reading a list, and the List window."""
-    window("add-list", lambda: d.open(f"{base}/list.m3u"))
+    # what is asked of what is added, with Add set to ask; let go of, the
+    # list is added as it is by default
+    from gridplayer.params.static import AddMode
+    from gridplayer.settings import Settings
+
+    mode = Settings().get("playlist/add_mode")
+    d.change_setting("playlist/add_mode", AddMode.ASK)
+    try:
+        window("add-list", lambda: d.open(f"{base}/list.m3u"))
+    finally:
+        d.change_setting("playlist/add_mode", mode)
+    d.open(f"{base}/list.m3u")
 
     def playing():
         try:
