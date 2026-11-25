@@ -568,6 +568,7 @@ class PagedDialog(QDialog):
             return
 
         self._nothing_found.setText(
+            #: the Settings search found nothing; TEXT is what was typed
             translate("SettingsDialog", 'Nothing found for "{TEXT}".').format(
                 TEXT=query.text
             )

@@ -38,8 +38,14 @@ class UpdateEveryDialog(QDialog):
         self._count.setRange(1, MOST)
 
         self._unit = QComboBox()
+        #: unit in the row "Every [number] [unit]": how often the list is read again;
+        #: the number can be anything from 1 up
         self._unit.addItem(translate("Lists", "minutes"), MINUTE_S)
+        #: unit in the row "Every [number] [unit]": how often the list is read again;
+        #: the number can be anything from 1 up
         self._unit.addItem(translate("Lists", "hours"), HOUR_S)
+        #: unit in the row "Every [number] [unit]": how often the list is read again;
+        #: the number can be anything from 1 up
         self._unit.addItem(translate("Lists", "days"), DAY_S)
 
         # in the largest unit it comes to a whole number of
@@ -49,6 +55,7 @@ class UpdateEveryDialog(QDialog):
 
         row = QHBoxLayout()
         row.setSpacing(8)
+        #: start of the row "Every [number] [unit]": how often the list is read again
         row.addWidget(QLabel(translate("Lists", "Every")))
         row.addWidget(self._count)
         row.addWidget(self._unit)
@@ -113,18 +120,24 @@ def every_txt(every_s: int) -> str:
     if every_s % DAY_S == 0:
         count = every_s // DAY_S
         if count == 1:
+            #: how often the list is read again from its source
             return translate("Lists", "Every day")
+        #: how often the list is read again from its source
         return translate("Lists", "Every {COUNT} days").format(COUNT=count)
 
     if every_s % HOUR_S == 0:
         count = every_s // HOUR_S
         if count == 1:
+            #: how often the list is read again from its source
             return translate("Lists", "Every hour")
+        #: how often the list is read again from its source
         return translate("Lists", "Every {COUNT} hours").format(COUNT=count)
 
     count = max(1, every_s // MINUTE_S)
     if count == 1:
+        #: how often the list is read again from its source
         return translate("Lists", "Every minute")
+    #: how often the list is read again from its source
     return translate("Lists", "Every {COUNT} minutes").format(COUNT=count)
 
 
@@ -134,21 +147,29 @@ def in_txt(seconds: float) -> str:
     seconds = int(seconds)
 
     if seconds < MINUTE_S:
+        #: when the list is next read again from its source; follows "Next update:": in
+        #: under a minute
         return translate("Lists", "soon")
 
     if seconds < HOUR_S:
         count = seconds // MINUTE_S
         if count == 1:
+            #: when the list is next read again from its source; follows "Next update:"
             return translate("Lists", "in 1 minute")
+        #: when the list is next read again from its source; follows "Next update:"
         return translate("Lists", "in {COUNT} minutes").format(COUNT=count)
 
     if seconds < DAY_S:
         count = seconds // HOUR_S
         if count == 1:
+            #: when the list is next read again from its source; follows "Next update:"
             return translate("Lists", "in 1 hour")
+        #: when the list is next read again from its source; follows "Next update:"
         return translate("Lists", "in {COUNT} hours").format(COUNT=count)
 
     count = seconds // DAY_S
     if count == 1:
+        #: when the list is next read again from its source; follows "Next update:"
         return translate("Lists", "in 1 day")
+    #: when the list is next read again from its source; follows "Next update:"
     return translate("Lists", "in {COUNT} days").format(COUNT=count)

@@ -284,20 +284,26 @@ class PlaylistSettingsDialog(PagedDialog):
         box = QCustomMessageBox(
             QMessageBox.Icon.Question,
             translate("SettingsDialog", "New Videos"),
+            #: asked on OK when settings on the New Videos page were changed
             translate("SettingsDialog", "Change the videos already here too?"),
             parent=self,
         )
         box.setInformativeText(
+            #: SETTINGS is the names of the settings changed
             translate(
                 "SettingsDialog",
                 "Changed: {SETTINGS}. New videos get this either way.",
             ).format(SETTINGS=names)
         )
         all_button = box.addButton(
-            translate("SettingsDialog", "All videos"), QMessageBox.ButtonRole.AcceptRole
+            #: button: change the videos already open too
+            translate("SettingsDialog", "All videos"),
+            QMessageBox.ButtonRole.AcceptRole,
         )
         new_button = box.addButton(
-            translate("SettingsDialog", "Only new"), QMessageBox.ButtonRole.RejectRole
+            #: button: change only the videos added from now on
+            translate("SettingsDialog", "Only new"),
+            QMessageBox.ButtonRole.RejectRole,
         )
         # Cancel, and Escape, back to the window
         box.addButton(QMessageBox.StandardButton.Cancel)

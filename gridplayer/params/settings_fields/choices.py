@@ -283,8 +283,10 @@ def list_update_txts() -> dict:
         ListUpdate.ON_LOAD: translate("Lists", "On playlist load"),
         ListUpdate.FIVE_MINUTES: translate("Lists", "Every 5 minutes"),
         ListUpdate.FIFTEEN_MINUTES: translate("Lists", "Every 15 minutes"),
+        #: how often the list is read again from its source
         ListUpdate.HOURLY: translate("Lists", "Every hour"),
         ListUpdate.SIX_HOURS: translate("Lists", "Every 6 hours"),
+        #: how often the list is read again from its source
         ListUpdate.DAILY: translate("Lists", "Every day"),
         ListUpdate.MANUAL: translate("Lists", "Manually"),
     }
@@ -376,6 +378,7 @@ def unavailable_deinterlace_modes() -> dict:
     if known is None:
         return {}
 
+    #: why a choice is greyed out: the MPV library in use can't do it
     reason = translate("SettingsDialog", "Not available in this MPV")
 
     return dict.fromkeys(unavailable_modes(known), reason)
@@ -615,6 +618,7 @@ def unavailable_video_drivers() -> dict:
     # Installing a library wouldn't help with this, so it goes over it. With
     # an X server, a restart on X11 does: see the notice
     if not is_hw_video_possible():
+        #: why VLC Hardware is greyed out on Linux
         reasons[VideoDriver.VLC_HW] = translate("SettingsDialog", "Needs X11")
 
     return reasons

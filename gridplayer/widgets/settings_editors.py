@@ -397,6 +397,7 @@ class _FlagsEditor(Editor):
         if not on:
             return translate("SettingsDialog", "None")
         if len(off) < len(on):
+            #: the choices ticked, said by those not ticked, as "All but Edges, Gaps"
             return translate("SettingsDialog", "All but {}").format(", ".join(off))
         return ", ".join(on)
 

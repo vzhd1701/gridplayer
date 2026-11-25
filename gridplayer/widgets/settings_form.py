@@ -1042,6 +1042,8 @@ class SettingsForm(QWidget):
             row.set_hint(
                 None
                 if option is None
+                #: under a setting the Settings search found by one of its choices;
+                #: OPTION is that choice
                 else translate("SettingsDialog", "Option: {OPTION}").format(
                     OPTION=option
                 )

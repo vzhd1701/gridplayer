@@ -90,18 +90,23 @@ def lib_problem_text(lib: MediaLib) -> str | None:
         return None
 
     return {
+        #: why a video driver can't be picked, beside its name
         (MediaLib.VLC, LibProblem.MISSING): translate(
             "SettingsDialog", "VLC not found"
         ),
+        #: why a video driver can't be picked, beside its name
         (MediaLib.VLC, LibProblem.WONT_LOAD): translate(
             "SettingsDialog", "VLC won't load"
         ),
+        #: why a video driver can't be picked, beside its name
         (MediaLib.MPV, LibProblem.MISSING): translate(
             "SettingsDialog", "libmpv not found"
         ),
+        #: why a video driver can't be picked, beside its name
         (MediaLib.MPV, LibProblem.WONT_LOAD): translate(
             "SettingsDialog", "libmpv won't load"
         ),
+        #: why a video driver can't be picked, beside its name
         (MediaLib.MPV, LibProblem.TOO_OLD): translate(
             "SettingsDialog", "libmpv is too old"
         ),

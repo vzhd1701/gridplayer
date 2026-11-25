@@ -453,12 +453,14 @@ class PlaylistListsPage(QWidget):
 
         if error is not None:
             self._say(
+                #: status line; WHAT is the system's error
                 translate("Dialog - List", "Could not be exported: {WHAT}").format(
                     WHAT=error
                 )
             )
         elif exported is not None:
             self._say(
+                #: status line; FILE is the file written
                 translate("Dialog - List", "Exported: {FILE}").format(
                     FILE=exported.name
                 )

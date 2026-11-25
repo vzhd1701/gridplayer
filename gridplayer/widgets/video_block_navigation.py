@@ -299,6 +299,7 @@ class NavigationControl(VideoBlockPart):
 
         self._block.show_overlay()
         self._block.info_change.emit(
+            #: shown on the cell: how many videos were put on the list it plays
             translate("Lists", "Added to the list: {COUNT}").format(
                 COUNT=count_txt(count)
             )

@@ -317,6 +317,7 @@ class _ColorPopup(QtWidgets.QFrame):
         self.swatches.other_wanted.connect(self.ask_other)
 
         self.other = QtWidgets.QPushButton(
+            #: button: opens the full color picker
             translate("SettingsDialog", "Other color...")
         )
         self.other.setFlat(True)

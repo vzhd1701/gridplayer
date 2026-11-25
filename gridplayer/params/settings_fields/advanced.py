@@ -63,6 +63,7 @@ class DriverNotice:
 
 
 def _how_to_fix() -> str:
+    #: link to the help page on making the video driver work
     text = translate("SettingsDialog", "How to fix")
     return f'<a href="{DECODER_HELP_URL}">{text}</a>'
 

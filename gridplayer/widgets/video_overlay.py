@@ -326,6 +326,7 @@ class OverlayBlock(QWidget):
 
         # the List window is open on the cell, and plays in it
         self.label_list_window = OverlayListWindowTag(parent=self)
+        #: tag on a cell: the List window open now is this cell's list
         self.label_list_window.text = translate("Lists", "Current list")
 
         self.info_bar = QHBoxLayout()

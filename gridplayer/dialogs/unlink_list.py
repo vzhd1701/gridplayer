@@ -37,6 +37,7 @@ class UnlinkListDialog(QDialog):
                 "Dialog - List", "Unlink the list “{NAME}”?"
             ).format(NAME=name)
         else:
+            #: unlinking stops the list following its source; its items stay as they are
             question_txt = translate("Dialog - List", "Unlink the list?")
 
         question = QLabel(question_txt)

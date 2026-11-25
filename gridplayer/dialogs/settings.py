@@ -175,10 +175,13 @@ class SettingsDialog(PagedDialog):
         text = form.text_of(key, value)
         if text is None:
             mark.setToolTip(
+                #: tooltip of a setting the open playlist has a value of its own for
                 translate("SettingsDialog", "The open playlist has its own value.")
             )
         else:
             mark.setToolTip(
+                #: tooltip of a setting the open playlist has a value of its own for;
+                #: VALUE is that value
                 translate(
                     "SettingsDialog", "The open playlist has its own value: {VALUE}"
                 ).format(VALUE=text)
@@ -243,6 +246,7 @@ class SettingsDialog(PagedDialog):
     def _slot_mpv_conf_open(self):
         self.mpvConfOpenButton = QPushButton(translate("SettingsDialog", "Open"))
         self.mpvConfOpenButton.setToolTip(
+            #: tooltip of the Open button; FILE is where mpv.conf is
             translate(
                 "SettingsDialog", "Open mpv.conf, made if there isn't one:\n{FILE}"
             ).format(FILE=conf.conf_path())
@@ -252,6 +256,7 @@ class SettingsDialog(PagedDialog):
         return self.mpvConfOpenButton
 
     def _slot_mpv_conf_check(self):
+        #: button: checks mpv.conf for lines MPV can't use
         self.mpvConfCheckButton = QPushButton(translate("SettingsDialog", "Check"))
         self.mpvConfCheckButton.setToolTip(
             translate("SettingsDialog", "Show the lines that can't be used")
@@ -387,9 +392,12 @@ class SettingsDialog(PagedDialog):
         QCustomMessageBox.warning(
             self,
             translate("SettingsDialog", "Screenshots"),
+            #: SPECIFIERS is the %-codes in the screenshot file name that mean nothing,
+            #: as "%q"
             translate(
                 "SettingsDialog", "Unknown specifiers in the file name: {SPECIFIERS}"
             ).format(SPECIFIERS=", ".join(unknown)),
+            #: keep "%%" as it is: it is what is typed in the file name
             info=translate("SettingsDialog", "Write %% for a percent sign."),
         )
 
@@ -688,6 +696,7 @@ class SettingsDialog(PagedDialog):
             QCustomMessageBox.information(
                 self,
                 "mpv.conf",
+                #: COUNT is how many options mpv.conf has
                 translate("SettingsDialog", "All options can be used: {COUNT}").format(
                     COUNT=taken
                 ),
@@ -695,19 +704,26 @@ class SettingsDialog(PagedDialog):
             return
 
         reasons = {
+            #: why a line of mpv.conf is not used, in brackets after the line
             conf.Skip.NOT_AN_OPTION: translate("SettingsDialog", "not an option"),
+            #: why a line of mpv.conf is not used, in brackets after the line
             conf.Skip.UNKNOWN: translate("SettingsDialog", "not an mpv option"),
+            #: why a line of mpv.conf is not used, in brackets after the line
             conf.Skip.BAD_VALUE: translate(
                 "SettingsDialog", "mpv won't take this value"
             ),
+            #: why a line of mpv.conf is not used, in brackets after the line
             conf.Skip.APP_OWN: translate(
                 "SettingsDialog", "GridPlayer sets this itself"
             ),
+            #: why a line of mpv.conf is not used, in brackets after the line
             conf.Skip.DIRECT_ONLY: translate(
                 "SettingsDialog", "only with Direct video output"
             ),
+            #: why a line of mpv.conf is not used, in brackets after the line
             conf.Skip.PROFILE: translate("SettingsDialog", "profiles aren't used"),
         }
+        #: a line of mpv.conf that is not used: its number, its text, and why
         line_text = translate("SettingsDialog", "Line {LINE}: {TEXT} ({REASON})")
         lines = "<br>".join(
             line_text.format(
@@ -763,6 +779,7 @@ class SettingsDialog(PagedDialog):
         would be downloaded again."""
 
         self.cacheClear.setEnabled(False)
+        #: in place of the cache's size while it is emptied
         self.cacheSize.setText(translate("SettingsDialog", "Clearing..."))
 
         self.measure_cache(first=cache.clear)
@@ -771,6 +788,7 @@ class SettingsDialog(PagedDialog):
         self.cacheClear.setEnabled(size > 0)
 
         if size == 0:
+            #: the cache's size when it is empty
             self.cacheSize.setText(translate("SettingsDialog", "Nothing"))
             return
 

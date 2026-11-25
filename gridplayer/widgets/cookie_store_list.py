@@ -179,6 +179,8 @@ class CookieStoreList(QtWidgets.QWidget):
             self,
             translate("SettingsDialog", "Open cookies file"),
             "",
+            #: file types in the open window: translate "Cookies" and "All files", keep
+            #: the rest as it is
             translate("SettingsDialog", "Cookies (*.txt *.json);;All files (*)"),
         )
 

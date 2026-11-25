@@ -229,6 +229,8 @@ PAGES = (
             Section(
                 tray_text(
                     translate("SettingsDialog", "Tray"),
+                    #: section title; macOS only, where the tray icon sits in the menu
+                    #: bar at the top of the screen
                     translate("SettingsDialog", "Menu bar"),
                 ),
                 "player/tray_icon",

@@ -73,9 +73,11 @@ def reading_txt(what: str, count: int, of: int | None = None) -> tuple[str, int]
         size = _size_txt(count)
 
         if not of:
+            #: SIZE is as "2.4 MB"
             text = translate("Lists", "Downloading the list… {SIZE}").format(SIZE=size)
             return text, 0
 
+        #: SIZE and TOTAL are as "2.4 MB"
         text = translate("Lists", "Downloading the list… {SIZE} of {TOTAL}").format(
             SIZE=size, TOTAL=_size_txt(of)
         )

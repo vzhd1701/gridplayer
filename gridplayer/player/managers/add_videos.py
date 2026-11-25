@@ -535,9 +535,11 @@ class AddVideosManager(ManagerBase):
                 translate("Adding", "Add just this video, or its playlist?"),
                 [AddedItem(uri, "add-url")],
                 [
+                    #: choice for a link to a video inside a YouTube playlist
                     AddOption("video", translate("Adding", "Just this video")),
                     AddOption(
                         "playlist",
+                        #: choice for a link to a video inside a YouTube playlist
                         translate("Adding", "The whole playlist"),
                         about=translate(
                             "Adding", "Plays the playlist from this video."
@@ -1109,8 +1111,11 @@ class _Question(NamedTuple):
 
 def _question_txt(count: int) -> str:
     if count == 1:
+        #: heading of the window asking how to add what was dropped or opened
         return translate("Adding", "Add 1 item")
 
+    #: heading of the window asking how to add what was dropped or opened; items are
+    #: files, folders or links
     return translate("Adding", "Add {COUNT} items").format(COUNT=count_txt(count))
 
 
@@ -1308,6 +1313,8 @@ def add_options(groups, choices, target, free) -> list:
 
     # one file, asked of only where it may go in the cell it was dropped on
     if len(groups) == 1 and not isinstance(groups[0], ListInput):
+        #: a choice in the window asking how to add what was dropped or opened, for one
+        #: file dropped on a cell
         title = translate("Adding", "In a new cell")
         options = [option._replace(title=title, note="") for option in options]
 
@@ -1316,6 +1323,8 @@ def add_options(groups, choices, target, free) -> list:
 
     to_cell = AddOption(
         _ADD_TO_CELL,
+        #: a choice in the window asking how to add what was dropped or opened: onto the
+        #: list of the cell it was dropped on, to play next
         translate("Adding", "After this cell's video"),
         about=translate("Adding", "The cell plays them next, as a list."),
     )
@@ -1330,30 +1339,41 @@ def _mode_option(groups, mode, free) -> AddOption:
     if mode == AddMode.ONE_CELL:
         return AddOption(
             mode,
+            #: a choice in the window asking how to add what was dropped or opened: all
+            #: in one cell, playing one after another
             translate("Adding", "All in one cell"),
             about=translate("Adding", "Plays all {COUNT} videos as a list.").format(
                 COUNT=count_txt(count_cells(groups, AddMode.CELL_PER_FILE))
             ),
+            #: shown beside a way of adding: how many cells it would take
             note=translate("Adding", "1 cell"),
         )
 
     if mode == AddMode.CELL_PER_FILE:
         option = AddOption(
             mode,
+            #: a choice in the window asking how to add what was dropped or opened: one
+            #: cell for each video
             translate("Adding", "Each video in its own cell"),
             about=translate("Adding", "Videos inside folders and playlists too."),
         )
     elif not lists:
+        #: a choice in the window asking how to add what was dropped or opened: one cell
+        #: for each video
         option = AddOption(mode, translate("Adding", "Each video in its own cell"))
     elif len(groups) == 1:
         option = AddOption(
             mode,
+            #: a choice in the window asking how to add what was dropped or opened, for
+            #: one folder or playlist: it plays in one cell, as a list
             translate("Adding", "In one cell"),
             about=translate("Adding", "Plays as a list."),
         )
     else:
         option = AddOption(
             mode,
+            #: a choice in the window asking how to add what was dropped or opened: one
+            #: cell for each file, folder and playlist
             translate("Adding", "Each item in its own cell"),
             about=translate("Adding", "Folders and playlists play as lists."),
         )
@@ -1362,12 +1382,16 @@ def _mode_option(groups, mode, free) -> AddOption:
         return option
 
     if free is not None and cells > free:
+        #: shown beside a way of adding: how many cells it would take, and how many of
+        #: them the grid has room for
         note = translate("Adding", "{COUNT} cells ({FREE} fit)").format(
             COUNT=count_txt(cells), FREE=count_txt(free)
         )
     elif cells == 1:
+        #: shown beside a way of adding: how many cells it would take
         note = translate("Adding", "1 cell")
     else:
+        #: shown beside a way of adding: how many cells it would take
         note = translate("Adding", "{COUNT} cells").format(COUNT=count_txt(cells))
 
     return option._replace(note=note)
@@ -1381,6 +1405,8 @@ def _name_of(group) -> AddedItem:
         return AddedItem(
             group.name,
             _list_icon(group),
+            #: under the name of a folder or playlist being added: how many videos it
+            #: has
             translate("Adding", "{COUNT} items").format(
                 COUNT=count_txt(len(group.items))
             ),

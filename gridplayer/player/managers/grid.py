@@ -988,6 +988,7 @@ class GridManager(ManagerBase):
         kept = videos[:cap]
         extra = len(videos) - cap
         self.warning.emit(
+            #: COLS and ROWS are the grid's size, as 3x2
             translate(
                 "Warning",
                 "Grid is full ({COLS}x{ROWS}). {COUNT} files were not added.",

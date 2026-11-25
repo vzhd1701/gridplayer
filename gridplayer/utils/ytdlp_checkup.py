@@ -181,6 +181,7 @@ class YouTubeCheckup(Checkup):
 
         age = (datetime.now(tz=timezone.utc).date() - released).days
 
+        #: the yt-dlp version, as "2025.10.22"
         summary = translate(
             "yt-dlp Checkup", "{VERSION}, released {DAYS} days ago"
         ).format(VERSION=YT_DLP_VERSION, DAYS=age)
@@ -229,6 +230,7 @@ class YouTubeCheckup(Checkup):
         if installed:
             return CheckResult(
                 CheckStatus.WARNING,
+                #: RUNTIMES is JavaScript engines found, as "Deno 1.40"
                 translate("yt-dlp Checkup", "{RUNTIMES} is too old for yt-dlp").format(
                     RUNTIMES=_runtime_list(installed.values())
                 ),
@@ -271,12 +273,15 @@ class YouTubeCheckup(Checkup):
         others = [other for key, other in usable.items() if key != name]
 
         if others:
+            #: PATH is the JavaScript engine's program; OTHERS is other engines found,
+            #: as "Node 20.1"
             hint = translate(
                 "yt-dlp Checkup",
                 "Running {PATH}. Also installed: {OTHERS}, which yt-dlp"
                 " ranks lower and will not use.",
             ).format(PATH=_runtime_path(info), OTHERS=_runtime_list(others))
         else:
+            #: PATH is the JavaScript engine's program
             hint = translate("yt-dlp Checkup", "Running {PATH}").format(
                 PATH=_runtime_path(info)
             )
@@ -335,6 +340,7 @@ class YouTubeCheckup(Checkup):
                 ),
             )
 
+        #: COOKIES is a number; DOMAINS is sites, as ".youtube.com"
         stored = translate("yt-dlp Checkup", "{COOKIES} cookies for {DOMAINS}").format(
             COOKIES=sum(count for _, count in domains),
             DOMAINS=", ".join(domain for domain, _ in domains),
@@ -343,6 +349,7 @@ class YouTubeCheckup(Checkup):
         if not self._are_cookies_enabled:
             return CheckResult(
                 CheckStatus.WARNING,
+                #: STORED is as "12 cookies for .youtube.com"
                 translate("yt-dlp Checkup", "{STORED}, but switched off").format(
                     STORED=stored
                 ),
@@ -356,6 +363,7 @@ class YouTubeCheckup(Checkup):
         if self._cookie_header is None:
             return CheckResult(
                 CheckStatus.WARNING,
+                #: STORED is as "12 cookies for .youtube.com"
                 translate("yt-dlp Checkup", "{STORED}, none of them still good").format(
                     STORED=stored
                 ),
@@ -387,6 +395,7 @@ class YouTubeCheckup(Checkup):
         except OSError as e:
             return CheckResult(
                 CheckStatus.FAILED,
+                #: ERROR is the system's error
                 translate("yt-dlp Checkup", "Could not reach YouTube: {ERROR}").format(
                     ERROR=e
                 ),
@@ -436,6 +445,7 @@ class YouTubeCheckup(Checkup):
 
         formats = self._video_info.get("formats") or []
 
+        #: how many formats yt-dlp found for the test video, and its title
         summary = translate("yt-dlp Checkup", '{FORMATS} formats for "{TITLE}"').format(
             FORMATS=len(formats), TITLE=self._video_info.get("title") or TEST_VIDEO_URL
         )
@@ -443,6 +453,7 @@ class YouTubeCheckup(Checkup):
         if logger.warnings:
             return CheckResult(
                 CheckStatus.WARNING,
+                #: SUMMARY is as "18 formats for …"
                 translate("yt-dlp Checkup", "{SUMMARY}, with warnings").format(
                     SUMMARY=summary
                 ),
@@ -480,6 +491,7 @@ class YouTubeCheckup(Checkup):
         except OSError as e:
             return CheckResult(
                 CheckStatus.FAILED,
+                #: ERROR is the system's error
                 translate(
                     "yt-dlp Checkup", "Could not reach the stream: {ERROR}"
                 ).format(ERROR=e),
@@ -491,6 +503,7 @@ class YouTubeCheckup(Checkup):
         if not read:
             return CheckResult(
                 CheckStatus.FAILED,
+                #: STATUS is an HTTP status code
                 translate(
                     "yt-dlp Checkup", "The stream answered {STATUS} but sent nothing"
                 ).format(STATUS=status),
@@ -498,6 +511,8 @@ class YouTubeCheckup(Checkup):
 
         return CheckResult(
             CheckStatus.PASSED,
+            #: a test download worked: its HTTP status code, its size, and the format,
+            #: as yt-dlp names it ("18")
             translate(
                 "yt-dlp Checkup", "HTTP {STATUS}, {KIB} KiB from format {FORMAT}"
             ).format(
@@ -716,6 +731,7 @@ def _barren_folder_note(js_runtime_path: str | None = None) -> str:
     if answered_here:
         return ""
 
+    #: FOLDER is the folder set on this page
     return translate(
         "yt-dlp Checkup",
         "Nothing named deno, node, qjs or bun is in {FOLDER}, which this"
@@ -750,6 +766,7 @@ def _minimum_version_hint(too_old: dict) -> str:
         f"{name} {_version_text(supported_js_runtimes.value[name])}" for name in too_old
     )
 
+    #: WANTED is engines with the oldest version taken, as "Deno 2.0"
     return translate("yt-dlp Checkup", "yt-dlp needs {WANTED} or newer.").format(
         WANTED=wanted
     )
@@ -834,6 +851,7 @@ def _resolve_failure(message: str) -> CheckResult:
 
 
 def _fetch_failure(status: int, sample_format) -> CheckResult:
+    #: FORMAT is the format, as yt-dlp names it ("18")
     summary = translate(
         "yt-dlp Checkup", "The stream answered HTTP {STATUS} for {FORMAT}"
     ).format(STATUS=status, FORMAT=_format_name(sample_format))

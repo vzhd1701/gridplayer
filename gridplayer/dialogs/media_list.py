@@ -297,16 +297,20 @@ def _source_kind(source) -> tuple[str, str]:
     """What a list was read from, as an icon's name and a title."""
 
     if source.kind == ListSourceKind.URL:
+        #: where the list comes from, shown at the top of the List window
         return "add-url", translate("Dialog - List", "Source: Link")
 
     if source.kind == ListSourceKind.FILE:
+        #: where the list comes from, shown at the top of the List window
         return "add-files", translate("Dialog - List", "Source: Playlist file")
 
     if source.is_recursive:
+        #: where the list comes from, shown at the top of the List window
         return "add-folder", translate(
             "Dialog - List", "Source: Folder, with subfolders"
         )
 
+    #: where the list comes from, shown at the top of the List window
     return "add-folder", translate("Dialog - List", "Source: Folder")
 
 
@@ -1249,6 +1253,7 @@ class ItemList(QTableView):
             index = rows[0].siblingAtColumn(Column.TITLE)
             text = str(self.model().data(index))
         else:
+            #: on the card dragged with several items of the list
             text = translate("Dialog - List", "{COUNT} items").format(
                 COUNT=count_txt(len(rows))
             )
@@ -1872,7 +1877,9 @@ class MediaListDialog(QDialog):
         self._error_again_button.clicked.connect(self._try_again)
 
         self._error_details_button = dialog_button(
-            None, translate("Dialog - List", "Details")
+            None,
+            #: button on the box saying the list could not be read: shows the full error
+            translate("Dialog - List", "Details"),
         )
         self._error_details_button.clicked.connect(self._show_read_error_details)
 
@@ -1881,6 +1888,7 @@ class MediaListDialog(QDialog):
         self._error_hide_button.setIconSize(
             QSize(HIDE_ERROR_ICON_PX, HIDE_ERROR_ICON_PX)
         )
+        #: tooltip of the cross button that hides the box saying the list could not be read
         self._error_hide_button.setToolTip(translate("Dialog - List", "Hide"))
         self._error_hide_button.clicked.connect(self._hide_read_error)
 
@@ -2339,6 +2347,7 @@ class MediaListDialog(QDialog):
         self._group_combo.blockSignals(True)
         self._group_combo.clear()
         self._group_combo.addItem(
+            #: first choice of the group filter; COUNT is how many items the list has
             translate("Dialog - List", "All groups ({COUNT})").format(
                 COUNT=count_txt(len(media_list.items))
             ),
@@ -2348,6 +2357,7 @@ class MediaListDialog(QDialog):
             self._group_combo.addItem(f"{group} ({count_txt(counts[group])})", group)
         if counts.get(""):
             self._group_combo.addItem(
+                #: choice of the group filter for items in no group; COUNT is how many
                 translate("Dialog - List", "No group ({COUNT})").format(
                     COUNT=count_txt(counts[""])
                 ),
@@ -2394,6 +2404,7 @@ class MediaListDialog(QDialog):
 
         if source is None:
             icon = "add-files"
+            #: heading of the List window for a list with no source, made by hand
             title = translate("Dialog - List", "Adding to the list")
         else:
             icon, title = _source_kind(source)
@@ -2435,10 +2446,13 @@ class MediaListDialog(QDialog):
             return
 
         if time.time() - read_at < 60:
+            #: on the Refresh button: when the list was last read from its source
             text = translate("Dialog - List", "Updated just now")
+            #: the same, short, where the Refresh button has no room for more
             short = translate("Dialog - List", "just now")
         else:
             short = published_txt(read_at)
+            #: on the Refresh button; WHEN is as "3 days ago"
             text = translate("Dialog - List", "Updated {WHEN}").format(WHEN=short)
 
         when = QLocale().toString(
@@ -2458,13 +2472,17 @@ class MediaListDialog(QDialog):
         update = update_of(media_list, playlist_update)
 
         if update == ListUpdate.MANUAL:
+            #: tooltip of the Refresh button: the list is read again only when it is
+            #: pressed
             return translate("Dialog - List", "Updates only on Refresh")
 
         next_at = next_update_at(media_list, playlist_update)
 
         if next_at is None:
+            #: tooltip of the Refresh button
             return translate("Dialog - List", "Next update: when the playlist opens")
 
+        #: tooltip of the Refresh button; WHEN is as "in 5 minutes", or "soon"
         return translate("Dialog - List", "Next update: {WHEN}").format(
             WHEN=in_txt(next_at - time.time())
         )
@@ -2618,16 +2636,19 @@ class MediaListDialog(QDialog):
             return
 
         if self._block is None:
+            #: the cells this list is open in; NUMBERS is as "1, 3, 4"
             txt = translate(
                 "Dialog - List",
                 "Playing in cells {NUMBERS}.",
             ).format(NUMBERS=", ".join(map(str, numbers)))
         elif len(numbers) == 1:
+            #: another cell has this list open too
             txt = translate(
                 "Dialog - List",
                 "Cell {NUMBER} also plays this list.",
             ).format(NUMBER=numbers[0])
         else:
+            #: other cells have this list open too; NUMBERS is as "1, 3, 4"
             txt = translate(
                 "Dialog - List",
                 "Cells {NUMBERS} also play this list.",
@@ -2649,6 +2670,7 @@ class MediaListDialog(QDialog):
         items = self._media_list.items
 
         if self._model.is_filtered:
+            #: items left by the filter, of all the items on the list
             txt = translate("Dialog - List", "Shown: {SHOWN} of {COUNT}").format(
                 SHOWN=count_txt(self._model.rowCount()), COUNT=count_txt(len(items))
             )
@@ -2837,6 +2859,8 @@ class MediaListDialog(QDialog):
         )
 
         self._say(
+            #: status line at the bottom of the List window: how many items were taken
+            #: off the list
             translate("Dialog - List", "Removed: {COUNT}").format(
                 COUNT=count_txt(len(picked))
             )
@@ -2928,16 +2952,19 @@ class MediaListDialog(QDialog):
         if media_list.sort == ListSort.VIEWS or any(
             view_count_of(item) is not None for item in items
         ):
+            #: sort order of the list, most watched first
             entries.append(("views", translate("Dialog - List", "By Views")))
 
         if media_list.sort == ListSort.PUBLISHED or any(
             published_of(item) is not None for item in items
         ):
             entries.append(
+                #: sort order of the list, by when each video was put up
                 ("published", translate("Dialog - List", "By Date Published"))
             )
 
         if media_list.sort == ListSort.GROUP or any(item.group for item in items):
+            #: sort order of the list, by the group each item is in
             entries.append(("group", translate("Dialog - List", "By Group")))
 
         # a blank icon for the rows with none: sized as though no row had
@@ -3083,6 +3110,8 @@ class MediaListDialog(QDialog):
         uris = extract_mime_uris(QApplication.clipboard().mimeData())
 
         if not uris:
+            #: status line at the bottom of the List window: the clipboard has no files
+            #: or links in it
             self._say(translate("Dialog - List", "Nothing to paste"))
             return
 
@@ -3122,17 +3151,23 @@ class MediaListDialog(QDialog):
 
         if failed:
             self._say(
+                #: status line at the bottom of the List window; WHAT is the files or
+                #: links that failed, or the error
                 translate("Dialog - List", "Could not be read: {WHAT}").format(
                     WHAT=", ".join(where for where, _why in failed)
                 )
             )
         elif items:
             self._say(
+                #: status line at the bottom of the List window: how many items were put
+                #: on the list
                 translate("Dialog - List", "Added: {COUNT}").format(
                     COUNT=count_txt(len(items))
                 )
             )
         else:
+            #: status line at the bottom of the List window: nothing given could be put
+            #: on the list
             self._say(translate("Dialog - List", "Nothing to add"))
 
     # reading the list again
@@ -3196,6 +3231,8 @@ class MediaListDialog(QDialog):
 
         self._apply(self._media_list.model_copy(update={"is_linked": False}))
         self._show_source()
+        #: status line at the bottom of the List window: the list no longer follows its
+        #: source, and stays as it is
         self._say(translate("Dialog - List", "Unlinked"))
 
     def _put_in_source_order(self):
@@ -3331,17 +3368,23 @@ class MediaListDialog(QDialog):
 
         if result.added or result.gone:
             self._say(
+                #: status line at the bottom of the List window, after the list is read
+                #: again from its source: items new to it, and items no longer in it
                 translate("Dialog - List", "New: {ADDED} · Gone: {GONE}").format(
                     ADDED=count_txt(result.added), GONE=count_txt(result.gone)
                 )
             )
         else:
+            #: status line at the bottom of the List window: the list was read again and
+            #: nothing had changed
             self._say(translate("Dialog - List", "Nothing new"))
 
     def _reloaded(self, media_list: MediaList):
         self._apply(media_list, picked=self._picked_keys())
 
         self._say(
+            #: status line at the bottom of the List window: the list was put back to
+            #: what its source has; COUNT is how many items
             translate("Dialog - List", "Reloaded: {COUNT}").format(
                 COUNT=count_txt(len(media_list.items))
             )
@@ -3360,6 +3403,7 @@ class MediaListDialog(QDialog):
         self._read_stop = threading.Event()
 
         self._model.set_locked(True)
+        #: while the list is read from its source
         self._show_progress(translate("Dialog - List", "Reading…"))
         self._show_read_error_box()
         self._reading_timer.start()
@@ -3517,7 +3561,9 @@ class MediaListDialog(QDialog):
 
         if what == "comparing":
             self._show_progress(
-                translate("Dialog - List", "Comparing with the list…"), 0
+                #: while what was read is compared with the items already on the list
+                translate("Dialog - List", "Comparing with the list…"),
+                0,
             )
             return
 
@@ -3575,6 +3621,8 @@ class MediaListDialog(QDialog):
                 self._show_read_error(read_error)
             else:
                 self._say(
+                    #: status line at the bottom of the List window; WHAT is the files
+                    #: or links that failed, or the error
                     translate("Dialog - List", "Could not be read: {WHAT}").format(
                         WHAT=str(error)
                     )
@@ -3597,6 +3645,8 @@ class MediaListDialog(QDialog):
             self._reloaded(result)
         elif what == "order":
             self._apply(result, picked=self._picked_keys())
+            #: status line at the bottom of the List window: the items were put back in
+            #: the order their source has them
             self._say(translate("Dialog - List", "In the source's order"))
         else:
             self._added(result)
@@ -3633,14 +3683,20 @@ class MediaListDialog(QDialog):
         self._show_lookup()
 
         if not found and not not_found:
+            #: status line at the bottom of the List window, after Get Info: every item
+            #: already has its titles and details
             self._say(translate("Dialog - List", "Nothing to look up"))
             return
 
         if not_found:
+            #: status line at the bottom of the List window, after Get Info: items whose
+            #: details were found, and items that were not
             txt = translate(
                 "Dialog - List", "Looked up: {FOUND} · Not found: {MISSING}"
             ).format(FOUND=count_txt(found), MISSING=count_txt(not_found))
         else:
+            #: status line at the bottom of the List window, after Get Info: items whose
+            #: details were found
             txt = translate("Dialog - List", "Looked up: {COUNT}").format(
                 COUNT=count_txt(found)
             )
@@ -3649,6 +3705,8 @@ class MediaListDialog(QDialog):
         if without_details:
             txt = "{} · {}".format(
                 txt,
+                #: added to the line above: items found without a view count or a date
+                #: put up
                 translate("Dialog - List", "No views or dates: {COUNT}").format(
                     COUNT=count_txt(without_details)
                 ),
@@ -3689,6 +3747,7 @@ class MediaListDialog(QDialog):
 
         if is_refused:
             self._lookup_refused.setText(
+                #: Get Info was stopped by the site; SITE is as "YouTube"
                 translate(
                     "Dialog - List",
                     "{SITE} is blocking requests. Stopped at {DONE} of {COUNT}.",
@@ -3710,12 +3769,15 @@ class MediaListDialog(QDialog):
             return
 
         if state.is_details:
+            #: progress of Get Info
             text = translate(
                 "Dialog - List", "Getting views and dates: {DONE} of {COUNT}"
             )
         elif state.count:
+            #: progress of Get Info
             text = translate("Dialog - List", "Getting info: {DONE} of {COUNT}")
         else:
+            #: progress of Get Info, before it knows how many
             text = translate("Dialog - List", "Getting info…")
 
         self._lookup_label.setText(
@@ -3794,6 +3856,8 @@ class MediaListDialog(QDialog):
         self._open_in_new_cell(media_list.id, 0)
 
         self._say(
+            #: status line at the bottom of the List window: the items picked were
+            #: opened in a new cell, as a list of their own
             translate("Dialog - List", "Opened as a new list: {COUNT}").format(
                 COUNT=count_txt(len(picked))
             )
@@ -3814,6 +3878,8 @@ class MediaListDialog(QDialog):
         QApplication.clipboard().setText("\n".join(lines))
 
         self._say(
+            #: status line at the bottom of the List window: how many paths and links
+            #: were copied
             translate("Dialog - List", "Copied: {COUNT}").format(
                 COUNT=count_txt(len(lines))
             )
@@ -3827,6 +3893,8 @@ class MediaListDialog(QDialog):
 
         QApplication.clipboard().setText(str(source.location))
 
+        #: status line at the bottom of the List window: the path or link the list comes
+        #: from was copied
         self._say(translate("Dialog - List", "Source copied"))
 
     def _show_source_in_folder(self):
@@ -3849,12 +3917,14 @@ class MediaListDialog(QDialog):
 
         if error is not None:
             self._say(
+                #: status line; WHAT is the system's error
                 translate("Dialog - List", "Could not be exported: {WHAT}").format(
                     WHAT=error
                 )
             )
         elif exported is not None:
             self._say(
+                #: status line; FILE is the file written
                 translate("Dialog - List", "Exported: {FILE}").format(
                     FILE=exported.name
                 )
@@ -3931,11 +4001,13 @@ class MediaListDialog(QDialog):
             menu.addSeparator()
             menu.addAction(
                 QIcon.fromTheme("empty"),
+                #: menu item: moves the items picked to the top of the list
                 translate("Dialog - List", "Move to Top"),
                 self._move_to_top,
             ).setEnabled(is_free)
             menu.addAction(
                 QIcon.fromTheme("empty"),
+                #: menu item: moves the items picked to the end of the list
                 translate("Dialog - List", "Move to Bottom"),
                 self._move_to_bottom,
             ).setEnabled(is_free)
@@ -4069,6 +4141,7 @@ def _empty_txt(media_list: MediaList) -> tuple[str, str]:
     """What the list says with nothing on it, and how to put something on
     it."""
 
+    #: shown in place of the items, on an empty list
     nothing = translate("Dialog - List", "Nothing on the list")
 
     if media_list.is_linked:
@@ -4103,6 +4176,7 @@ def _copy_source_txt(source: ListSource) -> str:
     if source.kind == ListSourceKind.URL:
         return translate("Dialog - List", "Copy Link")
 
+    #: menu item: copies the file's path
     return translate("Dialog - List", "Copy Path")
 
 
@@ -4113,6 +4187,7 @@ def _view_txts(items) -> dict[ListView, str]:
     views = _location_view_txts(items)
 
     if _has_thumbnails(items):
+        #: a way to show the list: pictures of the videos
         views[ListView.THUMBNAILS] = translate("Dialog - List", "Thumbnails")
 
     return views
@@ -4145,9 +4220,11 @@ def _location_view_txts(items) -> dict[ListView, str]:
 
     return {
         ListView.TITLES: translate("Dialog - List", "Titles"),
+        #: a way to show the list: each item's title, and its path or link
         ListView.TITLES_AND_LOCATIONS: translate(
             "Dialog - List", "Titles, Paths and Links"
         ),
+        #: a way to show the list: each item's path or link
         ListView.LOCATIONS: translate("Dialog - List", "Paths and Links"),
     }
 
@@ -4177,11 +4254,14 @@ def details_txt(details: ItemDetails, now: float | None = None) -> str:
 
 def views_txt(count: int) -> str:
     if count == 0:
+        #: how many times a video was watched, as a site shows it
         return translate("Dialog - List", "No views")
 
     if count == 1:
+        #: how many times a video was watched, as a site shows it
         return translate("Dialog - List", "1 view")
 
+    #: how many times a video was watched, as a site shows it
     return translate("Dialog - List", "{COUNT} views").format(
         COUNT=short_count_txt(count)
     )
@@ -4192,8 +4272,11 @@ def short_count_txt(count: int) -> str:
     the figures shown rather than rounded up."""
 
     units = (
+        #: a number of views, short: COUNT is as "1.2"
         (1_000_000_000, translate("Dialog - List", "{COUNT}B", "billions")),
+        #: a number of views, short: COUNT is as "1.2"
         (1_000_000, translate("Dialog - List", "{COUNT}M", "millions")),
+        #: a number of views, short: COUNT is as "1.2"
         (1_000, translate("Dialog - List", "{COUNT}K", "thousands")),
     )
 
@@ -4229,34 +4312,58 @@ def published_txt(published: int, now: float | None = None) -> str:
     if days >= 365:
         count = days // 365
         if count == 1:
+            #: how long ago, as a site says it: when a video was put up, or when the
+            #: list was last read
             return translate("Dialog - List", "1 year ago")
+        #: how long ago, as a site says it: when a video was put up, or when the list
+        #: was last read
         return translate("Dialog - List", "{COUNT} years ago").format(COUNT=count)
 
     if days >= 30:
         count = days // 30
         if count == 1:
+            #: how long ago, as a site says it: when a video was put up, or when the
+            #: list was last read
             return translate("Dialog - List", "1 month ago")
+        #: how long ago, as a site says it: when a video was put up, or when the list
+        #: was last read
         return translate("Dialog - List", "{COUNT} months ago").format(COUNT=count)
 
     if days >= 7:
         count = days // 7
         if count == 1:
+            #: how long ago, as a site says it: when a video was put up, or when the
+            #: list was last read
             return translate("Dialog - List", "1 week ago")
+        #: how long ago, as a site says it: when a video was put up, or when the list
+        #: was last read
         return translate("Dialog - List", "{COUNT} weeks ago").format(COUNT=count)
 
     if days >= 1:
         if days == 1:
+            #: how long ago, as a site says it: when a video was put up, or when the
+            #: list was last read
             return translate("Dialog - List", "1 day ago")
+        #: how long ago, as a site says it: when a video was put up, or when the list
+        #: was last read
         return translate("Dialog - List", "{COUNT} days ago").format(COUNT=days)
 
     if hours >= 1:
         if hours == 1:
+            #: how long ago, as a site says it: when a video was put up, or when the
+            #: list was last read
             return translate("Dialog - List", "1 hour ago")
+        #: how long ago, as a site says it: when a video was put up, or when the list
+        #: was last read
         return translate("Dialog - List", "{COUNT} hours ago").format(COUNT=hours)
 
     if minutes <= 1:
+        #: how long ago, as a site says it: when a video was put up, or when the list
+        #: was last read
         return translate("Dialog - List", "1 minute ago")
 
+    #: how long ago, as a site says it: when a video was put up, or when the list was
+    #: last read
     return translate("Dialog - List", "{COUNT} minutes ago").format(COUNT=minutes)
 
 
@@ -4277,6 +4384,7 @@ def _copy_txt(items) -> str:
     are_files = {isinstance(item.uri, Path) for item in items}
 
     if are_files == {True}:
+        #: menu item: copies the file's path
         return translate("Dialog - List", "Copy Path")
 
     if are_files == {False}:
@@ -4293,6 +4401,7 @@ def export_m3u(parent, media_list: MediaList) -> tuple[Path | None, str | None]:
 
     file_path, chosen_filter = QFileDialog.getSaveFileName(
         parent,
+        #: title of the window for saving the list as a file
         translate("Dialog - List", "Export List"),
         str(Path.home() / f"{_file_name(name)}.m3u8"),
         "M3U8 (*.m3u8);;M3U (*.m3u)",

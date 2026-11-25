@@ -88,6 +88,8 @@ GENERAL_FIELDS: tuple[SettingField, ...] = (
         settings_key="player/tray_icon",
         label=tray_text(
             translate("SettingsDialog", "Show icon in the tray"),
+            #: macOS only, where the tray icon sits in the menu bar at the top of the
+            #: screen
             translate("SettingsDialog", "Show icon in the menu bar"),
         ),
         unavailable=_no_tray,
@@ -98,6 +100,8 @@ GENERAL_FIELDS: tuple[SettingField, ...] = (
         settings_key="player/minimize_to_tray",
         label=tray_text(
             translate("SettingsDialog", "Minimize to the tray"),
+            #: macOS only, where the tray icon sits in the menu bar at the top of the
+            #: screen
             translate("SettingsDialog", "Minimize to the menu bar"),
         ),
         enabled_when=_WITH_TRAY,
@@ -108,6 +112,8 @@ GENERAL_FIELDS: tuple[SettingField, ...] = (
         settings_key="player/close_to_tray",
         label=tray_text(
             translate("SettingsDialog", "Close to the tray"),
+            #: macOS only, where the tray icon sits in the menu bar at the top of the
+            #: screen
             translate("SettingsDialog", "Close to the menu bar"),
         ),
         enabled_when=_WITH_TRAY,
@@ -116,6 +122,7 @@ GENERAL_FIELDS: tuple[SettingField, ...] = (
         settings_key="player/hide_taskbar",
         label=tray_text(
             translate("SettingsDialog", "Hide from the taskbar"),
+            #: macOS only: no icon in the Dock while the player is in the menu bar
             translate("SettingsDialog", "Hide from the Dock"),
         ),
         enabled_when=_WITH_TRAY,
@@ -125,6 +132,8 @@ GENERAL_FIELDS: tuple[SettingField, ...] = (
         settings_key="player/tray_stop_video",
         label=tray_text(
             translate("SettingsDialog", "Stop video decoding while in the tray"),
+            #: macOS only, where the tray icon sits in the menu bar at the top of the
+            #: screen
             translate("SettingsDialog", "Stop video decoding while in the menu bar"),
         ),
         enabled_when=_WITH_TRAY,
@@ -210,6 +219,7 @@ GENERAL_FIELDS: tuple[SettingField, ...] = (
         settings_key="screenshots/dir",
         label=translate("SettingsDialog", "Folder"),
         placeholder=translate("SettingsDialog", "In the data folder"),
+        #: title of the window for picking where screenshots are saved
         browse_title=translate("SettingsDialog", "Screenshots folder"),
         start_dir=screenshots_dir,
         # the placeholder is short enough to fit, this is where it is

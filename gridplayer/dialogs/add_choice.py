@@ -357,6 +357,7 @@ class _ReadingLine(QWidget):
 
         self.stop_button = QPushButton(translate("Adding", "Stop"))
         self.stop_button.setToolTip(
+            #: tooltip of the Stop button while what is being added is read
             translate("Adding", "Stop and add what was found so far")
         )
 
@@ -372,12 +373,14 @@ class _ReadingLine(QWidget):
         layout.addLayout(bar_line)
 
     def show_reading(self):
+        #: while the files, folders or links being added are read
         self.tell(translate("Adding", "Reading…"))
         self._bar.show()
         self.stop_button.show()
         self.stop_button.setEnabled(True)
 
     def show_stopping(self):
+        #: after Stop is pressed, while what is being added is read
         self._label.setText(translate("Adding", "Stopping…"))
         self.stop_button.setEnabled(False)
 
@@ -418,6 +421,7 @@ def _what_lines(what: list) -> QWidget:
 
     if len(what) > WHAT_LISTED:
         more = QLabel(
+            #: below the first few things listed: how many more there are
             translate("Adding", "and {COUNT} more").format(
                 COUNT=count_txt(len(what) - WHAT_LISTED)
             )
@@ -507,6 +511,7 @@ class ManyCellsDialog(QCustomMessageBox):
         super().__init__(
             QMessageBox.Icon.Warning,
             translate("Adding", "Add", "Header"),
+            #: asked before adding many videos, each in a cell of its own
             translate("Adding", "Add {COUNT} cells?").format(COUNT=count_txt(count)),
             parent=parent,
         )
@@ -553,20 +558,24 @@ def show_failed(failed, is_nothing_added: bool, parent=None) -> None:
         QCustomMessageBox.critical(
             parent,
             title,
+            #: title of a message: none of what was dropped or opened can be played
             translate("Adding", "Nothing to add"),
             info=translate("Adding", "None of these are videos, audio or playlists."),
         )
         return
 
     if len(failed) == 1:
+        #: title of the message listing what could not be added
         text = translate("Adding", "Couldn't add 1 item")
     else:
+        #: title of the message listing what could not be added
         text = translate("Adding", "Couldn't add {COUNT} items").format(
             COUNT=count_txt(len(failed))
         )
 
     rows = list(failed[:FAILED_LISTED])
     if len(failed) > FAILED_LISTED:
+        #: below the first few things listed: how many more there are
         more = translate("Adding", "and {COUNT} more").format(
             COUNT=count_txt(len(failed) - FAILED_LISTED)
         )

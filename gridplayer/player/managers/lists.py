@@ -924,10 +924,12 @@ class ListsManager(ManagerBase):
         name = media_list.name if media_list is not None else None
 
         if name:
+            #: asked as the List window is closed with changes not yet kept
             question = translate(
                 "Dialog - List", "Keep your changes to “{NAME}”?"
             ).format(NAME=name)
         else:
+            #: asked as the List window is closed with changes not yet kept
             question = translate("Dialog - List", "Keep your changes to the list?")
 
         box = QCustomMessageBox(

@@ -186,10 +186,12 @@ class NetworkCheckup(Checkup):
         if parsed.scheme not in PROXY_SCHEMES:
             return CheckResult(
                 CheckStatus.FAILED,
+                #: SCHEME is what the proxy address starts with, as "ftp"
                 translate(
                     "Network Checkup",
                     "{SCHEME} is not a kind of proxy GridPlayer can use",
                 ).format(SCHEME=parsed.scheme),
+                #: SCHEMES is as "http, https, socks5"
                 translate("Network Checkup", "It understands {SCHEMES}.").format(
                     SCHEMES=", ".join(PROXY_SCHEMES)
                 ),
@@ -264,6 +266,7 @@ class NetworkCheckup(Checkup):
         if error is not None:
             return CheckResult(
                 CheckStatus.FAILED,
+                #: WHAT is a host name, or "the proxy at …"; ERROR is the system's error
                 translate(
                     "Network Checkup", "Could not connect to {WHAT}: {ERROR}"
                 ).format(WHAT=self._endpoint[2], ERROR=_clipped(error)),
@@ -274,6 +277,8 @@ class NetworkCheckup(Checkup):
 
         return CheckResult(
             CheckStatus.PASSED,
+            #: WHAT is a host name, or "the proxy at …"; FAMILY is IPv4 or IPv6; SECONDS
+            #: is as "0.12 sec"
             translate(
                 "Network Checkup", "Connected to {WHAT} over {FAMILY} in {SECONDS}"
             ).format(
@@ -296,6 +301,8 @@ class NetworkCheckup(Checkup):
         if not self._is_reached:
             return CheckResult(
                 CheckStatus.SKIPPED,
+                #: a check skipped as the connection before it failed; WHAT is a host
+                #: name, or "the proxy at …"
                 translate(
                     "Network Checkup", "Not tried, {WHAT} could not be reached"
                 ).format(WHAT=self._endpoint[2]),
@@ -314,6 +321,8 @@ class NetworkCheckup(Checkup):
                 CheckStatus.FAILED, _clipped(e), _connect_hint(self._opts)
             )
 
+        #: a test download worked: its HTTP status code, its size, where from and how
+        #: long it took ("0.12 sec")
         summary = translate(
             "Network Checkup", "HTTP {STATUS}, {KIB} KiB from {HOST} in {SECONDS}"
         ).format(
@@ -368,6 +377,8 @@ class NetworkCheckup(Checkup):
             return (
                 parsed.hostname,
                 _port_of(parsed),
+                #: put in other lines of the checkup, as "Could not connect to the proxy
+                #: at …"
                 translate("Network Checkup", "the proxy at {HOST}").format(
                     HOST=parsed.hostname
                 ),
@@ -384,10 +395,14 @@ class NetworkCheckup(Checkup):
     @property
     def _nothing_to_check(self) -> str:
         if self._opts.use_env:
+            #: the Proxy setting and its value; "Custom", "System" and "None" are the
+            #: setting's choices
             return translate(
                 "Network Checkup", "No address to check, the system settings are in use"
             )
 
+        #: the Proxy setting and its value; "Custom", "System" and "None" are the
+        #: setting's choices
         return translate("Network Checkup", "No address to check, no proxy is in use")
 
     @property
@@ -395,25 +410,35 @@ class NetworkCheckup(Checkup):
         """The Proxy setting, and what it works out to."""
 
         if self._opts.proxy:
+            #: the Proxy setting and its value; "Custom", "System" and "None" are the
+            #: setting's choices; PROXY is the address typed in
             return translate("Network Checkup", "Proxy: Custom, {PROXY}").format(
                 PROXY=_redacted(self._opts.proxy)
             )
 
         if self._is_proxy_missing:
+            #: the Proxy setting and its value; "Custom", "System" and "None" are the
+            #: setting's choices
             return translate(
                 "Network Checkup", "Proxy: Custom, but no address filled in"
             )
 
         if not self._opts.use_env:
+            #: the Proxy setting and its value; "Custom", "System" and "None" are the
+            #: setting's choices
             return translate("Network Checkup", "Proxy: None")
 
         from_machine = _machine_proxies()
 
         if not from_machine:
+            #: the Proxy setting and its value; "Custom", "System" and "None" are the
+            #: setting's choices
             return translate(
                 "Network Checkup", "Proxy: System, none set on this machine"
             )
 
+        #: the Proxy setting and its value; "Custom", "System" and "None" are the
+        #: setting's choices; PROXIES is the system's proxy addresses
         return translate("Network Checkup", "Proxy: System, {PROXIES}").format(
             PROXIES=", ".join(from_machine)
         )
@@ -427,15 +452,23 @@ class NetworkCheckup(Checkup):
         """
 
         lines = [
+            #: a setting of the Network page and its value, in the checkup's list of
+            #: settings; the name is the setting's label
             translate("Network Checkup", "Force IPv4: {VALUE}").format(
                 VALUE=_yes_or_no(self._opts.force_ipv4)
             ),
+            #: a setting of the Network page and its value, in the checkup's list of
+            #: settings; the name is the setting's label
             translate("Network Checkup", "Timeout: {VALUE}").format(
                 VALUE=_timeout_text(self._opts.timeout)
             ),
+            #: a setting of the Network page and its value, in the checkup's list of
+            #: settings; the name is the setting's label
             translate("Network Checkup", "User agent: {VALUE}").format(
                 VALUE=self._opts.user_agent or translate("Network Checkup", "Auto")
             ),
+            #: a setting of the Network page and its value, in the checkup's list of
+            #: settings; the name is the setting's label
             translate("Network Checkup", "Verify TLS certificates: {VALUE}").format(
                 VALUE=_yes_or_no(self._opts.verify_tls)
             ),
@@ -524,6 +557,7 @@ def _proxy_address_result(parsed) -> CheckResult:
 
     port = _port_of(parsed)
 
+    #: SCHEME is the kind of proxy, as "http" or "socks5"
     summary = translate(
         "Network Checkup", "{SCHEME} proxy at {HOST}, port {PORT}"
     ).format(SCHEME=parsed.scheme, HOST=parsed.hostname, PORT=port)
@@ -539,6 +573,7 @@ def _proxy_address_result(parsed) -> CheckResult:
 
     if parsed.scheme.startswith("socks") and parsed.scheme not in REMOTE_DNS_SCHEMES:
         hints.append(
+            #: SCHEME is "socks5" or "socks4"; REMOTE is "socks5h" or "socks4a"
             translate(
                 "Network Checkup",
                 "{SCHEME} looks host names up on this machine. Use {REMOTE}"
@@ -654,6 +689,7 @@ def _no_usable_proxy() -> CheckResult:
 
 def _timeout_text(timeout: int) -> str:
     if timeout:
+        #: a number of seconds, short
         return translate("Network Checkup", "{SECONDS} sec").format(SECONDS=timeout)
 
     return translate("Network Checkup", "Auto")
@@ -661,8 +697,10 @@ def _timeout_text(timeout: int) -> str:
 
 def _yes_or_no(flag: bool) -> str:
     return (
+        #: the value of an on/off setting, as "Force IPv4: Yes"
         translate("Network Checkup", "Yes")
         if flag
+        #: the value of an on/off setting, as "Force IPv4: No"
         else translate("Network Checkup", "No")
     )
 
@@ -677,10 +715,12 @@ def _addresses_summary(host: str, addresses) -> str:
     rest = len(addresses) - ADDRESSES_SHOWN
 
     if rest > 0:
+        #: IP addresses: the first few, and how many more there are
         shown = translate("Network Checkup", "{SHOWN} and {REST} more").format(
             SHOWN=shown, REST=rest
         )
 
+    #: the IP addresses a host name was looked up to; FAMILIES is IPv4, IPv6 or both
     return translate("Network Checkup", "{HOST} is {SHOWN} ({FAMILIES})").format(
         HOST=host, SHOWN=shown, FAMILIES=families
     )
@@ -712,12 +752,14 @@ def _family_name(family) -> str:
 
 
 def _seconds(elapsed: float) -> str:
+    #: a number of seconds, short
     return translate("Network Checkup", "{SECONDS} sec").format(
         SECONDS=f"{elapsed:.2f}"
     )
 
 
 def _lookup_error(host: str, error: OSError) -> str:
+    #: ERROR is the system's error
     return translate(
         "Network Checkup", "{HOST} could not be looked up: {ERROR}"
     ).format(HOST=host, ERROR=_clipped(error))

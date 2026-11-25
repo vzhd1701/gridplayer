@@ -568,6 +568,7 @@ class AudioControl(VideoBlockPart):
 
         if unplayable:
             warnings.append(
+                #: FILES is the names of audio files
                 translate(
                     "Warning",
                     "VLC cannot play {FILES} alongside a video.",
@@ -576,6 +577,7 @@ class AudioControl(VideoBlockPart):
 
         if silenced:
             warnings.append(
+                #: FILES is the names of audio files
                 translate(
                     "Warning",
                     "{FILES} will fall silent once the video is seeked.",
