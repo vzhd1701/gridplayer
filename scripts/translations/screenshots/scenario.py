@@ -11,7 +11,9 @@ match against en_US.ts.
 
 import html
 import json
+import os
 import re
+import sys
 import time
 
 SETTINGS = {
@@ -40,6 +42,22 @@ GALLERY_HOST = "example.com"
 GALLERY_HTTP = (400, 401, 403, 404, 405, 408, 410, 416, 429, 451, 500, 502, 503, 504)
 # how long ago loading started, for the time it has taken to show
 GALLERY_ELAPSED_S = (12, 75)
+# bookmarks added to the feature cell's own at 5 s, and the loop set across
+# them: one before it, one in it, the one at 5 s after it
+BOOKMARK_TIMES_MS = (500, 2000)
+BOOKMARK_LOOP_MS = (1000, 3000)
+# files past those a question lists, for its "and so many more"
+MORE_FILES = 3
+# the data folder a tip names, in place of the run's own
+DATA_DIR_STAND_IN = (
+    r"C:\Users\Name\AppData\Local\GridPlayer"
+    if sys.platform == "win32"
+    else "/home/name/.local/share/gridplayer"
+)
+# the sound devices the menu lists, in place of the computer's own
+STAND_IN_DEVICES = ("Speakers", "Headphones")
+# a key added to an action, to show it changed
+EXTRA_SHORTCUT = "Ctrl+Alt+F12"
 # how deep submenus are opened, below the menu itself
 # what is kept of the menus above and below an open submenu's cascade
 FOCUS_MARGIN = 60
@@ -96,8 +114,12 @@ def scenario(d):
         d.note(f"screenshot {name}.png")
         shots[name] = {"size": [size.width(), size.height()], "texts": texts}
 
-    def capture(name, widget):
+    def capture(name, widget, only=None):
+        """widget as it is; with only, a function of a text, just the
+        texts it takes tagged: what changed since its own screen."""
         picture, size, _, texts = _framed(widget)
+        if only is not None:
+            texts = [t for t in texts if only(t["text"])]
         save(name, picture, size, texts)
 
     def capture_over(name, under, popup, popup_texts):
@@ -169,6 +191,9 @@ def scenario(d):
     for action, name in CELL_DIALOGS:
         window(name, lambda action=action: d.act(block, action))
 
+    if feature is not None:
+        _bookmark_states(d, feature, window, capture, capture_layers, seen_menus)
+
     def pages(prefix, extra=None):
         def look(dialog):
             for page_id in list(dialog.pages):
@@ -198,6 +223,8 @@ def scenario(d):
         checkup.CheckRunner.start = lambda self: None
         window("checkup-network", dialog.run_network_checkup)
         window("checkup-youtube", dialog.run_youtube_checkup)
+
+        _shortcut_editor(d, dialog, window, capture, capture_layers, seen_menus)
 
     window("settings", lambda: d.act(block, "Settings"), pages("settings", checkups))
     window(
@@ -312,14 +339,7 @@ def _tips(d, window, prefix, capture_tip, seen):
     when the mouse rests there, one screen each. A text already shot is
     left out."""
     from PyQt6.QtCore import QPoint, QRect
-    from PyQt6.QtGui import QFontMetrics
     from PyQt6.QtWidgets import QWidget
-
-    from gridplayer.widgets.tooltip import TipWindow, tip_position
-
-    # a screen big enough for the tip to go under what it is about, as on
-    # a real one, not over it as at the bottom of the offscreen one
-    area = QRect(-10000, -10000, 20000, 20000)
 
     widgets = [w for w in [window, *window.findChildren(QWidget)] if w.isVisible()]
     n = 0
@@ -334,25 +354,8 @@ def _tips(d, window, prefix, capture_tip, seen):
             continue
         seen.add(text)
 
-        tip = TipWindow(window)
-        tip.set_text(text, TIP_SCREEN_WIDTH)
         anchor = QRect(widget.mapToGlobal(QPoint(0, 0)), widget.size())
-        cursor = anchor.topLeft() + QPoint(
-            min(TIP_CURSOR_X, widget.width() // 2), widget.height() // 2
-        )
-        line_height = QFontMetrics(tip.font()).lineSpacing()
-        tip.move_box(tip_position(anchor, cursor, tip.box_size(), area, line_height))
-        tip.show_now()
-        d.pump(0.2)
-
-        box = tip.box_geometry()
-        box.translate(-tip.mapToGlobal(QPoint(0, 0)))
-        tip_texts = [
-            {
-                "text": _plain(text),
-                "rect": [box.x(), box.y(), box.width(), box.height()],
-            }
-        ]
+        tip, tip_texts = _tip_at(d, window, text, anchor)
         n += 1
         capture_tip(f"{prefix}-tip-{n}", tip, tip_texts)
         tip.hide_now()
@@ -361,6 +364,63 @@ def _tips(d, window, prefix, capture_tip, seen):
     if hasattr(window, "section_page"):
         _scroll_back(window.section_page.currentWidget())
     d.pump(0.1)
+
+
+def _tip_at(d, window, text, anchor):
+    """A tip of window saying text, shown where the app puts one for the
+    mouse resting at anchor (on the screen), and its text where it is."""
+    from PyQt6.QtCore import QPoint, QRect
+    from PyQt6.QtGui import QFontMetrics
+
+    from gridplayer.widgets.tooltip import TipWindow, tip_position
+
+    # a screen big enough for the tip to go under what it is about, as on
+    # a real one, not over it as at the bottom of the offscreen one
+    area = QRect(-10000, -10000, 20000, 20000)
+
+    # the run's own folder, where a tip names the data folder, would show
+    # where the run was
+    data_dir = os.environ.get("GP_USER_DATA_DIR")
+    if data_dir:
+        text = text.replace(data_dir, DATA_DIR_STAND_IN)
+
+    tip = TipWindow(window)
+    tip.set_text(text, TIP_SCREEN_WIDTH)
+    cursor = anchor.topLeft() + QPoint(
+        min(TIP_CURSOR_X, anchor.width() // 2), anchor.height() // 2
+    )
+    line_height = QFontMetrics(tip.font()).lineSpacing()
+    tip.move_box(tip_position(anchor, cursor, tip.box_size(), area, line_height))
+    tip.show_now()
+    d.pump(0.2)
+
+    box = tip.box_geometry()
+    box.translate(-tip.mapToGlobal(QPoint(0, 0)))
+    rect = [box.x(), box.y(), box.width(), box.height()]
+    texts = [{"text": _plain(text), "rect": rect}]
+    # each line its own string, as a tip made of several often is
+    lines = [_plain(line) for line in _BREAK.split(text)]
+    if len(lines) > 1:
+        texts += [{"text": line, "rect": rect} for line in lines if line]
+    return tip, texts
+
+
+def _item_tip(d, window, view, index, name, capture_layers):
+    """The tip of a row of view (its model's), shot over window."""
+    from PyQt6.QtCore import QRect, Qt
+
+    text = index.data(Qt.ItemDataRole.ToolTipRole)
+    if not text:
+        d.note(f"{name}: the row has no tip")
+        return
+    view.scrollTo(index)
+    d.pump(0.1)
+    rect = view.visualRect(index)
+    anchor = QRect(view.viewport().mapToGlobal(rect.topLeft()), rect.size())
+    tip, texts = _tip_at(d, window, text, anchor)
+    capture_layers(name, window, [(tip, texts)])
+    tip.hide_now()
+    tip.deleteLater()
 
 
 def _scroll_to(d, widget):
@@ -684,7 +744,11 @@ def _menus(d, block, capture, capture_layers, seen):
     d.ctx.active_block = block
 
     for name, flipped in (("menu", False), ("menu-other", True)):
-        with _every_item_shown(d, flipped):
+        # the second time as for a file on this computer, with a file of
+        # sound and one of subtitles added: what the tracks menus offer
+        # only then
+        local = _as_local_file(block) if flipped else _nothing()
+        with _every_item_shown(d, flipped), _stand_in_devices(block), local:
             menu = d.player._managers_inst["menu"].make_menu()
             menu.popup(d.player.mapToGlobal(QPoint(40, 40)))
             d.pump(0.3)
@@ -793,6 +857,69 @@ class _every_item_shown:
         return False
 
 
+class _nothing:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+class _as_local_file:
+    """While in it, block is taken for a file on this computer (its address
+    a bare file name, not a path that would show where the run is), with a
+    file of sound and one of subtitles added; nothing is read from them."""
+
+    def __init__(self, block):
+        self._block = block
+
+    def __enter__(self):
+        from pathlib import Path, PurePosixPath
+        from urllib.parse import urlparse
+
+        params = self._block.video_params
+        self._params = (params.uri, params.external_audio, params.external_subtitles)
+        params.uri = Path(PurePosixPath(urlparse(str(params.uri)).path).name)
+        params.external_audio = [Path("commentary.mka")]
+        params.external_subtitles = [Path("commentary.srt")]
+        return self
+
+    def __exit__(self, *exc):
+        params = self._block.video_params
+        params.uri, params.external_audio, params.external_subtitles = self._params
+        return False
+
+
+class _stand_in_devices:
+    """While in it, block's sound goes out of made-up devices: the menu of
+    them would show those of the computer the run is on."""
+
+    def __init__(self, block):
+        self._audio = block.audio
+
+    def __enter__(self):
+        from types import SimpleNamespace
+
+        audio = self._audio
+        self._kind = type(audio)
+        original = self._kind.devices
+        made_up = tuple(
+            SimpleNamespace(id=f"device-{n}", name=name)
+            for n, name in enumerate(STAND_IN_DEVICES, 1)
+        )
+
+        def devices(part):
+            return made_up if part is audio else original.fget(part)
+
+        self._original = original
+        self._kind.devices = property(devices)
+        return self
+
+    def __exit__(self, *exc):
+        self._kind.devices = self._original
+        return False
+
+
 def _safe(f, stand_in):
     """f, or stand_in where it fails or gives nothing of the kind (a value
     of None where the title wants a text)."""
@@ -832,6 +959,222 @@ def _feature_cell(d, base):
     d.act(cell, "Add Bookmark")
     d.pump(0.3)
     return cell
+
+
+def _bookmark_states(d, feature, window, capture, capture_layers, seen):
+    """The feature cell's bookmarks with a loop set across them: the list's
+    marks of where the loop is, a row out of the loop and its tip, a row's
+    menu; the menu of a marker on the bar; and what is asked as bookmarks
+    stop or start being shared between cells."""
+    from pathlib import Path
+
+    from PyQt6.QtCore import QPoint
+
+    from gridplayer.player.managers import bookmarks
+
+    for time_ms in BOOKMARK_TIMES_MS:
+        feature.seek(time_ms)
+        if not _until(d, lambda t=time_ms: abs(feature.time - t) < 300, 5):
+            d.note(f"the feature cell did not get to {time_ms} ms")
+        d.act(feature, "Add Bookmark")
+        d.pump(0.3)
+    feature.seek(BOOKMARK_LOOP_MS[1] - 500)
+    feature.loop.set_start_time(BOOKMARK_LOOP_MS[0])
+    feature.loop.set_end_time(BOOKMARK_LOOP_MS[1])
+    d.pump(0.5)
+
+    def look(shown):
+        capture("bookmarks-loop", shown)
+        view = shown._list
+        model = view.model()
+        for row in range(model.rowCount()):
+            index = model.index(row, 0)
+            if feature.bookmarker.is_reachable_at(row):
+                continue
+            _item_tip(d, shown, view, index, "bookmarks-loop-tip", capture_layers)
+            break
+
+        view.setCurrentIndex(model.index(0, 0))
+        d.pump(0.1)
+        at = view.viewport().mapToGlobal(view.visualRect(model.index(0, 0)).center())
+
+        def look_menu(menu):
+            name = "bookmarks-row-menu"
+            capture_layers(name, shown, [(menu, texts_in(menu))])
+            _submenus(d, [menu], name, shown, capture_layers, seen)
+
+        _popup_from(d, lambda: shown._show_row_menu(at), look_menu)
+
+    window("bookmarks-loop", lambda: d.act(feature, "Manage Bookmarks"), inspect=look)
+
+    # no loop for the bar's menu, whose Jump is greyed out past it
+    feature.loop.reset()
+    _hold_still(d)
+
+    def look_marker(menu):
+        name = "bookmark-marker-menu"
+        capture_layers(name, d.player, [(menu, texts_in(menu))])
+        _submenus(d, [menu], name, d.player, capture_layers, seen)
+
+    last = feature.bookmarks[-1].time_ms
+    at = d.player.mapToGlobal(QPoint(200, 200))
+    _popup_from(d, lambda: feature.bookmarker.show_marker_menu(at, [last]), look_marker)
+
+    manager = d.player._managers_inst["bookmarks"]
+    window("bookmarks-stop-sharing", manager._confirm_split)
+
+    registry = manager._registry
+    files = [
+        (Path(f"clip-{n}.mp4"), 2)
+        for n in range(1, bookmarks.MERGE_FILES_LISTED + MORE_FILES + 1)
+    ]
+    registry.disagreeing = lambda cells: files
+    try:
+        window("bookmarks-merge", manager._confirm_merge)
+    finally:
+        del registry.disagreeing
+
+
+def _shortcut_editor(d, dialog, window, capture, capture_layers, seen):
+    """The Shortcuts page's own windows and states: an action's menu, the
+    windows adding a key, a mouse button and a drag, a key taken by another
+    action and the question of taking it, a drag that can't be one, the
+    rows' tips, the count of those changed, the filter's other kinds."""
+    from PyQt6.QtCore import QModelIndex, Qt
+
+    from gridplayer.params.gestures import GestureKind
+    from gridplayer.utils.keymap import HOLD_KEYS, MouseButtonSequence
+    from gridplayer.widgets import keymap_tree_view as kv
+
+    dialog.show_page("shortcuts")
+    d.pump(0.3)
+    editor = dialog.findChild(kv.KeymapEditor)
+    if editor is None:
+        d.note("no shortcut editor")
+        return
+    tree = editor.tree
+    model = tree.source_model()
+    before = {t["text"] for t in texts_in(dialog)}
+
+    def new(text):
+        return text not in before
+
+    def items():
+        return list(kv._iter_action_items(model))
+
+    def first(kind, with_keys=False):
+        for item in items():
+            if item.data(kv.DATA_KIND) is kind and (
+                not with_keys or item.data(kv.DATA_SHORTCUTS)
+            ):
+                return item
+        return None
+
+    action = first(None, with_keys=True)
+    drag = first(GestureKind.DRAG)
+    if action is None or drag is None:
+        d.note("no action or drag to show the shortcut windows with")
+        return
+    action_id = action.data(kv.DATA_ACTION_ID)
+
+    # changed, so its menu has Reset and the page counts it
+    tree.set_action_shortcuts(
+        action_id, [*action.data(kv.DATA_SHORTCUTS), EXTRA_SHORTCUT]
+    )
+    editor._update_status()
+    d.pump(0.2)
+    capture("settings-shortcuts-changed", dialog, only=new)
+
+    def tip_of(item, name):
+        if item is None:
+            return
+        index = tree._proxy_index_for_item(item)
+        _item_tip(d, dialog, tree, index, name, capture_layers)
+
+    tip_of(kv._find_action_item(model, action_id), "settings-shortcuts-row-tip-1")
+    for n, kind in enumerate(
+        (GestureKind.DRAG, GestureKind.HOLD, GestureKind.FIXED), 2
+    ):
+        tip_of(first(kind), f"settings-shortcuts-row-tip-{n}")
+
+    def action_menu(item, name):
+        item_id = item.data(kv.DATA_ACTION_ID)
+        index = tree._proxy_index_for_item(item)
+        tree.scrollTo(index)
+        d.pump(0.1)
+        at = tree.viewport().mapToGlobal(tree.visualRect(index).center())
+
+        def look(menu):
+            capture_layers(name, dialog, [(menu, texts_in(menu))])
+            _submenus(d, [menu], name, dialog, capture_layers, seen)
+
+        _popup_from(d, lambda: editor._show_action_menu(item_id, at), look)
+
+    action = kv._find_action_item(model, action_id)
+    action_menu(action, "settings-shortcuts-action-menu")
+    action_menu(drag, "settings-shortcuts-drag-menu")
+
+    title = action.text()
+    path = action.data(kv.DATA_PATH) or []
+    keys = list(action.data(kv.DATA_SHORTCUTS) or [])
+
+    def keyboard(shown):
+        conflicts = shown._conflict_map
+        if not conflicts:
+            return
+        taken = next(iter(conflicts))
+        shown._key_edit.set_sequence_text(taken)
+        d.pump(0.3)
+        capture("settings-shortcuts-add-keyboard-taken", shown)
+        window(
+            "settings-shortcuts-reassign",
+            lambda: shown._confirm_reassign(taken, shown._conflicts_for(taken)),
+        )
+
+    window(
+        "settings-shortcuts-add-keyboard",
+        lambda: editor._add_keyboard(action_id, title, path, keys),
+        then=keyboard,
+    )
+    window(
+        "settings-shortcuts-add-mouse",
+        lambda: editor._add_mouse(action_id, title, path, keys),
+    )
+
+    def drags(shown):
+        plain = MouseButtonSequence.from_drag_press(
+            Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier
+        )
+        shown._mouse_field.set_sequence(str(plain))
+        d.pump(0.3)
+        capture("settings-shortcuts-add-drag-plain", shown)
+        modifier = HOLD_KEYS.get(shown._hold_key)
+        if modifier is None:
+            return
+        held = MouseButtonSequence.from_drag_press(Qt.MouseButton.LeftButton, modifier)
+        shown._mouse_field.set_sequence(str(held))
+        d.pump(0.3)
+        capture("settings-shortcuts-add-drag-held", shown)
+
+    drag_keys = list(drag.data(kv.DATA_SHORTCUTS) or [])
+    window(
+        "settings-shortcuts-add-drag",
+        lambda: editor._add_drag(
+            drag.data(kv.DATA_ACTION_ID),
+            drag.text(),
+            drag.data(kv.DATA_PATH) or [],
+            drag_keys,
+        ),
+        then=drags,
+    )
+
+    # the filter's placeholder for each kind of search but the first
+    for n in range(1, editor.filter_scope.count()):
+        editor.filter_scope.setCurrentIndex(n)
+        d.pump(0.2)
+        capture(f"settings-shortcuts-filter-{n}", dialog, only=new)
+    editor.filter_scope.setCurrentIndex(0)
+    tree.scrollTo(QModelIndex())
 
 
 def _menus_in(d, window, prefix, capture_layers, seen):
@@ -1430,16 +1773,19 @@ def _recovery_texts(block) -> dict[str, str]:
     return said
 
 
-def _painted_texts(widget) -> list[tuple[str, object]]:
+def _painted_texts(widget, module=None, grabbed=None) -> list[tuple[str, object]]:
     """The texts a widget paints itself (a cell's status), each with where:
-    its painter recorded while it is grabbed. A line wrapped in two, or
-    parts joined by " · ", is given as a whole and in parts too."""
+    the painter of the module that paints it (video_status's by default)
+    recorded while it, or grabbed, is grabbed. A line wrapped in two is
+    given as a whole and in parts too (texts_in splits those joined by
+    " · ")."""
     from itertools import pairwise
 
     from PyQt6.QtCore import QRect, QRectF
     from PyQt6.QtGui import QPainter
 
-    from gridplayer.widgets import video_status
+    if module is None:
+        from gridplayer.widgets import video_status as module
 
     drawn = []
 
@@ -1452,19 +1798,16 @@ def _painted_texts(widget) -> list[tuple[str, object]]:
                 drawn.append((args[2], QRect(rect)))
             super().drawText(*args)
 
-    painter_class = video_status.QPainter
-    video_status.QPainter = Recording
+    painter_class = module.QPainter
+    module.QPainter = Recording
     try:
-        widget.grab()
+        (grabbed or widget).grab()
     finally:
-        video_status.QPainter = painter_class
+        module.QPainter = painter_class
 
     texts = list(drawn)
     for (first, first_at), (second, second_at) in pairwise(drawn):
         texts.append((f"{first} {second}", first_at.united(second_at)))
-    for text, rect in drawn:
-        if " · " in text:
-            texts += [(part, rect) for part in text.split(" · ")]
     return texts
 
 
@@ -1541,17 +1884,22 @@ def texts_in(root) -> list[dict]:
             return
         seen = _visible(rect, widget, root)
         if seen is not None and not seen.isEmpty():
-            found.append(
-                {
-                    "text": text,
-                    "rect": [seen.x(), seen.y(), seen.width(), seen.height()],
-                }
-            )
+            where = [seen.x(), seen.y(), seen.width(), seen.height()]
+            found.append({"text": text, "rect": where})
+            # "Bookmarks: 3 · Files: 2": strings of their own, joined
+            if " · " in text:
+                found.extend(
+                    {"text": part, "rect": where} for part in text.split(" · ")
+                )
 
     if isinstance(root, QMenu):
         for action in root.actions():
             if action.isVisible() and not action.isSeparator():
-                add(action.text(), root.actionGeometry(action), root, shortcut=True)
+                rect = root.actionGeometry(action)
+                add(action.text(), rect, root, shortcut=True)
+                # "Delay: 0 ms", "Load Snapshot (3)": the name alone too
+                for name in _named(_plain(action.text(), shortcut=True)):
+                    add(name, rect, root)
         return found
 
     for w in [root, *root.findChildren(QWidget)]:
@@ -1613,6 +1961,13 @@ def texts_in(root) -> list[dict]:
         elif isinstance(w, QAbstractItemView) and w.model() is not None:
             viewport = w.viewport()
 
+            # what the list paints itself: a word on an empty one, marks
+            # across its rows
+            module = sys.modules.get(type(w).__module__)
+            if module is not None and hasattr(module, "QPainter"):
+                for text, rect in _painted_texts(w, module, viewport):
+                    add(text, rect, viewport)
+
             def rows(parent, depth=0, w=w, viewport=viewport):
                 model = w.model()
                 # list and table models keep these to themselves
@@ -1656,6 +2011,8 @@ def _visible(rect, widget, root):
 
 
 _TAG = re.compile(r"<[^>]+>")
+# where a text breaks into lines, plain or rich
+_BREAK = re.compile(r"\n|<br\s*/?>", re.IGNORECASE)
 
 
 def _plain(text, shortcut=False) -> str:
@@ -1669,6 +2026,14 @@ def _plain(text, shortcut=False) -> str:
     # a menu item's key, after a tab
     text = text.split("\t")[0]
     return " ".join(text.split())
+
+
+_NAMED = (re.compile(r"^(.+?): \S.*$"), re.compile(r"^(.+?) \(\d+\)$"))
+
+
+def _named(text: str) -> list[str]:
+    """The name of a menu item that shows a value after it."""
+    return [m.group(1) for pattern in _NAMED if (m := pattern.match(text))]
 
 
 def _slug(text: str) -> str:
