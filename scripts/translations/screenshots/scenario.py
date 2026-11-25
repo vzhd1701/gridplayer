@@ -32,6 +32,14 @@ OWN_TEMPLATES = (("Two by two", 2, 2), ("Three across", 3, 1))
 # where the snap words go down the editor, and how far apart
 SNAP_WORDS_TOP = 80
 SNAP_WORDS_STEP = 48
+# the cells that show what a cell can say, a few states to a screen
+GALLERY_CELLS = 6
+# the host named in the errors shown on them
+GALLERY_HOST = "example.com"
+# the HTTP statuses whose errors are shown
+GALLERY_HTTP = (400, 401, 403, 404, 405, 408, 410, 416, 429, 451, 500, 502, 503, 504)
+# how long ago loading started, for the time it has taken to show
+GALLERY_ELAPSED_S = (12, 75)
 # how deep submenus are opened, below the menu itself
 # what is kept of the menus above and below an open submenu's cascade
 FOCUS_MARGIN = 60
@@ -211,6 +219,8 @@ def scenario(d):
     # last, as the grid is left another kind than the dialogs above had
     _grid_templates(d, block, window)
     _edit_grid_kinds(d, block, capture_layers, tips)
+    # last of all: every cell is closed for it
+    _status_gallery(d, base, capture)
 
     (d.out / "tags.json").write_text(
         json.dumps(shots, ensure_ascii=False, indent=1), encoding="utf-8"
@@ -1253,6 +1263,211 @@ def _all_text(d, window, name, capture):
         d.pump(0.2)
 
 
+def _status_gallery(d, base, capture):
+    """What a cell can say as it loads and when it fails, set on a few
+    failed cells by the app's own makers of it, a few states to a screen:
+    every kind of error, for a video and for a list, the HTTP statuses,
+    and the stages of loading."""
+    for cell in list(d.cells):
+        d.act(cell, "Close")
+    d.pump(0.5)
+
+    # a link failing is tried again, over what is set on its cell here:
+    # not for these, last of the run, so no screen shows the setting
+    from gridplayer.params.static import NetworkRetryMode
+
+    d.change_setting("video_defaults/network_retry_mode", NetworkRetryMode.OFF)
+    d.open(*(f"{base}/broken.mp4?{n}" for n in range(1, GALLERY_CELLS + 1)))
+
+    def failed():
+        cells = list(d.cells)
+        return len(cells) == GALLERY_CELLS and all(
+            c.status.last_error is not None for c in cells
+        )
+
+    if not _until(d, failed, 30):
+        d.note("the gallery cells did not fail")
+        return
+    cells = list(d.cells)
+    states = _status_states(cells[0])
+
+    for n, start in enumerate(range(0, len(states), GALLERY_CELLS), 1):
+        for cell, state in zip(cells, states[start : start + GALLERY_CELLS]):
+            state(cell)
+        d.pump(0.3)
+        capture(f"cells-{n}", d.player)
+
+
+def _status_states(block) -> list:
+    """Each state to set a cell in, a function of the cell: the errors
+    one of each title and line, then the loading stages."""
+    import dataclasses
+
+    from gridplayer.params.static import ListSourceKind
+    from gridplayer.utils.list_errors import ReadError, ReadErrorKind
+    from gridplayer.utils.video_errors import (
+        empty_link_list_error,
+        shown_read_error,
+        stream_offline_error,
+        unresolved_error,
+    )
+    from gridplayer.widgets.video_status import LoadStage
+
+    url = f"https://{GALLERY_HOST}/video"
+    errors = []
+    for kind in ReadErrorKind:
+        if kind is ReadErrorKind.HTTP:
+            continue
+        for is_video, source in (
+            (True, ListSourceKind.URL),
+            (False, ListSourceKind.URL),
+            (False, ListSourceKind.FILE),
+        ):
+            read = ReadError(
+                kind=kind,
+                raw="",
+                source_kind=source,
+                host=GALLERY_HOST,
+                limit_mb=10,
+            )
+            errors.append(shown_read_error(read, is_video=is_video))
+    for status in GALLERY_HTTP:
+        read = ReadError(
+            kind=ReadErrorKind.HTTP, raw="", status=status, host=GALLERY_HOST
+        )
+        errors.append(shown_read_error(read))
+    errors += [
+        stream_offline_error(url),
+        unresolved_error(url),
+        empty_link_list_error(url),
+    ]
+
+    said = _recovery_texts(block)
+
+    states = []
+    seen = set()
+    for error in errors:
+        key = (error.title, error.about, error.where, error.code)
+        if key in seen:
+            continue
+        seen.add(key)
+        states.append(lambda b, error=error: b.video_status.show_error(error))
+
+    def cant_play(b):
+        b.status.last_error = None
+        b.status.show_error_card()
+
+    def noted(note):
+        error = dataclasses.replace(errors[0])
+        return lambda b: b.video_status.show_error(error, note)
+
+    def steps(b):
+        b.status.load_steps = (LoadStage.LINK, LoadStage.LIST, LoadStage.VIDEO)
+        b.status.show_resolving_link("yt-dlp")
+
+    def reconnect(b):
+        b.video_status.show_reconnect(7, 10, said["try_of"])
+
+    def reconnect_no_limit(b):
+        b.video_status.show_reconnect(7, 10, said["try"])
+
+    def taking(seconds):
+        def state(b):
+            b.status.show_opening()
+            b.video_status._started_at -= seconds
+
+        return state
+
+    # the player's own words, said by it as it opens a video
+    def player_says(text):
+        return lambda b: b.status.show_stage(LoadStage.VIDEO, text)
+
+    states += [
+        cant_play,
+        noted(said["next"]),
+        noted(said["previous"]),
+        lambda b: b.status.show_opening(),
+        lambda b: b.status.on_driver_status("Buffering", 45),
+        steps,
+        reconnect,
+        reconnect_no_limit,
+        player_says("Parsing media"),
+        player_says("Preparing video output"),
+        *(taking(seconds) for seconds in GALLERY_ELAPSED_S),
+    ]
+    return states
+
+
+def _recovery_texts(block) -> dict[str, str]:
+    """What the recovery part says of its tries and of the count down to
+    the next file, made with its counts set for it, then put back."""
+    recovery = block.recovery
+    kind = type(recovery)
+    said = {}
+
+    retry_limit, retries = kind.retry_limit, recovery._retries
+    try:
+        recovery._retries = 2
+        kind.retry_limit = property(lambda self: 5)
+        said["try_of"] = recovery._attempt_txt
+        kind.retry_limit = property(lambda self: -1)
+        said["try"] = recovery._attempt_txt
+    finally:
+        kind.retry_limit = retry_limit
+        recovery._retries = retries
+
+    # running long enough that it is read, not run out
+    recovery._skip_timer.start(600_000)
+    is_going_back = kind.is_going_back
+    try:
+        said["next"] = recovery.skip_note()
+        kind.is_going_back = property(lambda self: True)
+        said["previous"] = recovery.skip_note()
+    finally:
+        kind.is_going_back = is_going_back
+        recovery._skip_timer.stop()
+
+    return said
+
+
+def _painted_texts(widget) -> list[tuple[str, object]]:
+    """The texts a widget paints itself (a cell's status), each with where:
+    its painter recorded while it is grabbed. A line wrapped in two, or
+    parts joined by " · ", is given as a whole and in parts too."""
+    from itertools import pairwise
+
+    from PyQt6.QtCore import QRect, QRectF
+    from PyQt6.QtGui import QPainter
+
+    from gridplayer.widgets import video_status
+
+    drawn = []
+
+    class Recording(QPainter):
+        def drawText(self, *args):
+            if len(args) >= 3 and isinstance(args[2], str):
+                rect = args[0]
+                if isinstance(rect, QRectF):
+                    rect = rect.toAlignedRect()
+                drawn.append((args[2], QRect(rect)))
+            super().drawText(*args)
+
+    painter_class = video_status.QPainter
+    video_status.QPainter = Recording
+    try:
+        widget.grab()
+    finally:
+        video_status.QPainter = painter_class
+
+    texts = list(drawn)
+    for (first, first_at), (second, second_at) in pairwise(drawn):
+        texts.append((f"{first} {second}", first_at.united(second_at)))
+    for text, rect in drawn:
+        if " · " in text:
+            texts += [(part, rect) for part in text.split(" · ")]
+    return texts
+
+
 def _scrolled_content(dialog):
     """The page's whole content, when it is taller than what shows."""
     from PyQt6.QtWidgets import QScrollArea
@@ -1316,6 +1531,7 @@ def texts_in(root) -> list[dict]:
     )
 
     from gridplayer.widgets.settings_controls import SegmentedChoice
+    from gridplayer.widgets.video_status import VideoStatus
 
     found = []
 
@@ -1352,6 +1568,9 @@ def texts_in(root) -> list[dict]:
             add(w.placeholderText(), whole, w)
         elif isinstance(w, QComboBox):
             add(w.currentText(), whole, w)
+        elif isinstance(w, VideoStatus):
+            for text, rect in _painted_texts(w):
+                add(text, rect, w)
         elif isinstance(w, SegmentedChoice):
             # drawn, not buttons: each text in its segment; an icon's text
             # is its tip
