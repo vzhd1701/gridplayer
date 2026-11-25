@@ -489,6 +489,7 @@
     </message>
     <message>
       <source>Delay</source>
+      <extracomment>menu item, followed by its value, as &quot;Delay: 120 ms&quot;</extracomment>
       <translation type="unfinished">التأخير</translation>
       <extra-gp-ai>claude/claude-opus-5-5/high 2026-11-23</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1333,6 +1334,7 @@
     </message>
     <message>
       <source>{} (not connected)</source>
+      <extracomment>an audio device picked but not plugged in; {} is its name</extracomment>
       <translation type="unfinished">{} (غير متصل)</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-23</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1396,6 +1398,7 @@
     </message>
     <message>
       <source>Encoding</source>
+      <extracomment>menu item, followed by its value, as &quot;Encoding: UTF-8&quot;</extracomment>
       <translation type="unfinished">الترميز</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-23</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1410,6 +1413,7 @@
     </message>
     <message>
       <source>{NAME} and {COUNT} more</source>
+      <extracomment>NAME is a closed video's name; COUNT is how many more were closed with it</extracomment>
       <translation type="unfinished">{NAME} و{COUNT} أخرى</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-23</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1431,6 +1435,7 @@
     </message>
     <message>
       <source>Show</source>
+      <extracomment>tray menu item: shows the player's window</extracomment>
       <translation type="unfinished">إظهار</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-23</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1438,6 +1443,7 @@
     </message>
     <message>
       <source>Hide</source>
+      <extracomment>tray menu item: hides the player's window</extracomment>
       <translation type="unfinished">إخفاء</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-23</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1459,6 +1465,7 @@
     </message>
     <message>
       <source>{hours}h</source>
+      <extracomment>short for hours, in a step size as &quot;1h 30m&quot;</extracomment>
       <translation type="unfinished">{hours} س</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-23</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1466,6 +1473,7 @@
     </message>
     <message>
       <source>{minutes}m</source>
+      <extracomment>short for minutes, in a step size as &quot;1h 30m&quot;</extracomment>
       <translation type="unfinished">{minutes} د</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-23</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1480,6 +1488,7 @@
     </message>
     <message>
       <source>Red</source>
+      <extracomment>a bookmark's colour</extracomment>
       <translation type="unfinished">أحمر</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-23</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1487,6 +1496,7 @@
     </message>
     <message>
       <source>Pink</source>
+      <extracomment>a bookmark's colour</extracomment>
       <translation type="unfinished">وردي</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-23</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1494,6 +1504,7 @@
     </message>
     <message>
       <source>Purple</source>
+      <extracomment>a bookmark's colour</extracomment>
       <translation type="unfinished">بنفسجي</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-23</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1501,6 +1512,7 @@
     </message>
     <message>
       <source>Blue</source>
+      <extracomment>a bookmark's colour</extracomment>
       <translation type="unfinished">أزرق</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-23</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1508,6 +1520,7 @@
     </message>
     <message>
       <source>Cyan</source>
+      <extracomment>a bookmark's colour</extracomment>
       <translation type="unfinished">سماوي</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-23</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1515,6 +1528,7 @@
     </message>
     <message>
       <source>Green</source>
+      <extracomment>a bookmark's colour</extracomment>
       <translation type="unfinished">أخضر</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-23</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1522,6 +1536,7 @@
     </message>
     <message>
       <source>White</source>
+      <extracomment>a bookmark's colour</extracomment>
       <translation type="unfinished">أبيض</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-23</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1684,6 +1699,7 @@
     </message>
     <message>
       <source>Stop and add what was found so far</source>
+      <extracomment>tooltip of the Stop button while what is being added is read</extracomment>
       <translation type="unfinished">إيقاف وإضافة ما تم العثور عليه حتى الآن</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-23</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1691,6 +1707,7 @@
     </message>
     <message>
       <source>Reading…</source>
+      <extracomment>while the files, folders or links being added are read</extracomment>
       <translation type="unfinished">جارٍ القراءة…</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-23</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1698,6 +1715,7 @@
     </message>
     <message>
       <source>Stopping…</source>
+      <extracomment>after Stop is pressed, while what is being added is read</extracomment>
       <translation type="unfinished">جارٍ الإيقاف…</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-23</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1712,6 +1730,7 @@
     </message>
     <message>
       <source>and {COUNT} more</source>
+      <extracomment>below the first few things listed: how many more there are</extracomment>
       <translation type="unfinished">و{COUNT} غيرها</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-23</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1726,6 +1745,7 @@
     </message>
     <message>
       <source>Add {COUNT} cells?</source>
+      <extracomment>asked before adding many videos, each in a cell of its own</extracomment>
       <translation type="unfinished">هل تريد إضافة {COUNT} خلية؟</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-23</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1740,6 +1760,7 @@
     </message>
     <message>
       <source>Nothing to add</source>
+      <extracomment>title of a message: none of what was dropped or opened can be played</extracomment>
       <translation type="unfinished">لا شيء لإضافته</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-23</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1754,6 +1775,7 @@
     </message>
     <message>
       <source>Couldn't add 1 item</source>
+      <extracomment>title of the message listing what could not be added</extracomment>
       <translation type="unfinished">تعذّرت إضافة عنصر واحد</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-23</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1761,6 +1783,7 @@
     </message>
     <message>
       <source>Couldn't add {COUNT} items</source>
+      <extracomment>title of the message listing what could not be added</extracomment>
       <translation type="unfinished">تعذّرت إضافة {COUNT} عنصرًا</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-23</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1823,6 +1846,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Just this video</source>
+      <extracomment>choice for a link to a video inside a YouTube playlist</extracomment>
       <translation type="unfinished">هذا الفيديو فقط</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1830,6 +1854,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>The whole playlist</source>
+      <extracomment>choice for a link to a video inside a YouTube playlist</extracomment>
       <translation type="unfinished">قائمة التشغيل كاملة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1851,6 +1876,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Add 1 item</source>
+      <extracomment>heading of the window asking how to add what was dropped or opened</extracomment>
       <translation type="unfinished">إضافة عنصر واحد</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1858,6 +1884,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Add {COUNT} items</source>
+      <extracomment>heading of the window asking how to add what was dropped or opened; items are files, folders or links</extracomment>
       <translation type="unfinished">إضافة عناصر ({COUNT})</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1865,6 +1892,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>In a new cell</source>
+      <extracomment>a choice in the window asking how to add what was dropped or opened, for one file dropped on a cell</extracomment>
       <translation type="unfinished">في خلية جديدة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1872,6 +1900,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>After this cell's video</source>
+      <extracomment>a choice in the window asking how to add what was dropped or opened: onto the list of the cell it was dropped on, to play next</extracomment>
       <translation type="unfinished">بعد فيديو هذه الخلية</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1886,6 +1915,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>All in one cell</source>
+      <extracomment>a choice in the window asking how to add what was dropped or opened: all in one cell, playing one after another</extracomment>
       <translation type="unfinished">الكل في خلية واحدة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1900,6 +1930,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>1 cell</source>
+      <extracomment>shown beside a way of adding: how many cells it would take</extracomment>
       <translation type="unfinished">خلية واحدة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1907,6 +1938,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Each video in its own cell</source>
+      <extracomment>a choice in the window asking how to add what was dropped or opened: one cell for each video</extracomment>
       <translation type="unfinished">كل فيديو في خلية منفصلة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1921,6 +1953,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>In one cell</source>
+      <extracomment>a choice in the window asking how to add what was dropped or opened, for one folder or playlist: it plays in one cell, as a list</extracomment>
       <translation type="unfinished">في خلية واحدة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1935,6 +1968,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Each item in its own cell</source>
+      <extracomment>a choice in the window asking how to add what was dropped or opened: one cell for each file, folder and playlist</extracomment>
       <translation type="unfinished">كل عنصر في خلية منفصلة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1949,6 +1983,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>{COUNT} cells ({FREE} fit)</source>
+      <extracomment>shown beside a way of adding: how many cells it would take, and how many of them the grid has room for</extracomment>
       <translation type="unfinished">{COUNT} خلية ({FREE} متاحة)</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1956,6 +1991,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>{COUNT} cells</source>
+      <extracomment>shown beside a way of adding: how many cells it would take</extracomment>
       <translation type="unfinished">{COUNT} خلية</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -1963,6 +1999,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>{COUNT} items</source>
+      <extracomment>under the name of a folder or playlist being added: how many videos it has</extracomment>
       <translation type="unfinished">عناصر ({COUNT})</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -2206,6 +2243,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>{RATIO} (list)</source>
+      <extracomment>the aspect ratio the list gives the video, as &quot;16:9 (list)&quot;</extracomment>
       <translation type="unfinished">{RATIO} (من القائمة)</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-23</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -2216,6 +2254,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     <name>Audio Delay</name>
     <message>
       <source>ms</source>
+      <extracomment>&quot;ms&quot; is short for milliseconds</extracomment>
       <translation type="unfinished">مللي ثانية</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -2361,6 +2400,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>minute(s)</source>
+      <extracomment>word it so it fits any number: the app has no plural forms</extracomment>
       <translation>دقيقة</translation>
     </message>
   </context>
@@ -2403,6 +2443,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Paused at the start instead of “{ACTION}”</source>
+      <extracomment>ACTION is what the video does when it ends, as &quot;Next File&quot;</extracomment>
       <translation type="unfinished">تم الإيقاف المؤقت عند البداية بدلًا من «{ACTION}»</translation>
       <extra-gp-ai>claude/claude-opus-5-5/high 2026-11-23</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -2410,6 +2451,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>+{COUNT} more</source>
+      <extracomment>on the video, after the bookmarks named: how many more there are</extracomment>
       <translation type="unfinished">+{COUNT} أخرى</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -2427,6 +2469,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Running...</source>
+      <extracomment>a check's state in the checkup list: being run now</extracomment>
       <translation type="unfinished">جارٍ الفحص...</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -2434,6 +2477,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Not run</source>
+      <extracomment>a check's state in the checkup list: not run yet</extracomment>
       <translation type="unfinished">لم يُجرَ الفحص</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -2441,6 +2485,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Step {STEP} of {STEPS}: {TITLE}</source>
+      <extracomment>TITLE is the check's name</extracomment>
       <translation type="unfinished">الخطوة {STEP} من {STEPS}: {TITLE}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -2469,6 +2514,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>{FAILED} failed, {WARNED} to look at</source>
+      <extracomment>result of the whole checkup: how many checks failed, and how many gave a warning</extracomment>
       <translation type="unfinished">فشل {FAILED}، و{WARNED} بحاجة إلى مراجعة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -2476,6 +2522,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>{FAILED} failed</source>
+      <extracomment>result of the whole checkup: how many checks failed</extracomment>
       <translation type="unfinished">فشل {FAILED}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -2483,6 +2530,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Nothing failed, {WARNED} to look at</source>
+      <extracomment>result of the whole checkup: how many checks gave a warning</extracomment>
       <translation type="unfinished">لم يفشل أي فحص، و{WARNED} بحاجة إلى مراجعة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -2490,6 +2538,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>All good</source>
+      <extracomment>result of the whole checkup: every check passed</extracomment>
       <translation type="unfinished">كل شيء على ما يرام</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -2528,6 +2577,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>{RATIO} (list)</source>
+      <extracomment>the crop the list gives the video, as &quot;16:9 (list)&quot;</extracomment>
       <translation type="unfinished">{RATIO} (من القائمة)</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-23</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -2666,6 +2716,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     <message>
       <source>Media</source>
       <comment>File formats</comment>
+      <extracomment>a kind of file in the open window: videos, audio and playlists</extracomment>
       <translation>الوسائط</translation>
     </message>
     <message>
@@ -2681,6 +2732,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     <message>
       <source>Playlists</source>
       <comment>File formats</comment>
+      <extracomment>a kind of file in the open window: playlist files</extracomment>
       <translation type="unfinished">قوائم التشغيل</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -2718,6 +2770,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Supported sites: {SERVICES}</source>
+      <extracomment>SERVICES is site names, as &quot;YouTube, Twitch&quot;</extracomment>
       <translation>المواقع المدعومة: {SERVICES}</translation>
     </message>
     <message>
@@ -2798,6 +2851,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     <name>Dialog - Bookmarks</name>
     <message>
       <source>Past the end of the video</source>
+      <extracomment>said of a bookmark's time: it is after the video ends</extracomment>
       <translation type="unfinished">بعد نهاية الفيديو</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -2805,6 +2859,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Outside the loop</source>
+      <extracomment>said of a bookmark's time: it is outside the loop being played</extracomment>
       <translation type="unfinished">خارج الحلقة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -2896,6 +2951,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>loop {START}-{END}</source>
+      <extracomment>mark in the bookmark list, between bookmarks, where the loop is; START and END are times, as &quot;1:05&quot;</extracomment>
       <translation type="unfinished">الحلقة {START}-{END}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -2903,6 +2959,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>loop start {TIME}</source>
+      <extracomment>mark in the bookmark list, between bookmarks, where the loop starts; TIME is as &quot;1:05&quot;</extracomment>
       <translation type="unfinished">بداية الحلقة {TIME}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -2910,6 +2967,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>loop end {TIME}</source>
+      <extracomment>mark in the bookmark list, between bookmarks, where the loop ends; TIME is as &quot;1:05&quot;</extracomment>
       <translation type="unfinished">نهاية الحلقة {TIME}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -2917,6 +2975,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>end {TIME}</source>
+      <extracomment>mark in the bookmark list where the video ends; TIME is as &quot;1:05&quot;</extracomment>
       <translation type="unfinished">النهاية {TIME}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -2931,6 +2990,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Paused at the start instead of “{ACTION}” while this is open.</source>
+      <extracomment>ACTION is what the video does when it ends, as &quot;Next File&quot;</extracomment>
       <translation type="unfinished">توقف الفيديو مؤقتًا عند بدايته بدلًا من تنفيذ «{ACTION}» ما دامت هذه النافذة مفتوحة.</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -2938,6 +2998,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Not a time: {TEXT}</source>
+      <extracomment>status line: what was typed as a bookmark's time is not one; TEXT is what was typed</extracomment>
       <translation type="unfinished">وقت غير صالح: {TEXT}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3054,6 +3115,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>{COUNT} cells</source>
+      <extracomment>beside a file's name: how many cells have bookmarks of their own for it</extracomment>
       <translation type="unfinished">{COUNT} خلية</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3061,6 +3123,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>and {COUNT} more</source>
+      <extracomment>below the first few files listed: how many more there are</extracomment>
       <translation type="unfinished">و{COUNT} أخرى</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3229,6 +3292,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     <name>Dialog - List</name>
     <message>
       <source>Source: Link</source>
+      <extracomment>where the list comes from, shown at the top of the List window</extracomment>
       <translation type="unfinished">المصدر: رابط</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3236,6 +3300,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Source: Playlist file</source>
+      <extracomment>where the list comes from, shown at the top of the List window</extracomment>
       <translation type="unfinished">المصدر: ملف قائمة تشغيل</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3243,6 +3308,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Source: Folder, with subfolders</source>
+      <extracomment>where the list comes from, shown at the top of the List window</extracomment>
       <translation type="unfinished">المصدر: مجلد مع مجلداته الفرعية</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3250,6 +3316,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Source: Folder</source>
+      <extracomment>where the list comes from, shown at the top of the List window</extracomment>
       <translation type="unfinished">المصدر: مجلد</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3264,6 +3331,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>{COUNT} items</source>
+      <extracomment>on the card dragged with several items of the list</extracomment>
       <translation type="unfinished">{COUNT} عنصر</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3348,6 +3416,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Details</source>
+      <extracomment>button on the box saying the list could not be read: shows the full error</extracomment>
       <translation type="unfinished">التفاصيل</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3355,6 +3424,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Hide</source>
+      <extracomment>tooltip of the cross button that hides the box saying the list could not be read</extracomment>
       <translation type="unfinished">إخفاء</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3376,6 +3446,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>All groups ({COUNT})</source>
+      <extracomment>first choice of the group filter; COUNT is how many items the list has</extracomment>
       <translation type="unfinished">كل المجموعات ({COUNT})</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3383,6 +3454,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>No group ({COUNT})</source>
+      <extracomment>choice of the group filter for items in no group; COUNT is how many</extracomment>
       <translation type="unfinished">بلا مجموعة ({COUNT})</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3390,6 +3462,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Adding to the list</source>
+      <extracomment>heading of the List window for a list with no source, made by hand</extracomment>
       <translation type="unfinished">جارٍ الإضافة إلى القائمة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3404,6 +3477,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Updated just now</source>
+      <extracomment>on the Refresh button: when the list was last read from its source</extracomment>
       <translation type="unfinished">تم التحديث للتو</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3411,6 +3485,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>just now</source>
+      <extracomment>the same, short, where the Refresh button has no room for more</extracomment>
       <translation type="unfinished">للتو</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3418,6 +3493,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Updated {WHEN}</source>
+      <extracomment>on the Refresh button; WHEN is as &quot;3 days ago&quot;</extracomment>
       <translation type="unfinished">تم التحديث {WHEN}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3432,6 +3508,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Updates only on Refresh</source>
+      <extracomment>tooltip of the Refresh button: the list is read again only when it is pressed</extracomment>
       <translation type="unfinished">تُحدَّث فقط عند اختيار «تحديث»</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3439,6 +3516,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Next update: when the playlist opens</source>
+      <extracomment>tooltip of the Refresh button</extracomment>
       <translation type="unfinished">التحديث التالي: عند فتح قائمة التشغيل</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3446,6 +3524,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Next update: {WHEN}</source>
+      <extracomment>tooltip of the Refresh button; WHEN is as &quot;in 5 minutes&quot;, or &quot;soon&quot;</extracomment>
       <translation type="unfinished">التحديث التالي: {WHEN}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3488,6 +3567,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Playing in cells {NUMBERS}.</source>
+      <extracomment>the cells this list is open in; NUMBERS is as &quot;1, 3, 4&quot;</extracomment>
       <translation type="unfinished">التشغيل في الخلايا {NUMBERS}.</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3495,6 +3575,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Cell {NUMBER} also plays this list.</source>
+      <extracomment>another cell has this list open too</extracomment>
       <translation type="unfinished">تُشغَّل هذه القائمة أيضًا في الخلية {NUMBER}.</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3502,6 +3583,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Cells {NUMBERS} also play this list.</source>
+      <extracomment>other cells have this list open too; NUMBERS is as &quot;1, 3, 4&quot;</extracomment>
       <translation type="unfinished">تُشغَّل هذه القائمة أيضًا في الخلايا {NUMBERS}.</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3523,6 +3605,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Shown: {SHOWN} of {COUNT}</source>
+      <extracomment>items left by the filter, of all the items on the list</extracomment>
       <translation type="unfinished">المعروض: {SHOWN} من {COUNT}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3537,6 +3620,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Removed: {COUNT}</source>
+      <extracomment>status line at the bottom of the List window: how many items were taken off the list</extracomment>
       <translation type="unfinished">تمت الإزالة: {COUNT}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3558,6 +3642,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>By Views</source>
+      <extracomment>sort order of the list, most watched first</extracomment>
       <translation type="unfinished">حسب عدد المشاهدات</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3565,6 +3650,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>By Date Published</source>
+      <extracomment>sort order of the list, by when each video was put up</extracomment>
       <translation type="unfinished">حسب تاريخ النشر</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3572,6 +3658,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>By Group</source>
+      <extracomment>sort order of the list, by the group each item is in</extracomment>
       <translation type="unfinished">حسب المجموعة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3614,6 +3701,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Nothing to paste</source>
+      <extracomment>status line at the bottom of the List window: the clipboard has no files or links in it</extracomment>
       <translation type="unfinished">لا شيء للصق</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3621,6 +3709,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Could not be read: {WHAT}</source>
+      <extracomment>status line at the bottom of the List window; WHAT is the files or links that failed, or the error</extracomment>
       <translation type="unfinished">تعذّرت القراءة: {WHAT}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3628,6 +3717,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Added: {COUNT}</source>
+      <extracomment>status line at the bottom of the List window: how many items were put on the list</extracomment>
       <translation type="unfinished">أُضيف: {COUNT}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3635,6 +3725,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Nothing to add</source>
+      <extracomment>status line at the bottom of the List window: nothing given could be put on the list</extracomment>
       <translation type="unfinished">لا شيء لإضافته</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3670,6 +3761,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Unlinked</source>
+      <extracomment>status line at the bottom of the List window: the list no longer follows its source, and stays as it is</extracomment>
       <translation type="unfinished">تم إلغاء الربط</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3705,6 +3797,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>New: {ADDED} · Gone: {GONE}</source>
+      <extracomment>status line at the bottom of the List window, after the list is read again from its source: items new to it, and items no longer in it</extracomment>
       <translation type="unfinished">الجديد: {ADDED} · المفقود: {GONE}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3712,6 +3805,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Nothing new</source>
+      <extracomment>status line at the bottom of the List window: the list was read again and nothing had changed</extracomment>
       <translation type="unfinished">لا جديد</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3719,6 +3813,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Reloaded: {COUNT}</source>
+      <extracomment>status line at the bottom of the List window: the list was put back to what its source has; COUNT is how many items</extracomment>
       <translation type="unfinished">أُعيد التحميل: {COUNT}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3726,6 +3821,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Reading…</source>
+      <extracomment>while the list is read from its source</extracomment>
       <translation type="unfinished">جارٍ القراءة…</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3740,6 +3836,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Comparing with the list…</source>
+      <extracomment>while what was read is compared with the items already on the list</extracomment>
       <translation type="unfinished">جارٍ المقارنة مع القائمة…</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3747,6 +3844,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>In the source's order</source>
+      <extracomment>status line at the bottom of the List window: the items were put back in the order their source has them</extracomment>
       <translation type="unfinished">بترتيب المصدر</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3754,6 +3852,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Nothing to look up</source>
+      <extracomment>status line at the bottom of the List window, after Get Info: every item already has its titles and details</extracomment>
       <translation type="unfinished">لا شيء للبحث عنه</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3761,6 +3860,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Looked up: {FOUND} · Not found: {MISSING}</source>
+      <extracomment>status line at the bottom of the List window, after Get Info: items whose details were found, and items that were not</extracomment>
       <translation type="unfinished">عُثر على: {FOUND} · لم يُعثر على: {MISSING}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3768,6 +3868,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Looked up: {COUNT}</source>
+      <extracomment>status line at the bottom of the List window, after Get Info: items whose details were found</extracomment>
       <translation type="unfinished">عُثر على: {COUNT}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3775,6 +3876,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>No views or dates: {COUNT}</source>
+      <extracomment>added to the line above: items found without a view count or a date put up</extracomment>
       <translation type="unfinished">بلا مشاهدات أو تواريخ: {COUNT}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3782,6 +3884,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>{SITE} is blocking requests. Stopped at {DONE} of {COUNT}.</source>
+      <extracomment>Get Info was stopped by the site; SITE is as &quot;YouTube&quot;</extracomment>
       <translation type="unfinished">يحظر {SITE} الطلبات. توقف البحث عند {DONE} من {COUNT}.</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3796,6 +3899,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Getting views and dates: {DONE} of {COUNT}</source>
+      <extracomment>progress of Get Info</extracomment>
       <translation type="unfinished">جلب المشاهدات والتواريخ: {DONE} من {COUNT}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3803,6 +3907,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Getting info: {DONE} of {COUNT}</source>
+      <extracomment>progress of Get Info</extracomment>
       <translation type="unfinished">جلب المعلومات: {DONE} من {COUNT}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3810,6 +3915,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Getting info…</source>
+      <extracomment>progress of Get Info, before it knows how many</extracomment>
       <translation type="unfinished">جلب المعلومات…</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3824,6 +3930,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Opened as a new list: {COUNT}</source>
+      <extracomment>status line at the bottom of the List window: the items picked were opened in a new cell, as a list of their own</extracomment>
       <translation type="unfinished">فُتح في قائمة جديدة: {COUNT}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3831,6 +3938,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Copied: {COUNT}</source>
+      <extracomment>status line at the bottom of the List window: how many paths and links were copied</extracomment>
       <translation type="unfinished">نُسخ: {COUNT}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3838,6 +3946,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Source copied</source>
+      <extracomment>status line at the bottom of the List window: the path or link the list comes from was copied</extracomment>
       <translation type="unfinished">نُسخ المصدر</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3845,6 +3954,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Could not be exported: {WHAT}</source>
+      <extracomment>status line; WHAT is the system's error</extracomment>
       <translation type="unfinished">تعذّر التصدير: {WHAT}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3852,6 +3962,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Exported: {FILE}</source>
+      <extracomment>status line; FILE is the file written</extracomment>
       <translation type="unfinished">تم التصدير: {FILE}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3908,6 +4019,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Move to Top</source>
+      <extracomment>menu item: moves the items picked to the top of the list</extracomment>
       <translation type="unfinished">نقل إلى أول القائمة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3915,6 +4027,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Move to Bottom</source>
+      <extracomment>menu item: moves the items picked to the end of the list</extracomment>
       <translation type="unfinished">نقل إلى آخر القائمة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3964,6 +4077,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Nothing on the list</source>
+      <extracomment>shown in place of the items, on an empty list</extracomment>
       <translation type="unfinished">القائمة فارغة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -3999,6 +4113,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Copy Path</source>
+      <extracomment>menu item: copies the file's path</extracomment>
       <translation type="unfinished">نسخ المسار</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4006,6 +4121,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Thumbnails</source>
+      <extracomment>a way to show the list: pictures of the videos</extracomment>
       <translation type="unfinished">الصور المصغرة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4048,6 +4164,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Titles, Paths and Links</source>
+      <extracomment>a way to show the list: each item's title, and its path or link</extracomment>
       <translation type="unfinished">العناوين والمسارات والروابط</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4055,6 +4172,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Paths and Links</source>
+      <extracomment>a way to show the list: each item's path or link</extracomment>
       <translation type="unfinished">المسارات والروابط</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4062,6 +4180,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>No views</source>
+      <extracomment>how many times a video was watched, as a site shows it</extracomment>
       <translation type="unfinished">لا توجد مشاهدات</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4069,6 +4188,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>1 view</source>
+      <extracomment>how many times a video was watched, as a site shows it</extracomment>
       <translation type="unfinished">مشاهدة واحدة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4076,6 +4196,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>{COUNT} views</source>
+      <extracomment>how many times a video was watched, as a site shows it</extracomment>
       <translation type="unfinished">{COUNT} مشاهدة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4084,6 +4205,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     <message>
       <source>{COUNT}B</source>
       <comment>billions</comment>
+      <extracomment>a number of views, short: COUNT is as &quot;1.2&quot;</extracomment>
       <translation type="unfinished">{COUNT} مليار</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4092,6 +4214,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     <message>
       <source>{COUNT}M</source>
       <comment>millions</comment>
+      <extracomment>a number of views, short: COUNT is as &quot;1.2&quot;</extracomment>
       <translation type="unfinished">{COUNT} مليون</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4100,6 +4223,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     <message>
       <source>{COUNT}K</source>
       <comment>thousands</comment>
+      <extracomment>a number of views, short: COUNT is as &quot;1.2&quot;</extracomment>
       <translation type="unfinished">{COUNT} ألف</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4107,6 +4231,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>1 year ago</source>
+      <extracomment>how long ago, as a site says it: when a video was put up, or when the list was last read</extracomment>
       <translation type="unfinished">منذ سنة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4114,6 +4239,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>{COUNT} years ago</source>
+      <extracomment>how long ago, as a site says it: when a video was put up, or when the list was last read</extracomment>
       <translation type="unfinished">منذ {COUNT} سنة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4121,6 +4247,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>1 month ago</source>
+      <extracomment>how long ago, as a site says it: when a video was put up, or when the list was last read</extracomment>
       <translation type="unfinished">منذ شهر</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4128,6 +4255,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>{COUNT} months ago</source>
+      <extracomment>how long ago, as a site says it: when a video was put up, or when the list was last read</extracomment>
       <translation type="unfinished">منذ {COUNT} شهر</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4135,6 +4263,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>1 week ago</source>
+      <extracomment>how long ago, as a site says it: when a video was put up, or when the list was last read</extracomment>
       <translation type="unfinished">منذ أسبوع</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4142,6 +4271,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>{COUNT} weeks ago</source>
+      <extracomment>how long ago, as a site says it: when a video was put up, or when the list was last read</extracomment>
       <translation type="unfinished">منذ {COUNT} أسبوع</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4149,6 +4279,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>1 day ago</source>
+      <extracomment>how long ago, as a site says it: when a video was put up, or when the list was last read</extracomment>
       <translation type="unfinished">منذ يوم</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4156,6 +4287,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>{COUNT} days ago</source>
+      <extracomment>how long ago, as a site says it: when a video was put up, or when the list was last read</extracomment>
       <translation type="unfinished">منذ {COUNT} يوم</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4163,6 +4295,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>1 hour ago</source>
+      <extracomment>how long ago, as a site says it: when a video was put up, or when the list was last read</extracomment>
       <translation type="unfinished">منذ ساعة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4170,6 +4303,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>{COUNT} hours ago</source>
+      <extracomment>how long ago, as a site says it: when a video was put up, or when the list was last read</extracomment>
       <translation type="unfinished">منذ {COUNT} ساعة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4177,6 +4311,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>1 minute ago</source>
+      <extracomment>how long ago, as a site says it: when a video was put up, or when the list was last read</extracomment>
       <translation type="unfinished">منذ دقيقة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4184,6 +4319,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>{COUNT} minutes ago</source>
+      <extracomment>how long ago, as a site says it: when a video was put up, or when the list was last read</extracomment>
       <translation type="unfinished">منذ {COUNT} دقيقة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4198,6 +4334,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Export List</source>
+      <extracomment>title of the window for saving the list as a file</extracomment>
       <translation type="unfinished">تصدير القائمة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4220,6 +4357,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Unlink the list?</source>
+      <extracomment>unlinking stops the list following its source; its items stay as they are</extracomment>
       <translation type="unfinished">هل تريد إلغاء ربط القائمة؟</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4241,6 +4379,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Keep your changes to “{NAME}”?</source>
+      <extracomment>asked as the List window is closed with changes not yet kept</extracomment>
       <translation type="unfinished">حفظ التغييرات على «{NAME}»؟</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4248,6 +4387,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Keep your changes to the list?</source>
+      <extracomment>asked as the List window is closed with changes not yet kept</extracomment>
       <translation type="unfinished">حفظ التغييرات على القائمة؟</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4703,6 +4843,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Change</source>
+      <extracomment>link after how bookmarks are shared: changes it</extracomment>
       <translation type="unfinished">تغيير</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4717,6 +4858,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Files: {COUNT}</source>
+      <extracomment>count under the list: how many files have bookmarks</extracomment>
       <translation type="unfinished">الملفات: {COUNT}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4724,6 +4866,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Cells: {COUNT}</source>
+      <extracomment>count under the list: how many cells have bookmarks</extracomment>
       <translation type="unfinished">الخلايا: {COUNT}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4738,6 +4881,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Cell</source>
+      <extracomment>column header: the cell the bookmarks belong to</extracomment>
       <translation type="unfinished">الخلية</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4773,6 +4917,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Open in {COUNT} cells</source>
+      <extracomment>Status column of the Bookmarks page: the file is open in this many cells</extracomment>
       <translation type="unfinished">مفتوح في {COUNT} خلية</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4787,6 +4932,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Not playing</source>
+      <extracomment>Status column of the Bookmarks page: the cell plays another file now</extracomment>
       <translation type="unfinished">لا يُشغَّل الآن</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4794,6 +4940,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Not open</source>
+      <extracomment>Status column of the Bookmarks page: no cell has the file open</extracomment>
       <translation type="unfinished">غير مفتوح</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4801,6 +4948,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Stream, not open</source>
+      <extracomment>Status column of the Bookmarks page: a stream no cell has open</extracomment>
       <translation type="unfinished">بث غير مفتوح</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -4822,6 +4970,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Closed cell</source>
+      <extracomment>Status column of the Bookmarks page: the cell they belonged to was closed</extracomment>
       <translation type="unfinished">خلية مغلقة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -5026,6 +5175,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Untitled</source>
+      <extracomment>name of a list that has none</extracomment>
       <translation type="unfinished">بلا عنوان</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -5068,6 +5218,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>{NAME} (copy)</source>
+      <extracomment>name of a duplicated list; NAME is the list's name</extracomment>
       <translation type="unfinished">{NAME} (نسخة)</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -5075,6 +5226,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Duplicated</source>
+      <extracomment>status line: the list was duplicated</extracomment>
       <translation type="unfinished">تم النسخ</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -5089,6 +5241,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Added</source>
+      <extracomment>Source column, for a list with no source: made by adding things to it</extracomment>
       <translation type="unfinished">مضافة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -5255,6 +5408,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Cropped</source>
+      <extracomment>the size after cropping, as &quot;Video: 1920x1080 | Cropped: 1280x720&quot;</extracomment>
       <translation type="unfinished">بعد القص</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -5415,6 +5569,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>en, ja</source>
+      <extracomment>example of what to type: language codes, keep them as they are</extracomment>
       <translation type="unfinished">en, ja</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -5433,6 +5588,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>en, ja</source>
+      <extracomment>example of what to type: language codes, keep them as they are</extracomment>
       <translation type="unfinished">en, ja</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -5632,6 +5788,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Swap</source>
+      <extracomment>tag by the pointer while dragging a cell: dropping it here swaps the two</extracomment>
       <translation type="unfinished">تبديل</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-23</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -5639,6 +5796,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>No room</source>
+      <extracomment>tag while dragging or sizing a cell: it doesn't fit there</extracomment>
       <translation type="unfinished">لا توجد مساحة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -5967,6 +6125,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>{LIST}, {PLACE} of {COUNT}</source>
+      <extracomment>in the error details: the list, and where in it the video is, as &quot;Music, 3 of 20&quot;</extracomment>
       <translation type="unfinished">{LIST}، {PLACE} من {COUNT}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -5995,6 +6154,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Step</source>
+      <extracomment>row name in the error details: what the cell was doing when it failed</extracomment>
       <translation type="unfinished">الخطوة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -6009,6 +6169,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Tries</source>
+      <extracomment>row name in the error details: how many times opening it was tried</extracomment>
       <translation type="unfinished">المحاولات</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -6426,6 +6587,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>«{action}» in {path}</source>
+      <extracomment>action is an action's name; path is the menu it is in, as &quot;Single video &gt; Audio&quot;</extracomment>
       <translation type="unfinished">«{action}» في {path}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -6440,6 +6602,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Press a shortcut…</source>
+      <extracomment>placeholder of the box that records a shortcut as it is pressed</extracomment>
       <translation type="unfinished">اضغط مفاتيح الاختصار…</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -6482,6 +6645,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Current shortcuts: {keys}</source>
+      <extracomment>keys is as &quot;Ctrl+P, F5&quot;</extracomment>
       <translation type="unfinished">الاختصارات الحالية: {keys}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -6510,6 +6674,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>On a video in the strip, {action} takes it.</source>
+      <extracomment>the strip is the row of small videos in the Fixed Strip mode; action is an action's name</extracomment>
       <translation type="unfinished">عند استخدام الاختصار على فيديو في الشريط، يُنفّذ الإجراء {action}.</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -6517,6 +6682,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>{action} keeps it outside the strip.</source>
+      <extracomment>the strip is the row of small videos in the Fixed Strip mode; action is an action's name</extracomment>
       <translation type="unfinished">خارج الشريط، يُنفّذ الاختصار الإجراء {action}.</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -6580,6 +6746,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>{key} is also held to switch where a video is dropped. Held before the press, it will start this drag instead of moving the video; pressed once the video is moving, it still switches the drop.</source>
+      <extracomment>key is a key, as &quot;Ctrl&quot;</extracomment>
       <translation type="unfinished">يُستخدم مفتاح {key} أيضًا لتغيير مكان إسقاط الفيديو. إذا أبقيته مضغوطًا قبل الضغط على زر الفأرة، تبدأ حركة السحب هذه بدلًا من نقل الفيديو. وإذا ضغطته بعد بدء نقل الفيديو، فسيظل يغيّر مكان الإسقاط.</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -6587,6 +6754,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Current: {keys}</source>
+      <extracomment>tooltip of an action: its shortcuts now; keys is as &quot;Ctrl+P, F5&quot;</extracomment>
       <translation type="unfinished">الحالي: {keys}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -6594,6 +6762,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>(none)</source>
+      <extracomment>no shortcut set</extracomment>
       <translation type="unfinished">(لا شَيْء)</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -6601,6 +6770,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Default: {keys}</source>
+      <extracomment>tooltip of an action: its shortcuts as they come; keys is as &quot;Ctrl+P, F5&quot;</extracomment>
       <translation type="unfinished">الافتراضي: {keys}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -6776,6 +6946,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>{n} action(s) with non-default shortcuts</source>
+      <extracomment>word it so it fits any number: the app has no plural forms</extracomment>
       <translation type="unfinished">إجراءات باختصارات معدّلة ({n})</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -6809,6 +6980,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>+{count} other</source>
+      <extracomment>after the first few translators of a language: how many others there are</extracomment>
       <translation type="unfinished">+{count} آخر</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -6816,6 +6988,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>+{count} others</source>
+      <extracomment>after the first few translators of a language: how many others there are</extracomment>
       <translation type="unfinished">+{count} آخرون</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -6865,6 +7038,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>minutes</source>
+      <extracomment>unit in the row &quot;Every [number] [unit]&quot;: how often the list is read again; the number can be anything from 1 up</extracomment>
       <translation type="unfinished">دقيقة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -6872,6 +7046,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>hours</source>
+      <extracomment>unit in the row &quot;Every [number] [unit]&quot;: how often the list is read again; the number can be anything from 1 up</extracomment>
       <translation type="unfinished">ساعة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -6879,6 +7054,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>days</source>
+      <extracomment>unit in the row &quot;Every [number] [unit]&quot;: how often the list is read again; the number can be anything from 1 up</extracomment>
       <translation type="unfinished">يوم</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -6886,6 +7062,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Every</source>
+      <extracomment>start of the row &quot;Every [number] [unit]&quot;: how often the list is read again</extracomment>
       <translation type="unfinished">كل</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -6900,6 +7077,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Every day</source>
+      <extracomment>how often the list is read again from its source</extracomment>
       <translation type="unfinished">كل يوم</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-23</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -6907,6 +7085,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Every {COUNT} days</source>
+      <extracomment>how often the list is read again from its source</extracomment>
       <translation type="unfinished">كل {COUNT} يوم</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -6914,6 +7093,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Every hour</source>
+      <extracomment>how often the list is read again from its source</extracomment>
       <translation type="unfinished">كل ساعة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-23</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -6921,6 +7101,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Every {COUNT} hours</source>
+      <extracomment>how often the list is read again from its source</extracomment>
       <translation type="unfinished">كل {COUNT} ساعة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -6928,6 +7109,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Every minute</source>
+      <extracomment>how often the list is read again from its source</extracomment>
       <translation type="unfinished">كل دقيقة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -6935,6 +7117,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Every {COUNT} minutes</source>
+      <extracomment>how often the list is read again from its source</extracomment>
       <translation type="unfinished">كل {COUNT} دقيقة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -6942,6 +7125,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>soon</source>
+      <extracomment>when the list is next read again from its source; follows &quot;Next update:&quot;: in under a minute</extracomment>
       <translation type="unfinished">قريبًا</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -6949,6 +7133,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>in 1 minute</source>
+      <extracomment>when the list is next read again from its source; follows &quot;Next update:&quot;</extracomment>
       <translation type="unfinished">بعد دقيقة واحدة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -6956,6 +7141,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>in {COUNT} minutes</source>
+      <extracomment>when the list is next read again from its source; follows &quot;Next update:&quot;</extracomment>
       <translation type="unfinished">بعد {COUNT} دقيقة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -6963,6 +7149,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>in 1 hour</source>
+      <extracomment>when the list is next read again from its source; follows &quot;Next update:&quot;</extracomment>
       <translation type="unfinished">بعد ساعة واحدة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -6970,6 +7157,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>in {COUNT} hours</source>
+      <extracomment>when the list is next read again from its source; follows &quot;Next update:&quot;</extracomment>
       <translation type="unfinished">بعد {COUNT} ساعة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -6977,6 +7165,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>in 1 day</source>
+      <extracomment>when the list is next read again from its source; follows &quot;Next update:&quot;</extracomment>
       <translation type="unfinished">بعد يوم واحد</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -6984,6 +7173,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>in {COUNT} days</source>
+      <extracomment>when the list is next read again from its source; follows &quot;Next update:&quot;</extracomment>
       <translation type="unfinished">بعد {COUNT} يوم</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7103,6 +7293,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Downloading the list… {SIZE}</source>
+      <extracomment>SIZE is as &quot;2.4 MB&quot;</extracomment>
       <translation type="unfinished">جارٍ تنزيل القائمة… {SIZE}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7110,6 +7301,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Downloading the list… {SIZE} of {TOTAL}</source>
+      <extracomment>SIZE and TOTAL are as &quot;2.4 MB&quot;</extracomment>
       <translation type="unfinished">جارٍ تنزيل القائمة… {SIZE} من {TOTAL}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7152,6 +7344,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Added to the list: {COUNT}</source>
+      <extracomment>shown on the cell: how many videos were put on the list it plays</extracomment>
       <translation type="unfinished">تمت الإضافة إلى القائمة: {COUNT}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7159,6 +7352,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Current list</source>
+      <extracomment>tag on a cell: the List window open now is this cell's list</extracomment>
       <translation type="unfinished">القائمة الحالية</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7197,6 +7391,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Current</source>
+      <extracomment>label on the frame in the strip where the video shown big sits</extracomment>
       <translation type="unfinished">الحالي</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7231,6 +7426,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     <name>Media Keys</name>
     <message>
       <source>Videos: {}</source>
+      <extracomment>title the system's media controls show when the playlist isn't saved; {} is how many videos are open</extracomment>
       <translation type="unfinished">مقاطع الفيديو: {}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7304,6 +7500,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>{SCHEME} is not a kind of proxy GridPlayer can use</source>
+      <extracomment>SCHEME is what the proxy address starts with, as &quot;ftp&quot;</extracomment>
       <translation type="unfinished">لا يدعم GridPlayer وكلاء من نوع {SCHEME}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7311,6 +7508,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>It understands {SCHEMES}.</source>
+      <extracomment>SCHEMES is as &quot;http, https, socks5&quot;</extracomment>
       <translation type="unfinished">يدعم GridPlayer الأنواع {SCHEMES}.</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7332,6 +7530,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Could not connect to {WHAT}: {ERROR}</source>
+      <extracomment>WHAT is a host name, or &quot;the proxy at …&quot;; ERROR is the system's error</extracomment>
       <translation type="unfinished">تعذّر الاتصال بـ {WHAT}: {ERROR}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7339,6 +7538,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Connected to {WHAT} over {FAMILY} in {SECONDS}</source>
+      <extracomment>WHAT is a host name, or &quot;the proxy at …&quot;; FAMILY is IPv4 or IPv6; SECONDS is as &quot;0.12 sec&quot;</extracomment>
       <translation type="unfinished">تم الاتصال بـ {WHAT} عبر {FAMILY} خلال {SECONDS}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7346,6 +7546,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Not tried, {WHAT} could not be reached</source>
+      <extracomment>a check skipped as the connection before it failed; WHAT is a host name, or &quot;the proxy at …&quot;</extracomment>
       <translation type="unfinished">تم تخطّي الفحص لتعذّر الوصول إلى {WHAT}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7353,6 +7554,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>HTTP {STATUS}, {KIB} KiB from {HOST} in {SECONDS}</source>
+      <extracomment>a test download worked: its HTTP status code, its size, where from and how long it took (&quot;0.12 sec&quot;)</extracomment>
       <translation type="unfinished">HTTP {STATUS}، {KIB} كيبيبايت من {HOST} خلال {SECONDS}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7374,6 +7576,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>the proxy at {HOST}</source>
+      <extracomment>put in other lines of the checkup, as &quot;Could not connect to the proxy at …&quot;</extracomment>
       <translation type="unfinished">الوكيل على {HOST}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7381,6 +7584,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>No address to check, the system settings are in use</source>
+      <extracomment>the Proxy setting and its value; &quot;Custom&quot;, &quot;System&quot; and &quot;None&quot; are the setting's choices</extracomment>
       <translation type="unfinished">لا يوجد عنوان لفحصه، وإعدادات النظام قيد الاستخدام</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7388,6 +7592,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>No address to check, no proxy is in use</source>
+      <extracomment>the Proxy setting and its value; &quot;Custom&quot;, &quot;System&quot; and &quot;None&quot; are the setting's choices</extracomment>
       <translation type="unfinished">لا يوجد عنوان لفحصه، ولا يُستخدم أي وكيل</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7395,6 +7600,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Proxy: Custom, {PROXY}</source>
+      <extracomment>the Proxy setting and its value; &quot;Custom&quot;, &quot;System&quot; and &quot;None&quot; are the setting's choices; PROXY is the address typed in</extracomment>
       <translation type="unfinished">الوكيل: مخصص، {PROXY}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7402,6 +7608,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Proxy: Custom, but no address filled in</source>
+      <extracomment>the Proxy setting and its value; &quot;Custom&quot;, &quot;System&quot; and &quot;None&quot; are the setting's choices</extracomment>
       <translation type="unfinished">الوكيل: مخصص، ولم يُدخل أي عنوان</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7409,6 +7616,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Proxy: None</source>
+      <extracomment>the Proxy setting and its value; &quot;Custom&quot;, &quot;System&quot; and &quot;None&quot; are the setting's choices</extracomment>
       <translation type="unfinished">الوكيل: لا شَيْء</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7416,6 +7624,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Proxy: System, none set on this machine</source>
+      <extracomment>the Proxy setting and its value; &quot;Custom&quot;, &quot;System&quot; and &quot;None&quot; are the setting's choices</extracomment>
       <translation type="unfinished">الوكيل: النظام، لم يُضبط أي وكيل على هذا الجهاز</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7423,6 +7632,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Proxy: System, {PROXIES}</source>
+      <extracomment>the Proxy setting and its value; &quot;Custom&quot;, &quot;System&quot; and &quot;None&quot; are the setting's choices; PROXIES is the system's proxy addresses</extracomment>
       <translation type="unfinished">الوكيل: النظام، {PROXIES}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7430,6 +7640,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Force IPv4: {VALUE}</source>
+      <extracomment>a setting of the Network page and its value, in the checkup's list of settings; the name is the setting's label</extracomment>
       <translation type="unfinished">فرض IPv4: {VALUE}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7437,6 +7648,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Timeout: {VALUE}</source>
+      <extracomment>a setting of the Network page and its value, in the checkup's list of settings; the name is the setting's label</extracomment>
       <translation type="unfinished">المهلة: {VALUE}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7444,6 +7656,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>User agent: {VALUE}</source>
+      <extracomment>a setting of the Network page and its value, in the checkup's list of settings; the name is the setting's label</extracomment>
       <translation type="unfinished">وكيل المستخدم: {VALUE}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7458,6 +7671,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Verify TLS certificates: {VALUE}</source>
+      <extracomment>a setting of the Network page and its value, in the checkup's list of settings; the name is the setting's label</extracomment>
       <translation type="unfinished">التحقق من شهادات TLS: {VALUE}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7479,6 +7693,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>{SCHEME} proxy at {HOST}, port {PORT}</source>
+      <extracomment>SCHEME is the kind of proxy, as &quot;http&quot; or &quot;socks5&quot;</extracomment>
       <translation type="unfinished">وكيل {SCHEME} على {HOST}، المنفذ {PORT}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7493,6 +7708,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>{SCHEME} looks host names up on this machine. Use {REMOTE} instead to have the proxy look them up, which is what you want if the names you are after only resolve on its side.</source>
+      <extracomment>SCHEME is &quot;socks5&quot; or &quot;socks4&quot;; REMOTE is &quot;socks5h&quot; or &quot;socks4a&quot;</extracomment>
       <translation type="unfinished">يبحث {SCHEME} عن عناوين المضيفين على هذا الجهاز. استخدم {REMOTE} ليتولى الوكيل البحث إذا كان هو وحده يستطيع العثور على تلك العناوين.</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7507,6 +7723,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>{SECONDS} sec</source>
+      <extracomment>a number of seconds, short</extracomment>
       <translation type="unfinished">{SECONDS} ث</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7514,6 +7731,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Yes</source>
+      <extracomment>the value of an on/off setting, as &quot;Force IPv4: Yes&quot;</extracomment>
       <translation type="unfinished">نعم</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7521,6 +7739,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>No</source>
+      <extracomment>the value of an on/off setting, as &quot;Force IPv4: No&quot;</extracomment>
       <translation type="unfinished">لا</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7528,6 +7747,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>{SHOWN} and {REST} more</source>
+      <extracomment>IP addresses: the first few, and how many more there are</extracomment>
       <translation type="unfinished">{SHOWN} و{REST} أخرى</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7535,6 +7755,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>{HOST} is {SHOWN} ({FAMILIES})</source>
+      <extracomment>the IP addresses a host name was looked up to; FAMILIES is IPv4, IPv6 or both</extracomment>
       <translation type="unfinished">{HOST}: {SHOWN} ({FAMILIES})</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7549,6 +7770,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>{HOST} could not be looked up: {ERROR}</source>
+      <extracomment>ERROR is the system's error</extracomment>
       <translation type="unfinished">تعذّر العثور على عنوان IP لـ {HOST}: {ERROR}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7719,6 +7941,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Details</source>
+      <extracomment>button on a cell that failed: shows what went wrong</extracomment>
       <translation type="unfinished">التفاصيل</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7726,6 +7949,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Next</source>
+      <extracomment>button on a cell that failed: plays the next video of its list</extracomment>
       <translation type="unfinished">التالي</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -7733,6 +7957,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Previous</source>
+      <extracomment>button on a cell that failed: plays the previous video of its list</extracomment>
       <translation type="unfinished">السابق</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -8053,6 +8278,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     <name>Quality Adapt Delay</name>
     <message>
       <source>second(s)</source>
+      <extracomment>word it so it fits any number: the app has no plural forms</extracomment>
       <translation type="unfinished">ثانية</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -8156,6 +8382,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Nothing found for &quot;{TEXT}&quot;.</source>
+      <extracomment>the Settings search found nothing; TEXT is what was typed</extracomment>
       <translation type="unfinished">لا توجد نتائج لـ &quot;{TEXT}&quot;.</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -8262,6 +8489,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Change the videos already here too?</source>
+      <extracomment>asked on OK when settings on the New Videos page were changed</extracomment>
       <translation type="unfinished">هل تريد تطبيق التغييرات على الفيديوهات الموجودة أيضًا؟</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -8269,6 +8497,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Changed: {SETTINGS}. New videos get this either way.</source>
+      <extracomment>SETTINGS is the names of the settings changed</extracomment>
       <translation type="unfinished">الإعدادات التي تغيّرت: {SETTINGS}. تُطبَّق التغييرات على الفيديوهات الجديدة في الحالتين.</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -8276,6 +8505,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>All videos</source>
+      <extracomment>button: change the videos already open too</extracomment>
       <translation type="unfinished">كل الفيديوهات</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -8283,6 +8513,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Only new</source>
+      <extracomment>button: change only the videos added from now on</extracomment>
       <translation type="unfinished">الجديدة فقط</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -8318,6 +8549,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>The open playlist has its own value.</source>
+      <extracomment>tooltip of a setting the open playlist has a value of its own for</extracomment>
       <translation type="unfinished">لقائمة التشغيل المفتوحة قيمة خاصة بها.</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -8325,6 +8557,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>The open playlist has its own value: {VALUE}</source>
+      <extracomment>tooltip of a setting the open playlist has a value of its own for; VALUE is that value</extracomment>
       <translation type="unfinished">لقائمة التشغيل المفتوحة قيمة خاصة بها: {VALUE}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -8377,6 +8610,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     <message>
       <source>Open mpv.conf, made if there isn't one:
 {FILE}</source>
+      <extracomment>tooltip of the Open button; FILE is where mpv.conf is</extracomment>
       <translation type="unfinished">افتح mpv.conf. سيُنشأ الملف إذا لم يكن موجودًا:
 {FILE}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
@@ -8385,6 +8619,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Check</source>
+      <extracomment>button: checks mpv.conf for lines MPV can't use</extracomment>
       <translation type="unfinished">فحص</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -8434,6 +8669,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Unknown specifiers in the file name: {SPECIFIERS}</source>
+      <extracomment>SPECIFIERS is the %-codes in the screenshot file name that mean nothing, as &quot;%q&quot;</extracomment>
       <translation type="unfinished">رموز غير معروفة في اسم الملف: {SPECIFIERS}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -8441,6 +8677,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Write %% for a percent sign.</source>
+      <extracomment>keep &quot;%%&quot; as it is: it is what is typed in the file name</extracomment>
       <translation type="unfinished">اكتب %% لإدراج علامة النسبة المئوية.</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -8511,6 +8748,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>All options can be used: {COUNT}</source>
+      <extracomment>COUNT is how many options mpv.conf has</extracomment>
       <translation type="unfinished">يمكن استخدام كل الخيارات: {COUNT}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -8518,6 +8756,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>not an option</source>
+      <extracomment>why a line of mpv.conf is not used, in brackets after the line</extracomment>
       <translation type="unfinished">ليس خيارًا</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -8525,6 +8764,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>not an mpv option</source>
+      <extracomment>why a line of mpv.conf is not used, in brackets after the line</extracomment>
       <translation type="unfinished">ليس من خيارات MPV</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -8532,6 +8772,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>mpv won't take this value</source>
+      <extracomment>why a line of mpv.conf is not used, in brackets after the line</extracomment>
       <translation type="unfinished">لا يقبل MPV هذه القيمة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -8539,6 +8780,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>GridPlayer sets this itself</source>
+      <extracomment>why a line of mpv.conf is not used, in brackets after the line</extracomment>
       <translation type="unfinished">يضبط GridPlayer هذا الخيار بنفسه</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -8546,6 +8788,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>only with Direct video output</source>
+      <extracomment>why a line of mpv.conf is not used, in brackets after the line</extracomment>
       <translation type="unfinished">يعمل فقط مع إخراج الفيديو «مباشر»</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -8553,6 +8796,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>profiles aren't used</source>
+      <extracomment>why a line of mpv.conf is not used, in brackets after the line</extracomment>
       <translation type="unfinished">لا تُستخدم ملفات التعريف</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -8560,6 +8804,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Line {LINE}: {TEXT} ({REASON})</source>
+      <extracomment>a line of mpv.conf that is not used: its number, its text, and why</extracomment>
       <translation type="unfinished">السطر {LINE}: {TEXT} ({REASON})</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -8574,6 +8819,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Clearing...</source>
+      <extracomment>in place of the cache's size while it is emptied</extracomment>
       <translation type="unfinished">جارٍ المسح...</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -8581,6 +8827,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Nothing</source>
+      <extracomment>the cache's size when it is empty</extracomment>
       <translation type="unfinished">لا شَيْء</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -8720,6 +8967,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Menu bar</source>
+      <extracomment>section title; macOS only, where the tray icon sits in the menu bar at the top of the screen</extracomment>
       <translation type="unfinished">شريط القوائم</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -8935,6 +9183,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>How to fix</source>
+      <extracomment>link to the help page on making the video driver work</extracomment>
       <translation type="unfinished">طريقة الإصلاح</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -9351,6 +9600,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Not available in this MPV</source>
+      <extracomment>why a choice is greyed out: the MPV library in use can't do it</extracomment>
       <translation type="unfinished">غير متاح في إصدار MPV هذا</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -9480,6 +9730,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Needs X11</source>
+      <extracomment>why VLC Hardware is greyed out on Linux</extracomment>
       <translation type="unfinished">يتطلب X11</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -9614,6 +9865,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Show icon in the menu bar</source>
+      <extracomment>macOS only, where the tray icon sits in the menu bar at the top of the screen</extracomment>
       <translation type="unfinished">إظهار الأيقونة في شريط القوائم</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -9628,6 +9880,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Minimize to the menu bar</source>
+      <extracomment>macOS only, where the tray icon sits in the menu bar at the top of the screen</extracomment>
       <translation type="unfinished">التصغير إلى شريط القوائم</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -9642,6 +9895,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Close to the menu bar</source>
+      <extracomment>macOS only, where the tray icon sits in the menu bar at the top of the screen</extracomment>
       <translation type="unfinished">الإغلاق إلى شريط القوائم</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -9656,6 +9910,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Hide from the Dock</source>
+      <extracomment>macOS only: no icon in the Dock while the player is in the menu bar</extracomment>
       <translation type="unfinished">الإخفاء من Dock</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -9670,6 +9925,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
     </message>
     <message>
       <source>Stop video decoding while in the menu bar</source>
+      <extracomment>macOS only, where the tray icon sits in the menu bar at the top of the screen</extracomment>
       <translation type="unfinished">إيقاف فك ترميز الفيديو عند الإخفاء في شريط القوائم</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -9798,6 +10054,7 @@ In memory: cleared when GridPlayer closes.</source>
     </message>
     <message>
       <source>Screenshots folder</source>
+      <extracomment>title of the window for picking where screenshots are saved</extracomment>
       <translation type="unfinished">مجلد لقطات الشاشة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -9976,6 +10233,7 @@ Off: each cell has its own, removed when the cell closes.</source>
     </message>
     <message>
       <source>No limit</source>
+      <extracomment>value of &quot;File limit&quot; at 0</extracomment>
       <translation type="unfinished">بلا حد</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -10707,6 +10965,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>VLC not found</source>
+      <extracomment>why a video driver can't be picked, beside its name</extracomment>
       <translation type="unfinished">لم يتم العثور على VLC</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -10714,6 +10973,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>VLC won't load</source>
+      <extracomment>why a video driver can't be picked, beside its name</extracomment>
       <translation type="unfinished">تعذّر تحميل VLC</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -10721,6 +10981,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>libmpv not found</source>
+      <extracomment>why a video driver can't be picked, beside its name</extracomment>
       <translation type="unfinished">لم يتم العثور على libmpv</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -10728,6 +10989,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>libmpv won't load</source>
+      <extracomment>why a video driver can't be picked, beside its name</extracomment>
       <translation type="unfinished">تعذّر تحميل libmpv</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -10735,6 +10997,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>libmpv is too old</source>
+      <extracomment>why a video driver can't be picked, beside its name</extracomment>
       <translation type="unfinished">إصدار libmpv قديم جدًا</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -10742,6 +11005,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>Other color...</source>
+      <extracomment>button: opens the full color picker</extracomment>
       <translation type="unfinished">لون آخر...</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -10805,6 +11069,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>Cookies (*.txt *.json);;All files (*)</source>
+      <extracomment>file types in the open window: translate &quot;Cookies&quot; and &quot;All files&quot;, keep the rest as it is</extracomment>
       <translation type="unfinished">Cookies (*.txt *.json);;كل الملفات (*)</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -10861,6 +11126,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>All but {}</source>
+      <extracomment>the choices ticked, said by those not ticked, as &quot;All but Edges, Gaps&quot;</extracomment>
       <translation type="unfinished">الكل باستثناء {}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -10875,6 +11141,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>Option: {OPTION}</source>
+      <extracomment>under a setting the Settings search found by one of its choices; OPTION is that choice</extracomment>
       <translation type="unfinished">الخيار: {OPTION}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -11019,6 +11286,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>expired</source>
+      <extracomment>in the Expires column: the cookie has run out</extracomment>
       <translation type="unfinished">منتهية الصلاحية</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -11026,6 +11294,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>session</source>
+      <extracomment>in the Expires column: the cookie ends when the browser closes</extracomment>
       <translation type="unfinished">جلسة</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -11327,6 +11596,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>Skipped: {CATEGORY}</source>
+      <extracomment>shown on the video; CATEGORY is the kind of segment skipped, as &quot;Sponsor&quot;</extracomment>
       <translation type="unfinished">تم التخطي: {CATEGORY}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -11368,6 +11638,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     <name>Subtitle Delay</name>
     <message>
       <source>ms</source>
+      <extracomment>&quot;ms&quot; is short for milliseconds</extracomment>
       <translation type="unfinished">مللي ثانية</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -11907,6 +12178,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>MPV errors:</source>
+      <extracomment>heading above the player's own messages, which stay in English</extracomment>
       <translation type="unfinished">أخطاء MPV:</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -11914,6 +12186,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>VLC errors:</source>
+      <extracomment>heading above the player's own messages, which stay in English</extracomment>
       <translation type="unfinished">أخطاء VLC:</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -11996,6 +12269,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     <name>Video Status</name>
     <message>
       <source>Buffering</source>
+      <extracomment>what the player says while it fills its buffer</extracomment>
       <translation>تحميل </translation>
     </message>
     <message>
@@ -12163,6 +12437,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>Grid is full ({COLS}x{ROWS}). {COUNT} files were not added.</source>
+      <extracomment>COLS and ROWS are the grid's size, as 3x2</extracomment>
       <translation type="unfinished">الشبكة ممتلئة ({COLS}x{ROWS}). لم تُضَف {COUNT} من الملفات.</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -12206,6 +12481,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>VLC cannot play {FILES} alongside a video.</source>
+      <extracomment>FILES is the names of audio files</extracomment>
       <translation type="unfinished">لا يمكن لـ VLC تشغيل {FILES} مع الفيديو.</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -12213,6 +12489,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>{FILES} will fall silent once the video is seeked.</source>
+      <extracomment>FILES is the names of audio files</extracomment>
       <translation type="unfinished">سينقطع صوت {FILES} عند الانتقال إلى موضع آخر في الفيديو.</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -12401,6 +12678,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>At once</source>
+      <extracomment>value of &quot;Next after&quot; at 0: the next video plays without waiting</extracomment>
       <translation type="unfinished">فورًا</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-24</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -12519,6 +12797,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>{VERSION}, released {DAYS} days ago</source>
+      <extracomment>the yt-dlp version, as &quot;2025.10.22&quot;</extracomment>
       <translation type="unfinished">{VERSION}، صدر قبل {DAYS} يوم</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -12533,6 +12812,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>{RUNTIMES} is too old for yt-dlp</source>
+      <extracomment>RUNTIMES is JavaScript engines found, as &quot;Deno 1.40&quot;</extracomment>
       <translation type="unfinished">إصدار {RUNTIMES} أقدم مما يدعمه yt-dlp</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -12554,6 +12834,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>Running {PATH}. Also installed: {OTHERS}, which yt-dlp ranks lower and will not use.</source>
+      <extracomment>PATH is the JavaScript engine's program; OTHERS is other engines found, as &quot;Node 20.1&quot;</extracomment>
       <translation type="unfinished">يُستخدم {PATH}. تتوفر أيضًا {OTHERS} بأولوية أقل، لذا لن يستخدمها yt-dlp.</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -12561,6 +12842,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>Running {PATH}</source>
+      <extracomment>PATH is the JavaScript engine's program</extracomment>
       <translation type="unfinished">يُستخدم {PATH}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -12582,6 +12864,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>{COOKIES} cookies for {DOMAINS}</source>
+      <extracomment>COOKIES is a number; DOMAINS is sites, as &quot;.youtube.com&quot;</extracomment>
       <translation type="unfinished">{COOKIES} من cookies للنطاقات {DOMAINS}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -12589,6 +12872,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>{STORED}, but switched off</source>
+      <extracomment>STORED is as &quot;12 cookies for .youtube.com&quot;</extracomment>
       <translation type="unfinished">{STORED}، والاستخدام معطّل</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -12603,6 +12887,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>{STORED}, none of them still good</source>
+      <extracomment>STORED is as &quot;12 cookies for .youtube.com&quot;</extracomment>
       <translation type="unfinished">{STORED}، انتهت صلاحيتها كلها</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -12624,6 +12909,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>Could not reach YouTube: {ERROR}</source>
+      <extracomment>ERROR is the system's error</extracomment>
       <translation type="unfinished">تعذّر الاتصال بـ YouTube: {ERROR}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -12666,6 +12952,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>{FORMATS} formats for &quot;{TITLE}&quot;</source>
+      <extracomment>how many formats yt-dlp found for the test video, and its title</extracomment>
       <translation type="unfinished">{FORMATS} من الصيغ للفيديو «{TITLE}»</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -12673,6 +12960,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>{SUMMARY}, with warnings</source>
+      <extracomment>SUMMARY is as &quot;18 formats for …&quot;</extracomment>
       <translation type="unfinished">{SUMMARY}، مع تحذيرات</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -12694,6 +12982,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>Could not reach the stream: {ERROR}</source>
+      <extracomment>ERROR is the system's error</extracomment>
       <translation type="unfinished">تعذّر الاتصال بالبث: {ERROR}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -12701,6 +12990,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>The stream answered {STATUS} but sent nothing</source>
+      <extracomment>STATUS is an HTTP status code</extracomment>
       <translation type="unfinished">ردّ البث بالرمز {STATUS} دون إرسال بيانات</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -12708,6 +12998,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>HTTP {STATUS}, {KIB} KiB from format {FORMAT}</source>
+      <extracomment>a test download worked: its HTTP status code, its size, and the format, as yt-dlp names it (&quot;18&quot;)</extracomment>
       <translation type="unfinished">HTTP {STATUS}، تم تحميل {KIB} KiB من الصيغة {FORMAT}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -12715,6 +13006,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>Nothing named deno, node, qjs or bun is in {FOLDER}, which this page is pointing at.</source>
+      <extracomment>FOLDER is the folder set on this page</extracomment>
       <translation type="unfinished">لا يوجد ملف باسم deno أو node أو qjs أو bun في المجلد {FOLDER} المحدّد في هذه الصفحة.</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -12722,6 +13014,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>yt-dlp needs {WANTED} or newer.</source>
+      <extracomment>WANTED is engines with the oldest version taken, as &quot;Deno 2.0&quot;</extracomment>
       <translation type="unfinished">يتطلب yt-dlp الإصدار {WANTED} أو أحدث.</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
@@ -12743,6 +13036,7 @@ With hardware decoding, the GPU may use another mode it supports.</source>
     </message>
     <message>
       <source>The stream answered HTTP {STATUS} for {FORMAT}</source>
+      <extracomment>FORMAT is the format, as yt-dlp names it (&quot;18&quot;)</extracomment>
       <translation type="unfinished">ردّ البث بالرمز HTTP {STATUS} للصيغة {FORMAT}</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
       <extra-gp-reviewed>claude/claude-opus-5-5/high 2026-11-25</extra-gp-reviewed>
