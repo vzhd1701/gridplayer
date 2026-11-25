@@ -7,9 +7,7 @@ the clip starts again, and a slow machine misses frames of 40 ms too. So one
 pass reaching it is enough: #129 cut the same frames off every pass.
 
 Not the sound on VLC: on Windows it is cut to about 100 ms of each pass,
-left as it is (docs/findings/KNOWN_ISSUES.md). Nor on MPV with no sound
-device, as on CI: its stand-in output lets go of the last 200 ms of each
-pass.
+left as it is (docs/findings/KNOWN_ISSUES.md).
 """
 
 import time
@@ -19,12 +17,14 @@ from PyQt6.QtGui import QColor
 
 from gridplayer.settings import Settings
 from tests.real_app.media import frame_shown
-from tests.real_app.scenarios.mpv_transport import _mpv
 from tests.real_app.scenarios.pixel_shape import _grab
 
 CLIP_FRAMES = 45
 
 WATCH_S = 8
+
+# the sound's time going back this much: round again
+WRAP_MS = 150
 
 
 def scenario(d):
@@ -69,19 +69,18 @@ def _sound(d):
     b = d.wait_for_cell("sound.wav")
     b.audio.set_muted(True)
 
-    if _mpv(b).current_ao == "null":
-        d.note("no sound device: the sound is not timed")
-        return
-
     # How long each pass takes: MPV says the time of a sound only every 200 ms
     # or so, which can leave the last word on a pass 400 ms short of its end.
+    # libmpv 0.37 counts the sound still queued from a pass as before the
+    # next: its time goes from below 0, said as 0, to half a second or so,
+    # then round. Only the time going back says it went round.
     length = b.video_driver.length
     wraps, last = [], 0
     end = time.perf_counter() + WATCH_S
     while time.perf_counter() < end:
         d.pump(0.01)
         now = b.time
-        if now < last - length // 2:
+        if now < last - WRAP_MS:
             wraps.append(time.perf_counter())
         last = now
 

@@ -2030,6 +2030,12 @@ class MpvPlayer(QObject):
         if seconds is None or not self._is_media_read:
             return
 
+        # Going round, libmpv 0.37 starts the next pass while the sound of the
+        # last is still queued, and counts that as before the start. Said as
+        # it is, the block would seek to the loop's start, and drop the end of
+        # the last pass not yet heard (#129).
+        seconds = max(seconds, 0)
+
         # A frame's start can be up to half a millisecond off its true one, in
         # whichever direction, and the time has to be in the frame: the frame
         # is worked out from it, see VideoBlock.step_frame.
