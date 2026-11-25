@@ -1174,7 +1174,8 @@ def list_end_action() -> VideoEndAction:
 def _video(uri, **fields) -> Video | None:
     try:
         return Video(uri=uri, **{k: v for k, v in fields.items() if v is not None})
-    except ValidationError:
+    # before 3.14, Path.is_file() raises on a share that can't be reached
+    except (ValidationError, OSError):
         return None
 
 
