@@ -5,8 +5,7 @@ LANGUAGES_CONTRIB = {
                 "full_name": "Azoaz6001",
                 "profile_url": "https://crowdin.com/profile/Azoaz6001",
             }
-        ],
-        "completion": 84,
+        ]
     },
     "cs_CZ": {
         "authors": [
@@ -22,8 +21,7 @@ LANGUAGES_CONTRIB = {
                 "full_name": "Jan Švanda (svandajan)",
                 "profile_url": "https://crowdin.com/profile/svandajan",
             },
-        ],
-        "completion": 89,
+        ]
     },
     "de_DE": {
         "authors": [
@@ -35,10 +33,9 @@ LANGUAGES_CONTRIB = {
                 "full_name": "Manuel (reiss404)",
                 "profile_url": "https://crowdin.com/profile/reiss404",
             },
-        ],
-        "completion": 100,
+        ]
     },
-    "en_US": {"authors": [], "completion": 100},
+    "en_US": {"authors": []},
     "es_ES": {
         "authors": [
             {
@@ -49,8 +46,11 @@ LANGUAGES_CONTRIB = {
                 "full_name": "asolis2020",
                 "profile_url": "https://crowdin.com/profile/asolis2020",
             },
-        ],
-        "completion": 84,
+            {
+                "full_name": "Destro (destro2ky)",
+                "profile_url": "https://crowdin.com/profile/destro2ky",
+            },
+        ]
     },
     "fr_FR": {
         "authors": [
@@ -58,8 +58,7 @@ LANGUAGES_CONTRIB = {
                 "full_name": "Sylvain LOUIS (LOUIS_Sylvain)",
                 "profile_url": "https://crowdin.com/profile/LOUIS_Sylvain",
             }
-        ],
-        "completion": 100,
+        ]
     },
     "hu_HU": {
         "authors": [
@@ -67,8 +66,7 @@ LANGUAGES_CONTRIB = {
                 "full_name": "samu112",
                 "profile_url": "https://crowdin.com/profile/samu112",
             }
-        ],
-        "completion": 44,
+        ]
     },
     "it_IT": {
         "authors": [
@@ -80,8 +78,7 @@ LANGUAGES_CONTRIB = {
                 "full_name": "SolarCTP",
                 "profile_url": "https://crowdin.com/profile/SolarCTP",
             },
-        ],
-        "completion": 100,
+        ]
     },
     "ja_JP": {
         "authors": [
@@ -89,8 +86,7 @@ LANGUAGES_CONTRIB = {
                 "full_name": "七篠孝志 (japanese.john.doe.774)",
                 "profile_url": "https://crowdin.com/profile/japanese.john.doe.774",
             }
-        ],
-        "completion": 84,
+        ]
     },
     "ko_KR": {
         "authors": [
@@ -98,8 +94,7 @@ LANGUAGES_CONTRIB = {
                 "full_name": "VenusGirl",
                 "profile_url": "https://crowdin.com/profile/VenusGirl",
             }
-        ],
-        "completion": 100,
+        ]
     },
     "nl_NL": {
         "authors": [
@@ -107,8 +102,7 @@ LANGUAGES_CONTRIB = {
                 "full_name": "Heimen Stoffels (Vistaus)",
                 "profile_url": "https://crowdin.com/profile/Vistaus",
             }
-        ],
-        "completion": 84,
+        ]
     },
     "no_NO": {
         "authors": [
@@ -116,8 +110,7 @@ LANGUAGES_CONTRIB = {
                 "full_name": "Roy Hendum (royhendum)",
                 "profile_url": "https://crowdin.com/profile/royhendum",
             }
-        ],
-        "completion": 100,
+        ]
     },
     "pl_PL": {
         "authors": [
@@ -129,8 +122,7 @@ LANGUAGES_CONTRIB = {
                 "full_name": "Sebastian Jasiński (PrinceNorris)",
                 "profile_url": "https://crowdin.com/profile/PrinceNorris",
             },
-        ],
-        "completion": 84,
+        ]
     },
     "pt_BR": {
         "authors": [
@@ -138,18 +130,16 @@ LANGUAGES_CONTRIB = {
                 "full_name": "GBS ~ TECH (Gabriel-BS1)",
                 "profile_url": "https://crowdin.com/profile/Gabriel-BS1",
             }
-        ],
-        "completion": 100,
+        ]
     },
-    "ru_RU": {"authors": [], "completion": 100},
+    "ru_RU": {"authors": []},
     "sv_SE": {
         "authors": [
             {
                 "full_name": "Göran (Granberg)",
                 "profile_url": "https://crowdin.com/profile/Granberg",
             }
-        ],
-        "completion": 100,
+        ]
     },
     "vi_VN": {
         "authors": [
@@ -157,8 +147,7 @@ LANGUAGES_CONTRIB = {
                 "full_name": "LiberiFatali",
                 "profile_url": "https://crowdin.com/profile/LiberiFatali",
             }
-        ],
-        "completion": 99,
+        ]
     },
     "zh_CN": {
         "authors": [
@@ -187,8 +176,7 @@ LANGUAGES_CONTRIB = {
                 "full_name": "loser7788",
                 "profile_url": "https://crowdin.com/profile/loser7788",
             },
-        ],
-        "completion": 100,
+        ]
     },
     "zh_TW": {
         "authors": [
@@ -208,7 +196,6 @@ LANGUAGES_CONTRIB = {
                 "full_name": "taketsuki",
                 "profile_url": "https://crowdin.com/profile/taketsuki",
             },
-        ],
-        "completion": 100,
+        ]
     },
 }
