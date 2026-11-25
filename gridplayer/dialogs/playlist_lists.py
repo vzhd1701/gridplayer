@@ -286,6 +286,7 @@ class PlaylistListsPage(QWidget):
             cells = numbers.get(media_list.id)
 
             name_item = QStandardItem(
+                #: name of a list that has none
                 media_list.name or translate("Dialog - Playlist lists", "Untitled")
             )
             name_item.setData(media_list.id, LIST_ID_ROLE)
@@ -428,10 +429,12 @@ class PlaylistListsPage(QWidget):
             media_list.model_copy(
                 update={
                     "id": MediaList().id,
+                    #: name of a duplicated list; NAME is the list's name
                     "name": translate(
                         "Dialog - Playlist lists", "{NAME} (copy)"
                     ).format(
                         NAME=media_list.name
+                        #: name of a list that has none
                         or translate("Dialog - Playlist lists", "Untitled")
                     ),
                 }
@@ -441,6 +444,7 @@ class PlaylistListsPage(QWidget):
         self._added.add(copy.id)
 
         self._reload(copy.id)
+        #: status line: the list was duplicated
         self._say(translate("Dialog - Playlist lists", "Duplicated"))
 
     def _export(self):
@@ -531,6 +535,7 @@ def _source_txt(media_list: MediaList) -> str:
     source = media_list.source
 
     if source is None:
+        #: Source column, for a list with no source: made by adding things to it
         return translate("Dialog - Playlist lists", "Added")
 
     kind = {

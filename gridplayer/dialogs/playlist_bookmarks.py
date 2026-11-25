@@ -601,6 +601,7 @@ class PlaylistBookmarksPage(QWidget):
             self._mode.setText(html.escape(mode_txt))
             return
 
+        #: link after how bookmarks are shared: changes it
         change_txt = translate("Dialog - Playlist bookmarks", "Change")
         set_html_with_links(
             self._mode,
@@ -627,6 +628,7 @@ class PlaylistBookmarksPage(QWidget):
                 translate("Dialog - Playlist bookmarks", "Bookmarks: {COUNT}").format(
                     COUNT=count
                 ),
+                #: count under the list: how many files have bookmarks
                 translate("Dialog - Playlist bookmarks", "Files: {COUNT}").format(
                     COUNT=len(entries)
                 ),
@@ -637,6 +639,7 @@ class PlaylistBookmarksPage(QWidget):
                 translate("Dialog - Playlist bookmarks", "Bookmarks: {COUNT}").format(
                     COUNT=count
                 ),
+                #: count under the list: how many cells have bookmarks
                 translate("Dialog - Playlist bookmarks", "Cells: {COUNT}").format(
                     COUNT=len(cells)
                 ),
@@ -671,6 +674,7 @@ class PlaylistBookmarksPage(QWidget):
         self._model.setHorizontalHeaderLabels(
             [
                 translate("Dialog - Playlist bookmarks", "File"),
+                #: column header: the cell the bookmarks belong to
                 translate("Dialog - Playlist bookmarks", "Cell"),
                 translate("Dialog - Playlist bookmarks", "Bookmarks"),
                 translate("Dialog - Playlist bookmarks", "Status"),
@@ -797,18 +801,24 @@ class PlaylistBookmarksPage(QWidget):
             Status.OPEN: (
                 translate("Dialog - Playlist bookmarks", "Open")
                 if playing < 2
+                #: Status column of the Bookmarks page: the file is open in this many
+                #: cells
                 else translate(
                     "Dialog - Playlist bookmarks", "Open in {COUNT} cells"
                 ).format(COUNT=playing)
             ),
             Status.PLAYING: translate("Dialog - Playlist bookmarks", "Playing"),
+            #: Status column of the Bookmarks page: the cell plays another file now
             Status.NOT_PLAYING: translate("Dialog - Playlist bookmarks", "Not playing"),
+            #: Status column of the Bookmarks page: no cell has the file open
             Status.NOT_OPEN: translate("Dialog - Playlist bookmarks", "Not open"),
+            #: Status column of the Bookmarks page: a stream no cell has open
             Status.STREAM: translate("Dialog - Playlist bookmarks", "Stream, not open"),
             Status.MISSING: translate("Dialog - Playlist bookmarks", "File missing"),
             Status.NO_FOLDER: translate(
                 "Dialog - Playlist bookmarks", "Folder not found"
             ),
+            #: Status column of the Bookmarks page: the cell they belonged to was closed
             Status.CLOSED_CELL: translate("Dialog - Playlist bookmarks", "Closed cell"),
         }
 

@@ -247,8 +247,10 @@ def _expiry_text(row) -> str:
 
     if row.expires_from is None:
         if row.is_expired:
+            #: in the Expires column: the cookie has run out
             return translate("SettingsDialog - Cookies", "expired")
 
+        #: in the Expires column: the cookie ends when the browser closes
         return translate("SettingsDialog - Cookies", "session")
 
     first = _date_text(row.expires_from)

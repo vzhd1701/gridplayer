@@ -50,9 +50,11 @@ def seek_step_txt(step_ms: int) -> str:
     parts = []
 
     if hours:
+        #: short for hours, in a step size as "1h 30m"
         parts.append(translate("Actions", "{hours}h").format(hours=hours))
 
     if minutes:
+        #: short for minutes, in a step size as "1h 30m"
         parts.append(translate("Actions", "{minutes}m").format(minutes=minutes))
 
     if seconds or ms or not parts:

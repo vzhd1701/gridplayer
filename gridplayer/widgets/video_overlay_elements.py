@@ -974,6 +974,7 @@ class OverlayShortLabelFloating(OverlayShortLabel):
 
         more = count - len(named)
         more_txt = (
+            #: on the video, after the bookmarks named: how many more there are
             translate("Bookmarks", "+{COUNT} more").format(COUNT=more) if more else ""
         )
         # one row has no room for another to say how many more

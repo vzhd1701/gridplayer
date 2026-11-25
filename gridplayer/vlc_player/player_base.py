@@ -357,7 +357,9 @@ class VlcPlayerBase(ABC):
 
         buffered_percent = int(event.u.new_cache)
         self.notify_update_status(
-            translate("Video Status", "Buffering"), buffered_percent
+            #: what the player says while it fills its buffer
+            translate("Video Status", "Buffering"),
+            buffered_percent,
         )
 
     def _on_dead_input(self):

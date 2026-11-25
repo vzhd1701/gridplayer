@@ -20,6 +20,7 @@ from gridplayer.utils.qt import translate
 def subtitle_delay_txt(delay_ms: int) -> str:
     """A delay as it reads, signed, since which way it goes is the point."""
 
+    #: "ms" is short for milliseconds
     milliseconds = translate("Subtitle Delay", "ms")
 
     if not delay_ms:
@@ -53,6 +54,7 @@ class SetSubtitleDelayDialog(QDialog):
         self.spinbox = QSpinBox(self)
         self.spinbox.setRange(MIN_SUBTITLE_DELAY_MS, MAX_SUBTITLE_DELAY_MS)
         self.spinbox.setSingleStep(SUBTITLE_DELAY_STEP_MS)
+        #: "ms" is short for milliseconds
         self.spinbox.setSuffix(" {}".format(translate("Subtitle Delay", "ms")))
         self.spinbox.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.spinbox.setValue(delay_ms)

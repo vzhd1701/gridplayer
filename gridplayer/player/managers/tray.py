@@ -113,7 +113,9 @@ class TrayManager(ManagerBase):
         self._menu.setMinimumWidth(MENU_MIN_WIDTH)
 
         self._show_action = self._menu.addAction(
-            translate("Actions", "Show"), self._toggle_window
+            #: tray menu item: shows the player's window
+            translate("Actions", "Show"),
+            self._toggle_window,
         )
 
         # what a click on the icon does, as Windows marks it
@@ -170,8 +172,10 @@ class TrayManager(ManagerBase):
         is_modal = QApplication.activeModalWidget() is not None
 
         if is_away:
+            #: tray menu item: shows the player's window
             self._show_action.setText(translate("Actions", "Show"))
         else:
+            #: tray menu item: hides the player's window
             self._show_action.setText(translate("Actions", "Hide"))
 
         if _has_menu_icons():

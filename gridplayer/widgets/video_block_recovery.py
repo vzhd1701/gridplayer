@@ -68,6 +68,7 @@ PLAYED_STEP_MS = 2000
 
 def list_fail_wait_txt(wait_sec: int) -> str:
     if not wait_sec:
+        #: value of "Next after" at 0: the next video plays without waiting
         return translate("When Video Fails", "At once")
 
     return translate("When Video Fails", "{SECONDS} s").format(SECONDS=wait_sec)
@@ -498,6 +499,7 @@ class RecoveryControl(VideoBlockPart):
         wait_sec = QCustomSpinboxInput.get_int(
             parent=self._block.parent(),
             title=translate("When Video Fails", "Play next after (sec)"),
+            #: value of "Next after" at 0: the next video plays without waiting
             special_text=translate("When Video Fails", "At once"),
             initial_value=self._block.video_params.list_fail_wait_sec,
             _min=0,

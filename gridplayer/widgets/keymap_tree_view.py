@@ -173,6 +173,8 @@ def _path_label(path: list[str], action_title: str) -> str:
     """e.g. «Play / Pause» in Single video > Audio"""
     if path:
         location = " > ".join(path)
+        #: action is an action's name; path is the menu it is in, as "Single video >
+        #: Audio"
         return translate("Keymap", "«{action}» in {path}").format(
             action=action_title, path=location
         )
@@ -198,6 +200,7 @@ class KeySequenceCapture(QLineEdit):
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
         self.setClearButtonEnabled(False)
+        #: placeholder of the box that records a shortcut as it is pressed
         self.setPlaceholderText(translate("Keymap", "Press a shortcut…"))
         self.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
@@ -691,6 +694,7 @@ class _AddShortcutDialogBase(QDialog):
 
         if existing_shortcuts:
             existing_lbl = QLabel(
+                #: keys is as "Ctrl+P, F5"
                 translate("Keymap", "Current shortcuts: {keys}").format(
                     keys=_format_shortcuts(existing_shortcuts)
                 ),
@@ -813,9 +817,13 @@ class _AddShortcutDialogBase(QDialog):
 
         action_id, display = shared[0]
         if shares_keys(action_id):
+            #: the strip is the row of small videos in the Fixed Strip mode; action is
+            #: an action's name
             return translate(
                 "Keymap", "On a video in the strip, {action} takes it."
             ).format(action=display)
+        #: the strip is the row of small videos in the Fixed Strip mode; action is an
+        #: action's name
         return translate("Keymap", "{action} keeps it outside the strip.").format(
             action=display
         )
@@ -1024,6 +1032,7 @@ class AddDragShortcutDialog(AddMouseShortcutDialog):
         if not is_hold_key_drag:
             return super()._note_for(seq)
 
+        #: key is a key, as "Ctrl"
         return translate(
             "Keymap",
             "{key} is also held to switch where a video is dropped. Held before"
@@ -1144,12 +1153,16 @@ def _action_tooltip(
 ) -> str:
     lines = [_path_label(path, title)]
     lines.append(
+        #: tooltip of an action: its shortcuts now; keys is as "Ctrl+P, F5"
         translate("Keymap", "Current: {keys}").format(
+            #: no shortcut set
             keys=_format_shortcuts(current) or translate("Keymap", "(none)")
         )
     )
     lines.append(
+        #: tooltip of an action: its shortcuts as they come; keys is as "Ctrl+P, F5"
         translate("Keymap", "Default: {keys}").format(
+            #: no shortcut set
             keys=_format_shortcuts(defaults) or translate("Keymap", "(none)")
         )
     )
@@ -2001,6 +2014,7 @@ class KeymapEditor(QWidget):
         count = self.tree.modified_count()
         if count:
             self.status_label.setText(
+                #: word it so it fits any number: the app has no plural forms
                 translate("Keymap", "{n} action(s) with non-default shortcuts").format(
                     n=count
                 )

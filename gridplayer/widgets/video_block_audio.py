@@ -305,6 +305,7 @@ class AudioControl(VideoBlockPart):
                 "Header",
             ),
             initial_value=self._block.video_params.audio_languages,
+            #: example of what to type: language codes, keep them as they are
             placeholder=translate("Dialog - Set preferred audio languages", "en, ja"),
         )
 

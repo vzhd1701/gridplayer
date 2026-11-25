@@ -142,6 +142,8 @@ class StatusControl(VideoBlockPart):
             place = self._block.navigation.place()
 
             if place is not None and place.is_found:
+                #: in the error details: the list, and where in it the video is, as
+                #: "Music, 3 of 20"
                 name = translate("Error Details", "{LIST}, {PLACE} of {COUNT}").format(
                     LIST=name, PLACE=place.index + 1, COUNT=len(media_list.items)
                 )
@@ -161,6 +163,7 @@ class StatusControl(VideoBlockPart):
         }.get(self._error_stage)
 
         if step:
+            #: row name in the error details: what the cell was doing when it failed
             rows.append((translate("Error Details", "Step"), step))
 
         rows.extend(code_rows(error))
@@ -175,6 +178,7 @@ class StatusControl(VideoBlockPart):
             else:
                 tries = str(self._error_tries)
 
+            #: row name in the error details: how many times opening it was tried
             rows.append((translate("Error Details", "Tries"), tries))
 
         rows.append(
@@ -296,6 +300,7 @@ class StatusControl(VideoBlockPart):
     def on_driver_status(self, status: str, percent: int = 0):
         """What the player says as it opens the video, said plainly."""
 
+        #: what the player says while it fills its buffer
         if status in {"Buffering", translate("Video Status", "Buffering")}:
             self.show_stage(
                 LoadStage.VIDEO,

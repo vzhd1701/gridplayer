@@ -93,7 +93,9 @@ def _author_tooltip(authors) -> str:
 
 def _overflow_label(count: int) -> str:
     if count == 1:
+        #: after the first few translators of a language: how many others there are
         return translate("LanguageList", "+{count} other").format(count=count)
+    #: after the first few translators of a language: how many others there are
     return translate("LanguageList", "+{count} others").format(count=count)
 
 

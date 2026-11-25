@@ -79,12 +79,19 @@ def bookmark_color_presets() -> list[tuple[str, str]]:
     """The colours offered, with their names."""
 
     return [
+        #: a bookmark's colour
         ("#ff3d3d", translate("Actions", "Red")),
+        #: a bookmark's colour
         ("#ff4fb8", translate("Actions", "Pink")),
+        #: a bookmark's colour
         ("#b36bff", translate("Actions", "Purple")),
+        #: a bookmark's colour
         ("#3d8bff", translate("Actions", "Blue")),
+        #: a bookmark's colour
         ("#1fd6e8", translate("Actions", "Cyan")),
+        #: a bookmark's colour
         ("#3ddc5a", translate("Actions", "Green")),
+        #: a bookmark's colour
         ("#ffffff", translate("Actions", "White")),
     ]
 

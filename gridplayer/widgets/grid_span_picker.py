@@ -157,6 +157,7 @@ class GridSpanPicker(QWidget):
         if self._is_pick_ok:
             text = f"{cols} {TIMES} {rows}"
         else:
+            #: tag while dragging or sizing a cell: it doesn't fit there
             text = translate("Edit Grid", "No room")
 
         label = QRectF(

@@ -540,6 +540,7 @@ class GridEditor(LayoutEditor):
             self._swap_with = self._swapped_by(target)
             self.update()
         is_swap = self._swap_with is not None
+        #: tag by the pointer while dragging a cell: dropping it here swaps the two
         self._show_tag(translate("Edit Grid", "Swap") if is_swap else "", event.pos())
 
     def _swapped_by(self, target) -> EditCell | None:
@@ -689,6 +690,7 @@ class GridEditor(LayoutEditor):
 
         name = self._drag.cell.name
         if not self._is_target_ok:
+            #: tag while dragging or sizing a cell: it doesn't fit there
             name = translate("Edit Grid", "No room")
         self._name(painter, rect, name, color=EDGE_COLOR, back=LINE_COLOR)
 

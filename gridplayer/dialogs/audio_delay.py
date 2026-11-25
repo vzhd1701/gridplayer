@@ -20,6 +20,7 @@ from gridplayer.utils.qt import translate
 def audio_delay_txt(delay_ms: int) -> str:
     """A delay as it reads, signed, since which way it goes is the point."""
 
+    #: "ms" is short for milliseconds
     milliseconds = translate("Audio Delay", "ms")
 
     if not delay_ms:
@@ -53,6 +54,7 @@ class SetAudioDelayDialog(QDialog):
         self.spinbox = QSpinBox(self)
         self.spinbox.setRange(MIN_AUDIO_DELAY_MS, MAX_AUDIO_DELAY_MS)
         self.spinbox.setSingleStep(AUDIO_DELAY_STEP_MS)
+        #: "ms" is short for milliseconds
         self.spinbox.setSuffix(" {}".format(translate("Audio Delay", "ms")))
         self.spinbox.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.spinbox.setValue(delay_ms)

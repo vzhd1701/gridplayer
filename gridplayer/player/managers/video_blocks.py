@@ -393,6 +393,7 @@ class VideoBlocksManager(ManagerBase):
         wait_sec = QCustomSpinboxInput.get_int(
             parent=self.parent(),
             title=translate("When Video Fails", "Play next after (sec)"),
+            #: value of "Next after" at 0: the next video plays without waiting
             special_text=translate("When Video Fails", "At once"),
             initial_value=PlaylistSettings().get("video_defaults/list_fail_wait"),
             _min=0,

@@ -274,8 +274,10 @@ def _vlc_said_lines(vlc_lines: tuple[str, ...], media_lib: MediaLib) -> list[str
         return []
 
     if media_lib == MediaLib.MPV:
+        #: heading above the player's own messages, which stay in English
         heading = translate("Video Error", "MPV errors:")
     else:
+        #: heading above the player's own messages, which stay in English
         heading = translate("Video Error", "VLC errors:")
 
     return ["", heading, *vlc_lines]

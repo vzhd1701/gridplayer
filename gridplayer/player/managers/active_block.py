@@ -317,6 +317,7 @@ class ActiveBlockManager(ManagerBase):
         block = self._ctx.active_block
         ratio = "" if block is None else block.list_aspect_ratio
 
+        #: the aspect ratio the list gives the video, as "16:9 (list)"
         return translate("Aspect Ratio", "{RATIO} (list)").format(RATIO=ratio)
 
     def active_list_crop_ratio_title(self) -> str:
@@ -325,6 +326,7 @@ class ActiveBlockManager(ManagerBase):
         block = self._ctx.active_block
         ratio = "" if block is None else block.list_crop_ratio
 
+        #: the crop the list gives the video, as "16:9 (list)"
         return translate("Crop", "{RATIO} (list)").format(RATIO=ratio)
 
     def is_active_runtime_param_set_to(self, param_name, param_value):
@@ -853,6 +855,7 @@ class ActiveBlockManager(ManagerBase):
 
         return [
             {
+                #: an audio device picked but not plugged in; {} is its name
                 "title": translate("Actions", "{} (not connected)").format(
                     chosen.name or chosen.id
                 ),
@@ -1544,6 +1547,7 @@ def _subtitle_encoding_menu_item():
     """
 
     return {
+        #: menu item, followed by its value, as "Encoding: UTF-8"
         "title": "{}: %v".format(translate("Actions", "Encoding")),
         "icon": "empty",
         "func": ("active", "subtitles.encoding_dialog"),

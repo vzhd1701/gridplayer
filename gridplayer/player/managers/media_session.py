@@ -173,6 +173,8 @@ class MediaSessionManager(ManagerBase):
         if playlist_path is not None:
             return playlist_path.stem
 
+        #: title the system's media controls show when the playlist isn't saved; {} is
+        #: how many videos are open
         return translate("Media Keys", "Videos: {}").format(
             count_txt(len(video_blocks))
         )

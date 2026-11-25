@@ -419,8 +419,10 @@ class BookmarksModel(QAbstractTableModel):
             return None
 
         if bookmark.time_ms >= self.length:
+            #: said of a bookmark's time: it is after the video ends
             return translate("Dialog - Bookmarks", "Past the end of the video")
 
+        #: said of a bookmark's time: it is outside the loop being played
         return translate("Dialog - Bookmarks", "Outside the loop")
 
 
@@ -1192,24 +1194,31 @@ class BookmarksDialog(QDialog):
                     for bookmark in bookmarks[:on_bar]
                     if bookmark.time_ms < block.loop_start
                 )
+                #: mark in the bookmark list, between bookmarks, where the loop is;
+                #: START and END are times, as "1:05"
                 loop_txt = translate("Dialog - Bookmarks", "loop {START}-{END}").format(
                     START=time_txt(block.loop_start), END=time_txt(block.loop_end)
                 )
                 edges.append((row, loop_txt, loop_color))
             else:
                 if reachable[0] > 0:
+                    #: mark in the bookmark list, between bookmarks, where the loop
+                    #: starts; TIME is as "1:05"
                     start_txt = translate(
                         "Dialog - Bookmarks", "loop start {TIME}"
                     ).format(TIME=time_txt(block.loop_start))
                     edges.append((reachable[0], start_txt, loop_color))
 
                 if reachable[-1] < on_bar - 1:
+                    #: mark in the bookmark list, between bookmarks, where the loop
+                    #: ends; TIME is as "1:05"
                     end_txt = translate("Dialog - Bookmarks", "loop end {TIME}").format(
                         TIME=time_txt(block.loop_end)
                     )
                     edges.append((reachable[-1] + 1, end_txt, loop_color))
 
         if on_bar < len(bookmarks):
+            #: mark in the bookmark list where the video ends; TIME is as "1:05"
             video_end_txt = translate("Dialog - Bookmarks", "end {TIME}").format(
                 TIME=time_txt(length)
             )
@@ -1350,6 +1359,7 @@ class BookmarksDialog(QDialog):
         """
 
         self._say(
+            #: ACTION is what the video does when it ends, as "Next File"
             translate(
                 "Dialog - Bookmarks",
                 "Paused at the start instead of “{ACTION}” while this is open.",
@@ -1550,6 +1560,8 @@ class BookmarksDialog(QDialog):
 
         if time_ms is None:
             self._say(
+                #: status line: what was typed as a bookmark's time is not one; TEXT is
+                #: what was typed
                 translate("Dialog - Bookmarks", "Not a time: {TEXT}").format(
                     TEXT=time_txt.strip()
                 )
@@ -1574,6 +1586,7 @@ class BookmarksDialog(QDialog):
             return
 
         if time_ms >= self._video_length:
+            #: said of a bookmark's time: it is after the video ends
             self._say(translate("Dialog - Bookmarks", "Past the end of the video"))
             return
 

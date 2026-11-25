@@ -112,5 +112,6 @@ def _summary_of(check_result) -> str:
     return (
         check_result.summary
         if check_result is not None
+        #: a check's state in the checkup list: not run yet
         else translate("Checkup", "Not run")
     )

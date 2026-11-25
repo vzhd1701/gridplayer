@@ -45,6 +45,7 @@ class HeldPlace(QWidget):
             return
 
         # not "playing": the big one may be paused
+        #: label on the frame in the strip where the video shown big sits
         text = translate("Main Window", "Current")
         rect, stroke, _ = dashed_frame(self)
         inset = stroke * 4

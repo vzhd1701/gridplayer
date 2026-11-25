@@ -202,6 +202,7 @@ PLAYLIST_FIELDS: tuple[SettingField, ...] = (
         label=translate("SettingsDialog", "File limit"),
         minimum=0,
         maximum=1000000,
+        #: value of "File limit" at 0
         special_text=translate("SettingsDialog", "No limit"),
         tooltip=translate(
             "SettingsDialog",

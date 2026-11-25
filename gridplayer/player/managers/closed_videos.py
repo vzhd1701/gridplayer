@@ -134,6 +134,7 @@ def _menu_title(closed: tuple[ClosedVideo, ...]) -> str:
     name = video.title or video.uri_name
 
     if len(closed) > 1:
+        #: NAME is a closed video's name; COUNT is how many more were closed with it
         name = translate("Actions", "{NAME} and {COUNT} more").format(
             NAME=name, COUNT=count_txt(len(closed) - 1)
         )

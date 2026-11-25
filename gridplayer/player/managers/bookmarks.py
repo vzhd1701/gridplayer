@@ -405,6 +405,8 @@ class BookmarksManager(ManagerBase):
         rows = [
             (
                 file_name(uri),
+                #: beside a file's name: how many cells have bookmarks of their own for
+                #: it
                 translate("Dialog - Bookmarks sharing", "{COUNT} cells").format(
                     COUNT=count
                 ),
@@ -413,6 +415,7 @@ class BookmarksManager(ManagerBase):
         ]
 
         if len(disagreeing) > MERGE_FILES_LISTED:
+            #: below the first few files listed: how many more there are
             more = translate("Dialog - Bookmarks sharing", "and {COUNT} more").format(
                 COUNT=len(disagreeing) - MERGE_FILES_LISTED
             )

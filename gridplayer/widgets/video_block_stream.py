@@ -145,6 +145,7 @@ class StreamControl(VideoBlockPart):
     def get_adapt_delay(self):
         return "{} {}".format(
             self._block.video_params.quality_adapt_delay_sec,
+            #: word it so it fits any number: the app has no plural forms
             translate("Quality Adapt Delay", "second(s)"),
         )
 
@@ -187,6 +188,7 @@ class StreamControl(VideoBlockPart):
 
         return "{} {}".format(
             self._block.video_params.auto_reload_timer_min,
+            #: word it so it fits any number: the app has no plural forms
             translate("Auto Reload Timer", "minute(s)"),
         )
 

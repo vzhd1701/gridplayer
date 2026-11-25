@@ -150,6 +150,7 @@ class CheckRow(QtWidgets.QWidget):
 
     def set_running(self) -> None:
         self._set_icon(PENDING_ICON)
+        #: a check's state in the checkup list: being run now
         self.summary.setText(translate("Checkup", "Running..."))
         self.setEnabled(True)
 
@@ -164,6 +165,7 @@ class CheckRow(QtWidgets.QWidget):
 
     def set_not_run(self) -> None:
         self._set_icon(PENDING_ICON)
+        #: a check's state in the checkup list: not run yet
         self.summary.setText(translate("Checkup", "Not run"))
         self.hint.setVisible(False)
         self.setEnabled(False)
@@ -259,6 +261,7 @@ class CheckupDialog(QDialog):
         self.rows[index].set_running()
 
         self.status.setText(
+            #: TITLE is the check's name
             translate("Checkup", "Step {STEP} of {STEPS}: {TITLE}").format(
                 STEP=index + 1, STEPS=len(self._checks), TITLE=self._checks[index].title
             )
@@ -443,18 +446,23 @@ def _summary_line(results) -> str:
     warned = sum(r.status is CheckStatus.WARNING for r in counted)
 
     if failed and warned:
+        #: result of the whole checkup: how many checks failed, and how many gave a
+        #: warning
         return translate("Checkup", "{FAILED} failed, {WARNED} to look at").format(
             FAILED=failed, WARNED=warned
         )
 
     if failed:
+        #: result of the whole checkup: how many checks failed
         return translate("Checkup", "{FAILED} failed").format(FAILED=failed)
 
     if warned:
+        #: result of the whole checkup: how many checks gave a warning
         return translate("Checkup", "Nothing failed, {WARNED} to look at").format(
             WARNED=warned
         )
 
+    #: result of the whole checkup: every check passed
     return translate("Checkup", "All good")
 
 

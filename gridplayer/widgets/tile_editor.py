@@ -459,6 +459,7 @@ class TileEditor(LayoutEditor):
     def _swap_to(self, point: QPoint) -> None:
         other = self._top_at(point)
         self._swap_with = None if other == self._swapping else other
+        #: tag by the pointer while dragging a cell: dropping it here swaps the two
         word = "" if self._swap_with is None else translate("Edit Grid", "Swap")
         self._show_snapped([], [], word, point)
 

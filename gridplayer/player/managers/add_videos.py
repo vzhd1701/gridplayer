@@ -1435,6 +1435,7 @@ def _list_icon(group: ListInput) -> str:
 def media_name_filters() -> list[str]:
     ext_types = [
         {
+            #: a kind of file in the open window: videos, audio and playlists
             "name": translate("Dialog - Add Files", "Media", "File formats"),
             "extensions": SUPPORTED_MEDIA_EXT | LIST_FILE_EXT,
         },
@@ -1447,6 +1448,7 @@ def media_name_filters() -> list[str]:
             "extensions": SUPPORTED_AUDIO_EXT,
         },
         {
+            #: a kind of file in the open window: playlist files
             "name": translate("Dialog - Add Files", "Playlists", "File formats"),
             "extensions": LIST_FILE_EXT,
         },

@@ -1297,6 +1297,7 @@ ACTIONS = MappingProxyType(
             "menu_generator": "menu_generator_audio_device",
         },
         "Audio Delay: %v": {
+            #: menu item, followed by its value, as "Delay: 120 ms"
             "title": "{}: %v".format(translate("Actions", "Delay")),
             "keymap_title": translate("Actions", "Set Delay"),
             "icon": "empty",
@@ -1331,6 +1332,7 @@ ACTIONS = MappingProxyType(
             "menu_generator": "menu_generator_subtitle_track",
         },
         "Subtitle Delay: %v": {
+            #: menu item, followed by its value, as "Delay: 120 ms"
             "title": "{}: %v".format(translate("Actions", "Delay")),
             "keymap_title": translate("Actions", "Set Delay"),
             "icon": "empty",

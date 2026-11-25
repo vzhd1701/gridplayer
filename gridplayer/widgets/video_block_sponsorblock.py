@@ -200,6 +200,7 @@ class SponsorBlockControl(VideoBlockPart):
         block._log.debug(f"Skipping {span.category} from {block.time} to {span.end_ms}")
 
         block.info_change.emit(
+            #: shown on the video; CATEGORY is the kind of segment skipped, as "Sponsor"
             translate("SponsorBlock", "Skipped: {CATEGORY}").format(
                 CATEGORY=category_name(span.category)
             )

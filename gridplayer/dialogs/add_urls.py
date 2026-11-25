@@ -174,6 +174,7 @@ def _init_info_txt(schemas, supported_urls):
     supported_info_template = "<br>".join(
         (
             translate("Dialog - Add URLs", "Supported URL schemas: {SCHEMAS}"),
+            #: SERVICES is site names, as "YouTube, Twitch"
             translate("Dialog - Add URLs", "Supported sites: {SERVICES}"),
         )
     )

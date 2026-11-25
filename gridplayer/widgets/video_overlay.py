@@ -363,10 +363,14 @@ class OverlayBlock(QWidget):
             text=translate("Overlay", "Try Again"), parent=self
         )
         self.details_button = OverlayTextButton(
-            text=translate("Overlay", "Details"), parent=self
+            #: button on a cell that failed: shows what went wrong
+            text=translate("Overlay", "Details"),
+            parent=self,
         )
         self.next_button = OverlayTextButton(
-            text=translate("Overlay", "Next"), parent=self
+            #: button on a cell that failed: plays the next video of its list
+            text=translate("Overlay", "Next"),
+            parent=self,
         )
 
         self.bottom_bar.addWidget(self.play_pause_button)
@@ -686,8 +690,10 @@ class OverlayBlock(QWidget):
         self._is_going_back = is_going_back
 
         if is_going_back:
+            #: button on a cell that failed: plays the previous video of its list
             self.next_button.text = translate("Overlay", "Previous")
         else:
+            #: button on a cell that failed: plays the next video of its list
             self.next_button.text = translate("Overlay", "Next")
 
         self._sync_bottom_bar()

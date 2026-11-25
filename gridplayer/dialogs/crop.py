@@ -325,6 +325,7 @@ class SetCropDialog(QDialog):
                 translate("Dialog - Set Crop", "Video"),
                 video_w,
                 video_h,
+                #: the size after cropping, as "Video: 1920x1080 | Cropped: 1280x720"
                 translate("Dialog - Set Crop", "Cropped"),
                 cropped_w,
                 cropped_h,

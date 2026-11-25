@@ -253,6 +253,7 @@ VIDEO_FIELDS: tuple[SettingField, ...] = (
         label=translate("When Video Fails", "Next after"),
         minimum=0,
         maximum=MAX_LIST_FAIL_WAIT_SEC,
+        #: value of "Next after" at 0: the next video plays without waiting
         special_text=translate("When Video Fails", "At once"),
         suffix=translate("SettingsDialog", "(sec)"),
         enabled_when=When(

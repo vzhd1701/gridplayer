@@ -499,6 +499,7 @@ class Bookmarker(VideoBlockPart):
         # the box the name is typed in, or the colour picked in, has no room
         # to say it: the video does
         self._block.info_change.emit(
+            #: ACTION is what the video does when it ends, as "Next File"
             translate("Bookmarks", "Paused at the start instead of “{ACTION}”").format(
                 ACTION=held_end_action_txt(end_action)
             )
