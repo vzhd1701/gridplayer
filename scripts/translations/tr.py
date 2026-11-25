@@ -337,6 +337,9 @@ def cmd_screenshots(cfg: config.Config, args) -> int:
     out = config.WORK / "screenshots"
     scenario = config.TR_DIR / "screenshots" / "scenario.py"
     if not args.no_run:
+        # a screen no longer made would otherwise stay in the folder
+        for old in out.glob("gp-*.png"):
+            old.unlink()
         run = [
             sys.executable,
             "-m",
@@ -352,11 +355,17 @@ def cmd_screenshots(cfg: config.Config, args) -> int:
     tags = json.loads((out / "tags.json").read_text(encoding="utf-8"))
     keys = [m.key for m in ts_file.read(config.SOURCE).live()]
     found, uncovered = shots.match(out, tags, keys)
+    # a screen showing nothing to translate (translators' names) is no
+    # help on Crowdin: not sent, and taken down if it was
+    untagged = [s.path.name for s in found if not s.tags]
+    found = [s for s in found if s.tags]
 
     print(
         f"{len(found)} screens, {sum(len(s.tags) for s in found)} tags, "
         f"{len(keys) - len(uncovered)} of {len(keys)} strings shown"
     )
+    if untagged:
+        print(f"Left out, nothing to translate on them: {', '.join(untagged)}")
     (config.WORK / "not_in_screenshots.txt").write_text(
         "\n".join(f"{k[0]}: {k[1]}" for k in sorted(uncovered)), encoding="utf-8"
     )
