@@ -238,10 +238,27 @@ the entry happens to exist, but never reaches translators.
   (`params/settings_fields/`) uses one context named after the setting
   (e.g. `Transform`, `When Finished`, `Playlist Settings`). Other menu strings
   use `Actions`; other settings form strings use `SettingsDialog`.
-* A string whose meaning the code doesn't make plain gets a translator note:
-  `#: what it is` on the line above the call (pylupdate6 makes it an
-  `<extracomment>`, shown on Crowdin and to the AI). The same English with
-  two meanings in one context needs a disambiguation argument.
+* A translator note (`#: ...` on the line above the call; pylupdate6 makes
+  it an `<extracomment>`, shown on Crowdin and to the AI) says what the
+  translator can't see in the text itself. Write one only for:
+  * a word or two that reads more than one way: "Check", "Nothing",
+    "Every", "soon" (a verb or a noun? a button or a value?);
+  * a placeholder whose content its name doesn't make clear: say what
+    fills it, with an example (`WHEN is as "in 5 minutes"`);
+  * a fragment set into another text, or one another text is set into;
+  * something to keep as it is: `%%`, a file filter's patterns;
+  * text shown only on one system, when that changes its wording
+    (macOS's "menu bar").
+
+  No note for a full sentence that reads clearly on its own, a plain menu
+  item or label, or the English said again in other words. Keep it short
+  and plain.
+* pylupdate6 ties a note to the line the call starts on. Inside a call
+  split over lines, the note goes right above `translate(`.
+* The same text in one context gets the same note wherever it is used:
+  two wordings make two entries for one string in the `.ts` file.
+* The same English with two meanings in one context needs a
+  disambiguation argument, not a note.
 
 ## Translations
 
