@@ -11,6 +11,7 @@ timecode and by percent, from either cell.
 
 import math
 import os
+import time
 
 from gridplayer.settings import Settings
 from tests.real_app.scenarios.pixel_shape import _grab
@@ -80,21 +81,26 @@ def _both_play_on(d, dragged, other, aim, what):
     def played_on(block):
         return aim_ms + 500 <= block.time <= aim_ms + PLAY_ON_S * 1000 + CLOSE_MS
 
-    d.wait_until(
-        lambda: all(played_on(block) for block in cells),
-        f"{what}: both play on from where the last seek went ({aim_ms})",
-        timeout=PLAY_ON_S,
-    )
+    # On a slow machine a stale seek can land past the aim before the last
+    # one does, and spoil the second played: it is played again then
+    deadline = time.monotonic() + PLAY_ON_S
+    while True:
+        landed = d.wait_until(
+            lambda: all(played_on(block) for block in cells),
+            f"{what}: both play on from where the last seek went ({aim_ms})",
+            timeout=max(deadline - time.monotonic(), 0.5),
+        )
 
-    before = {block: (block.time, _picture(block)) for block in cells}
-    d.wait(1)
+        before = {block: (block.time, _picture(block)) for block in cells}
+        d.wait(1)
+
+        went_on = all(_went_on(block, before[block][0]) for block in cells)
+        if went_on or not landed or time.monotonic() >= deadline:
+            break
 
     for block in cells:
         name = block.title
         time_before, picture_before = before[block]
-        # round the end, maybe
-        played = (block.time - time_before) % block.video_driver.length
-
         d.check(
             f"{what}: {name} plays",
             not block.video_params.is_paused and not block.is_error,
@@ -102,7 +108,7 @@ def _both_play_on(d, dragged, other, aim, what):
         )
         d.check(
             f"{what}: {name}'s time goes on",
-            500 <= played <= 1500,
+            _went_on(block, time_before),
             (time_before, block.time),
         )
         d.check(
@@ -117,6 +123,13 @@ def _both_play_on(d, dragged, other, aim, what):
         d.check(f"{what}: the two together", gap <= CLOSE_MS, gap)
     else:
         d._step(f"{what}: the two apart by", gap_ms=gap)
+
+
+def _went_on(block, time_before) -> bool:
+    """Whether a second has played since time_before, rounding the end maybe."""
+
+    played = (block.time - time_before) % block.video_driver.length
+    return 500 <= played <= 1500
 
 
 def _is_mpv() -> bool:

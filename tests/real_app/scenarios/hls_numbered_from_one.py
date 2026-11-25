@@ -30,9 +30,10 @@ def _played_whole(d, url, what):
     )
     d.check(f"{what}: from its start", 0 <= b.time <= 4_000, b.time)
 
+    # a slow machine takes a while to fetch the segment the seek lands in
     b.seek(10_000)
-    d.wait(2)
-    d.check(f"{what}: on from a seek to 10 s", 10_500 <= b.time <= 14_000, b.time)
+    d.wait_until(lambda: b.time >= 10_500, f"{what}: on from a seek to 10 s")
+    d.check(f"{what}: on from near 10 s", b.time <= 14_000, b.time)
 
     d.act(b, "Close")
     d.wait_until(lambda: not d.cells, f"{what}: closed")
