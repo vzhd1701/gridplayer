@@ -6,6 +6,7 @@ import pytest
 from gridplayer.main.init_cli import init_cli_args
 from gridplayer.params import env
 from gridplayer.utils import app_dir
+from gridplayer.version import __version__
 
 
 @pytest.fixture(autouse=True)
@@ -131,7 +132,7 @@ def test_version_exits_zero(monkeypatch, capsys):
         init_cli_args()
 
     assert e.value.code == 0
-    assert "0.5.5" in capsys.readouterr().out
+    assert __version__ in capsys.readouterr().out
 
 
 def test_override_returns_override_dir(monkeypatch, tmp_path):
