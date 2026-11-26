@@ -1260,7 +1260,13 @@ def _waiting_video(uri: str) -> Video | None:
 
     path = Path(uri)
 
-    return _video(path if path.is_file() else str(path), read_as_list=True)
+    # before 3.14, is_file() raises on a share that can't be reached
+    try:
+        is_file = path.is_file()
+    except OSError:
+        is_file = False
+
+    return _video(path if is_file else str(path), read_as_list=True)
 
 
 def _cell_dropped_on(drop):

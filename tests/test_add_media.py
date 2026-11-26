@@ -235,6 +235,23 @@ class TestFiles:
 
         assert "The semaphore timeout period has expired" in manager.errors[0]
 
+    def test_a_list_that_cannot_be_reached_says_so(
+        self, manager, tmp_path, monkeypatch
+    ):
+        gone = tmp_path / "share" / "list.m3u"
+        stat = Path.stat
+
+        def unreachable(path, *args, **kwargs):
+            if path == gone:
+                raise OSError(0, "The semaphore timeout period has expired")
+            return stat(path, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "stat", unreachable)
+
+        _add(manager, [gone])
+
+        assert str(gone) in manager.errors[0]
+
     def test_and_is_not_remembered_as_recent(self, manager, tmp_path):
         _add(manager, [tmp_path / "gone.mp4"])
 
