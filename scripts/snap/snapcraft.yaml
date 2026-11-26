@@ -20,8 +20,10 @@ confinement: strict
 
 license: GPL-3.0-or-later
 
+# each built on a machine of its own architecture
 platforms:
   amd64:
+  arm64:
 
 lint:
   ignore:
@@ -43,12 +45,14 @@ parts:
     plugin: cmake
     cmake-parameters:
       - -DCMAKE_INSTALL_PREFIX=/
+    # on x86_64 it builds a 32-bit library too
     build-packages:
       - on amd64:
         - gcc-multilib
         - g++-multilib
     stage-packages:
-      - lib32stdc++6
+      - on amd64:
+        - lib32stdc++6
 
   vlc:
     plugin: nil
@@ -180,7 +184,7 @@ apps:
     environment:
       # BLAS and LAPACK (libmpv's, through FFmpeg) in folders of their own,
       # which Ubuntu links in by update-alternatives, as a snap can't
-      LD_LIBRARY_PATH: "$SNAP/usr/lib/x86_64-linux-gnu/pulseaudio:$SNAP/usr/lib/x86_64-linux-gnu/vlc:$SNAP/usr/lib/x86_64-linux-gnu/blas:$SNAP/usr/lib/x86_64-linux-gnu/lapack:$SNAP/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH"
+      LD_LIBRARY_PATH: "$SNAP/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/pulseaudio:$SNAP/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/vlc:$SNAP/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/blas:$SNAP/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR/lapack:$SNAP/usr/lib/$CRAFT_ARCH_TRIPLET_BUILD_FOR:$LD_LIBRARY_PATH"
       NO_AT_BRIDGE: 1 # disable dbind-WARNING warning
     desktop: usr/share/applications/{APP_ID}.desktop
     command: bin/gridplayer

@@ -18,8 +18,19 @@ env:
   BUILD_PYTHON_VERSION: "3.14"
 
 jobs:
+  # each on a machine of its architecture: snapcraft builds for the one it
+  # runs on. The store keeps both under the one name
   build_snap:
-    runs-on: ubuntu-latest
+    strategy:
+      # arm64 is newer: its failing shouldn't keep the amd64 one out
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v7
       - uses: extractions/setup-just@v4
@@ -35,7 +46,7 @@ jobs:
       - name: Install requirements
         run: |
           sudo apt-get update
-          sudo apt-get install -y desktop-file-utils appstream-util
+          sudo apt-get install -y desktop-file-utils appstream-util xvfb xauth
 
       - name: Prepare
         run: |
@@ -46,10 +57,21 @@ jobs:
         with:
           path: build/snap
 
+      # The snap installed and started once, on an X server of its own, to
+      # load VLC and libmpv and play a clip with each, see
+      # gridplayer/main/self_check.py. Its runtime and GPU libraries come
+      # from the store, as on a desktop
+      - name: Self-check
+        run: |
+          sudo snap install gnome-46-2404 mesa-2404
+          sudo snap install --dangerous "${{ steps.build.outputs.snap }}"
+          snap connections gridplayer
+          xvfb-run -a snap run gridplayer --self-check "$PWD/tests/data/self_check.mp4"
+
       - name: Save snapped app
         uses: actions/upload-artifact@v7
         with:
-          name: snap_result
+          name: snap_result_${{ matrix.arch }}
           path: ${{ steps.build.outputs.snap }}
 
       - uses: snapcore/action-publish@v1
