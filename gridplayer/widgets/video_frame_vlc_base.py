@@ -1643,6 +1643,11 @@ class VideoFrameVLC(QWidget, metaclass=QABC):
 
         return self.video_driver.steps_own_frames()
 
+    def makes_every_seek(self) -> bool:
+        """See VLCVideoDriver.makes_every_seek."""
+
+        return self.video_driver.makes_every_seek()
+
     def get_ms_per_frame(self) -> float:
         # Not rounded to whole milliseconds: at 23.976 fps a frame lasts
         # 41.7ms, and stepping by 41 lands short of the next frame often

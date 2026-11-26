@@ -484,8 +484,10 @@ def _playing_block(mocker, is_wrapped):
     block.loop_start = 0
     block.loop_end = 2000
     block._is_loop_wrapped.return_value = is_wrapped
-    # no seek on its way anywhere
+    # no seek on its way anywhere, nor one waiting to be made
     block._follow_seek.return_value = False
+    block._seek_hold_timer.isActive.return_value = False
+    block._held_seek = None
 
     return block
 
@@ -591,6 +593,8 @@ def test_seek_holds_off_wrap_detection(mocker):
     block.video_driver.length = 2000
     block.sponsorblock._skip_spans = ()
 
+    block._make_seek = partial(VideoBlock._make_seek, block)
+
     VideoBlock.seek(block, 1500)
 
     block.video_driver.set_time.assert_called_once_with(1500, SeekAim.EXACT)
@@ -620,6 +624,7 @@ def test_seek_marks_itself_before_it_is_made(mocker):
         seen["is_settling"] = block._seek_settle_timer.start.called
 
     block.video_driver.set_time.side_effect = _set_time
+    block._make_seek = partial(VideoBlock._make_seek, block)
 
     VideoBlock.seek(block, 50)
 

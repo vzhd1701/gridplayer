@@ -565,6 +565,8 @@ class TestWhatASeekIsFor:
 
     def test_a_chapter_is_a_mark(self, block, aims):
         block.manual_seek("chapters.seek", 2)
+        # landed, or the next would wait for it
+        block.video_driver.time_changed.emit(block._seek_target + 100)
         block.chapters.next()
 
         assert aims() == [SeekAim.MARK, SeekAim.MARK]

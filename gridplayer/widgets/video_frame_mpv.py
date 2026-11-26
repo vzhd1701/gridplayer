@@ -618,6 +618,10 @@ class VideoDriverMpv(VLCVideoDriver):
             and not self._player.is_stepping_fields
         )
 
+    def makes_every_seek(self) -> bool:
+        # mpv keeps only the newest of the seeks waiting, and makes it at once
+        return False
+
     def set_time(self, seek_ms, aim=SeekAim.EXACT):
         if self._player is None or self._player.media_input.is_live:
             return

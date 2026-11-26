@@ -114,6 +114,14 @@ class VLCVideoDriver(QObject, metaclass=QABC):
 
         return False
 
+    def makes_every_seek(self) -> bool:
+        """Whether the player makes every seek asked of it, one after the
+        other, saying the time of where it was until it gets to each. VLC
+        does: a seek for every move of a drag came to the last one 5 s
+        late on a machine short of CPU. See VideoBlock.seek."""
+
+        return True
+
     @abstractmethod
     def set_playback_rate(self, rate): ...
 

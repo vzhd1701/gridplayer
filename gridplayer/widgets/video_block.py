@@ -64,6 +64,7 @@ from gridplayer.utils.url_resolve.url_resolve import VideoURLResolver
 from gridplayer.vlc_player.static import (
     DISABLED_TRACK,
     SEEK_ARRIVAL_MS,
+    SEEK_LANDING_MS,
     MediaInput,
     SeekLanding,
     arriving_time,
@@ -115,6 +116,21 @@ IN_PROGRESS_THRESHOLD_MS = 500
 # stays off for this long after one, so an update sent before the seek landed
 # is not mistaken for the video wrapping around.
 SEEK_SETTLE_MS = 500
+
+# On VLC, a seek of the viewer's made while the one before is still landing
+# waits for it, the newest taking the place of any waiting, as mpv does of
+# itself: VLC makes every seek asked (VLCVideoDriver.makes_every_seek). A
+# drag shows more of where it goes, 17 pictures against 4 for one of 60
+# moves, and on a machine short of CPU 6 seeks of 20 are made. One that never
+# says it landed -- VLC says no time while paused -- is given up on after
+# this long, playing or paused.
+SEEK_HOLD_MAX_MS = 1000
+SEEK_HOLD_PAUSED_MS = 300
+
+# The seek waited for counts as made once the time is about where it went: VLC
+# says the old place's until it gets to it. Exact, it lands a frame or so
+# short on a file, seconds short on a stream (SEEK_LANDING_MS).
+SEEK_MADE_SHORT_MS = 1000
 
 # what the viewer's seeks are for, by the command that makes them; any other is exact
 _MANUAL_SEEK_AIMS = {
@@ -269,6 +285,19 @@ class VideoBlock(QWidget):
         self._seek_settle_timer.setSingleShot(True)
         self._seek_settle_timer.setInterval(SEEK_SETTLE_MS)
 
+        # running while the last seek made has yet to land; a seek of the
+        # viewer's made meanwhile waits, see SEEK_HOLD_MAX_MS
+        self._seek_hold_timer = QTimer(self)
+        self._seek_hold_timer.setSingleShot(True)
+        self._seek_hold_timer.timeout.connect(self._make_held_seek)
+        self._held_seek: tuple[int, bool, SeekAim] | None = None
+        # where the last seek made went, and where the player said it was as
+        # it was made, for telling when it is made
+        self._seek_made_ms: int | None = None
+        self._seek_from_ms: int | None = None
+        self._reported_ms: int | None = None
+        self._is_stepping = False
+
         # where the last seek was aimed, until the video is seen to get there;
         # the first time reported short of it; and how many more times it may
         # be made again. See _follow_seek
@@ -398,6 +427,9 @@ class VideoBlock(QWidget):
         # a seek made on it has nothing left to land on
         self._seek_target = None
         self._seek_behind = None
+        self._held_seek = None
+        self._seek_hold_timer.stop()
+        self._reported_ms = None
         self._is_step_sync_due = False
 
         self._release_video_driver()
@@ -1323,6 +1355,22 @@ class VideoBlock(QWidget):
 
         is_seek_on_its_way = self._follow_seek(new_time)
 
+        # VLC says a seek back as it is asked of it, before it is made
+        if new_time != self._seek_made_ms:
+            self._reported_ms = new_time
+
+        # the seek waiting for it goes now, not from inside the driver's report
+        if self._seek_hold_timer.isActive() and self._is_seek_made(new_time):
+            self._seek_hold_timer.stop()
+            QTimer.singleShot(0, self._make_held_seek)
+
+        # Where the viewer's seek waiting goes is the time meanwhile, for the
+        # bar not to jump back; where the one before lands says nothing about
+        # the loop.
+        if self._held_seek is not None:
+            self.time = self._held_seek[0]
+            return
+
         if self.is_live:
             return
 
@@ -1538,7 +1586,12 @@ class VideoBlock(QWidget):
         pass as it was on the first.
         """
 
-        self.seek(self.loop_start, is_viewers=self.video_params.loop_start is not None)
+        # going round on time, not waiting for the seek before it
+        self.seek(
+            self.loop_start,
+            is_viewers=self.video_params.loop_start is not None,
+            can_wait=False,
+        )
 
     def _pause_at_start(self):
         self._seek_loop_start()
@@ -2239,7 +2292,7 @@ class VideoBlock(QWidget):
 
     @only_initialized
     @only_seekable
-    def seek(self, seek_ms, is_viewers=True, aim=SeekAim.EXACT):
+    def seek(self, seek_ms, is_viewers=True, aim=SeekAim.EXACT, can_wait=True):
         """Go to a time, for the viewer or for the player itself, as exactly as
         what it's for needs: see SeekAim.
 
@@ -2247,6 +2300,9 @@ class VideoBlock(QWidget):
         to play, the viewer having gone there. One the player lands in, going
         round to the start or past another, is skipped as it would be if it
         were played into.
+
+        One of the viewer's may wait for the one before (SEEK_HOLD_MAX_MS),
+        unless it can't: a loop going round to a start the viewer set.
         """
 
         if seek_ms < self.loop_start or seek_ms > self.loop_end:
@@ -2256,6 +2312,59 @@ class VideoBlock(QWidget):
         if aim not in {SeekAim.NEXT_FRAME, SeekAim.PREVIOUS_FRAME}:
             self._is_step_sync_due = False
 
+        # Made while the one before is landing, the viewer's waits for it.
+        # Where it goes is the time already, for the bar and for the others
+        # following this one. Not a frame step: every frame is to be seen.
+        if (
+            is_viewers
+            and can_wait
+            and not self._is_stepping
+            and self._seek_hold_timer.isActive()
+            and self.video_driver.makes_every_seek()
+        ):
+            self._held_seek = (seek_ms, is_viewers, aim)
+            self.time = seek_ms
+            return
+
+        self._held_seek = None
+        self._make_seek(seek_ms, is_viewers, aim)
+
+    def _is_seek_made(self, new_time) -> bool:
+        """Whether the player has got round to the last seek made, by a time
+        it reported."""
+
+        # VLC says it back as the seek is asked of it
+        if new_time == self._seek_made_ms:
+            return False
+
+        if self._seek_made_ms is None:
+            return True
+
+        # played on, from where it was or from where it went, for as long as
+        # a seek is waited on at most
+        played_ms = SEEK_HOLD_MAX_MS * max(self.video_params.rate, 1)
+
+        # still where it was: a drag's seek can go no further than that
+        if (
+            self._seek_from_ms is not None
+            and 0 <= new_time - self._seek_from_ms <= played_ms
+        ):
+            return False
+
+        short_ms = SEEK_LANDING_MS if self.stream.is_adaptive else SEEK_MADE_SHORT_MS
+
+        return -short_ms <= new_time - self._seek_made_ms <= played_ms
+
+    def _make_held_seek(self) -> None:
+        """The seek of the viewer's that waited, if one did, checked again:
+        the video, or its loop, may have changed meanwhile."""
+
+        held, self._held_seek = self._held_seek, None
+
+        if held is not None:
+            self.seek(*held)
+
+    def _make_seek(self, seek_ms, is_viewers, aim) -> None:
         # the viewer going back into the video stays in it, whatever file
         # its end was looking for
         if is_viewers:
@@ -2290,6 +2399,13 @@ class VideoBlock(QWidget):
         self.time_ahead.cancel()
 
         self.time = seek_ms
+
+        self._seek_made_ms = seek_ms
+        self._seek_from_ms = self._reported_ms
+        self._seek_hold_timer.start(
+            SEEK_HOLD_PAUSED_MS if self.video_params.is_paused else SEEK_HOLD_MAX_MS
+        )
+
         self.video_driver.set_time(seek_ms, aim)
 
     @property
@@ -2301,13 +2417,16 @@ class VideoBlock(QWidget):
         the one before, so a press of next jumps to the same one again.
         """
 
+        if self._held_seek is not None:
+            return self._held_seek[0]
+
         return arriving_time(self.time, self._seek_target)
 
     @property
     def is_seek_on_its_way(self) -> bool:
-        """Whether the last seek has yet to be seen to land."""
+        """Whether the last seek has yet to be seen to land, or to be made."""
 
-        return self._seek_target is not None
+        return self._seek_target is not None or self._held_seek is not None
 
     @only_with_video_tacks
     @only_seekable
@@ -2357,7 +2476,11 @@ class VideoBlock(QWidget):
         else:
             aim = SeekAim.EXACT
 
-        self.seek_shift_ms(new_time - self.time, aim)
+        self._is_stepping = True
+        try:
+            self.seek_shift_ms(new_time - self.time, aim)
+        finally:
+            self._is_stepping = False
 
         # not False, which manual_seek takes for a seek that went nowhere
         return True if is_own else None
@@ -2368,6 +2491,10 @@ class VideoBlock(QWidget):
         # where it landed is where the step went, nowhere near the time guessed
         self._seek_target = None
         self._seek_landed_at = None
+
+        if self._seek_hold_timer.isActive():
+            self._seek_hold_timer.stop()
+            QTimer.singleShot(0, self._make_held_seek)
 
         if self._is_step_sync_due:
             self._is_step_sync_due = False
