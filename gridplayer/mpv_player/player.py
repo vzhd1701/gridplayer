@@ -802,10 +802,13 @@ class MpvPlayer(QObject):
         if env.IS_LINUX:
             # On a machine with no sound to be had, mpv otherwise tries every
             # output it knows: JACK and SDL don't take being started by several
-            # videos at once, which hangs or crashes. Without a sound device
-            # the video just plays on.
+            # videos at once, which hangs or crashes.
             options["ao"] = ",".join(_linux_audio_outputs())
-            options["audio_fallback_to_null"] = True
+
+        # Without a sound device a video plays on silently, a sound only so:
+        # mpv otherwise ends a file that is only sound with an error, as VLC
+        # doesn't (a Windows runner of CI, with no sound device at all).
+        options["audio_fallback_to_null"] = True
 
         # The software renderer scales with zimg by default, lanczos with
         # dithering: on 4 cores of a Haswell, 190% of a core for one 1080p video

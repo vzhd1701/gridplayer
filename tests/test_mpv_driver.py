@@ -1397,6 +1397,15 @@ def test_options_on_linux_with_no_pipewire_server_leave_its_output_out(
     assert _player().mpv.options["ao"] == "pulse,alsa"
 
 
+@pytest.mark.parametrize("is_linux", [True, False])
+def test_options_play_on_silently_with_no_sound_device(monkeypatch, is_linux):
+    """A file that is only sound would end with an error otherwise."""
+
+    monkeypatch.setattr(player_module.env, "IS_LINUX", is_linux)
+
+    assert _player().mpv.options["audio_fallback_to_null"] is True
+
+
 def test_a_pipewire_server_is_found_where_its_library_looks(monkeypatch, tmp_path):
     for name in ("PIPEWIRE_REMOTE", "PIPEWIRE_RUNTIME_DIR", "XDG_RUNTIME_DIR"):
         monkeypatch.delenv(name, raising=False)
