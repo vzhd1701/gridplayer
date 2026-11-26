@@ -30,7 +30,11 @@ def scenario(d):
     d.act(b, "Close")
 
     b = _play(d, shapes / "wide_pixels.ts")
-    d.wait_until(lambda: _track(b).sar is not None, "the stream says its pixels")
+    # and the picture shown again in their shape: a slow machine takes a while
+    d.wait_until(
+        lambda: _track(b).sar is not None and _ratio(_picture_box(_grab(b))) > 1.7,
+        "the stream's pixels are shown in their shape",
+    )
     _same(d, "a stream's wide pixels", _picture(d, b, "wide_pixels_ts"), wide)
     d.act(b, "Close")
 
