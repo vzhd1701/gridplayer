@@ -22,7 +22,9 @@ uv run --frozen "$SCRIPT_DIR/inject_changelog.py" \
     "$ROOT_DIR/CHANGELOG.md" \
     --version "$APP_CHANGELOG_VERSION"
 
-appstream-util validate "$BUILD_DIR_META/${APP_ID}.appdata.xml"
+# --nonet: online it fetches the screenshots and refuses their shadow,
+# which Flathub asks for ("Include window shadow and rounded corners")
+appstream-util validate --nonet "$BUILD_DIR_META/${APP_ID}.appdata.xml"
 
 copy_with_app_vars "$SCRIPT_DIR/mime.xml" "$BUILD_DIR_META/${APP_ID}.xml"
 
