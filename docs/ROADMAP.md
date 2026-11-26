@@ -76,7 +76,7 @@ unsaved. Left for later because it has to work in every package: the Windows exe
 AppImage, the Flatpak and Snap sandboxes, and from source. And the new copy must wait for the old one to close, or the
 single-instance check hands it back to the old one.
 
-## The tray's note through the portal in the Flatpak
+## The tray's note and the media keys' name in the Flatpak
 
 From the 0.6.0 release on Flathub (2026-11-26). Closed to the tray the first time, the app says once that it's still
 running and how to quit it (`TrayManager`, `QSystemTrayIcon.showMessage`). On Linux Qt sends that straight to
@@ -86,6 +86,10 @@ work.
 
 - In the Flatpak (`env.IS_FLATPAK`), send the note with the portal's `org.freedesktop.portal.Notification`
   `AddNotification` (a title and a body) over QtDBus instead. A Flatpak reaches the portal without a permission.
+- The media keys' name, `org.mpris.MediaPlayer2.gridplayer.instance<pid>`, is the same in every copy of the
+  Flatpak: each sandbox has its own process numbers, and the app is 2 in all of them. With "one instance" on, the
+  default, that's one name; with it off, a second copy can't have it and logs a warning, and the media keys reach the
+  first copy only. Take something unique to the copy instead, as the Flatpak's instance id in `/.flatpak-info`.
 - Flathub's linter also warns of `--socket=x11` beside `--socket=wayland`. That one stays: VLC Hardware and MPV's
   Direct draw into an X11 window on a Wayland desktop too, which `--socket=fallback-x11` would take away.
 
