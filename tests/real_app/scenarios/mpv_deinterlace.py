@@ -207,7 +207,7 @@ def _modes(d, flagged):
     _close(d, b)
 
 
-def _most_comb_of_many(d, b) -> int:
+def _combs_of_many(d, b) -> list[int]:
     """Only 2 frames of film in 5 come out combed, so one picture tells nothing.
 
     Nor do a dozen taken at one pace: a shot and a wait came to the five frames'
@@ -217,12 +217,28 @@ def _most_comb_of_many(d, b) -> int:
 
     _wait_for_motion(d, b)
 
-    most = 0
+    combs = []
     for shot in range(FILM_SHOTS):
-        most = max(most, _comb(d, b))
+        combs.append(_comb(d, b))
         d.wait(0.07 + 0.013 * shot)
 
-    return most
+    return combs
+
+
+def _film_state(b, combs) -> dict:
+    """What a film check found, and what mpv was doing: every shot clean once, on
+    a macOS runner with software decoding (2026-11-26), with nothing to say why."""
+
+    mpv = _mpv(b)
+
+    return {
+        "combs": combs,
+        "vf": str(mpv.vf),
+        "deinterlace": mpv.deinterlace,
+        "fps": mpv.estimated_vf_fps,
+        "dropped by the decoder": mpv.decoder_frame_drop_count,
+        "dropped to keep up": mpv.frame_drop_count,
+    }
 
 
 def _is_missing(action: str) -> bool:
@@ -241,11 +257,13 @@ def _film(d):
     b = _open(d, _clip(d, "film.mkv", _TELECINE, *_FLAGS))
 
     d.act(b, "Deinterlace Off")
-    d.check("film, off: combed", _most_comb_of_many(d, b) > COMBED)
+    combs = _combs_of_many(d, b)
+    d.check("film, off: combed", max(combs) > COMBED, _film_state(b, combs))
 
     d.act(b, "Deinterlace Mode - Film NTSC (IVTC)")
     _wait_for_rate(d, b, 24, "film, matched up", slack=2)
-    d.check("film, matched up: clean", _most_comb_of_many(d, b) < CLEAN)
+    combs = _combs_of_many(d, b)
+    d.check("film, matched up: clean", max(combs) < CLEAN, _film_state(b, combs))
 
     _close(d, b)
 
