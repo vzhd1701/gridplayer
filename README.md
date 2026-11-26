@@ -61,6 +61,18 @@ For Windows on ARM, get
 [GridPlayer-0.6.0-winarm64-install.exe](https://github.com/vzhd1701/gridplayer/releases/download/v0.6.0/GridPlayer-0.6.0-winarm64-install.exe)
 or [GridPlayer-0.6.0-winarm64-portable.zip](https://github.com/vzhd1701/gridplayer/releases/download/v0.6.0/GridPlayer-0.6.0-winarm64-portable.zip).
 
+Via [winget](https://github.com/microsoft/winget-cli):
+
+```shell
+winget install -e --id vzhd1701.GridPlayer
+```
+
+Via [Chocolatey](https://community.chocolatey.org/packages/gridplayer):
+
+```shell
+choco install gridplayer
+```
+
 Via [scoop](https://scoop.sh/):
 
 ```shell
