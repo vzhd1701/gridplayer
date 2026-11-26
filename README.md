@@ -54,12 +54,12 @@ Huge thanks to [every contributor](https://github.com/vzhd1701/gridplayer#transl
 
 ### Windows
 
-[![Download Windows Installer](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_windows_installer.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.5.5/GridPlayer-0.5.5-win64-install.exe)
-[![Download Windows Portable](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_windows_portable.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.5.5/GridPlayer-0.5.5-win64-portable.zip)
+[![Download Windows Installer](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_windows_installer.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.6.0/GridPlayer-0.6.0-win64-install.exe)
+[![Download Windows Portable](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_windows_portable.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.6.0/GridPlayer-0.6.0-win64-portable.zip)
 
 For Windows on ARM, get
-[GridPlayer-0.5.5-winarm64-install.exe](https://github.com/vzhd1701/gridplayer/releases/download/v0.5.5/GridPlayer-0.5.5-winarm64-install.exe)
-or [GridPlayer-0.5.5-winarm64-portable.zip](https://github.com/vzhd1701/gridplayer/releases/download/v0.5.5/GridPlayer-0.5.5-winarm64-portable.zip).
+[GridPlayer-0.6.0-winarm64-install.exe](https://github.com/vzhd1701/gridplayer/releases/download/v0.6.0/GridPlayer-0.6.0-winarm64-install.exe)
+or [GridPlayer-0.6.0-winarm64-portable.zip](https://github.com/vzhd1701/gridplayer/releases/download/v0.6.0/GridPlayer-0.6.0-winarm64-portable.zip).
 
 Via [scoop](https://scoop.sh/):
 
@@ -73,10 +73,10 @@ scoop install gridplayer
 
 [![Get it from the Flathub](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_flathub.png)](https://flathub.org/apps/details/com.vzhd1701.gridplayer)
 [![Get it from the Snap Store](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_snap.png)](https://snapcraft.io/gridplayer)
-[![Download AppImage](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_appimage.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.5.5/GridPlayer-0.5.5-x86_64.AppImage)
+[![Download AppImage](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_appimage.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.6.0/GridPlayer-0.6.0-x86_64.AppImage)
 
 For ARM (`aarch64`), get
-[GridPlayer-0.5.5-aarch64.AppImage](https://github.com/vzhd1701/gridplayer/releases/download/v0.5.5/GridPlayer-0.5.5-aarch64.AppImage).
+[GridPlayer-0.6.0-aarch64.AppImage](https://github.com/vzhd1701/gridplayer/releases/download/v0.6.0/GridPlayer-0.6.0-aarch64.AppImage).
 
 **For better system integration install via Flathub.**
 
@@ -91,15 +91,15 @@ It doesn't need `libfuse2`. Where FUSE isn't there at all, run it with `--appima
 You may need to set execute permissions on AppImage file in order to run it:
 
 ```shell
-chmod +x GridPlayer-0.5.5-x86_64.AppImage
+chmod +x GridPlayer-0.6.0-x86_64.AppImage
 ```
 
 ### MacOS
 
-[![Download DMG](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_dmg.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.5.5/GridPlayer.0.5.5_arm64.dmg)
+[![Download DMG](https://raw.githubusercontent.com/vzhd1701/gridplayer/master/resources/public/dl_dmg.png)](https://github.com/vzhd1701/gridplayer/releases/download/v0.6.0/GridPlayer.0.6.0_arm64.dmg)
 
 The button gets the DMG for Apple Silicon (`arm64`). For an Intel Mac, get
-[GridPlayer.0.5.5_intel64.dmg](https://github.com/vzhd1701/gridplayer/releases/download/v0.5.5/GridPlayer.0.5.5_intel64.dmg).
+[GridPlayer.0.6.0_intel64.dmg](https://github.com/vzhd1701/gridplayer/releases/download/v0.6.0/GridPlayer.0.6.0_intel64.dmg).
 
 **Needs macOS 14 or later.**
 

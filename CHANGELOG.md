@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-26
+
 ### Changed
 
 - Move to Qt 6: sharper windows at 125% and 150% on Wayland, macOS 14 or later needed, Windows 64-bit only ([3a900fb](https://github.com/vzhd1701/gridplayer/commit/3a900fbb2a5e573cb9e7bf0ce20986e6bc95a2e3)), ([5d2c0c2](https://github.com/vzhd1701/gridplayer/commit/5d2c0c28118bbb0e97637852fcd3986653c67088)), ([7d60c2b](https://github.com/vzhd1701/gridplayer/commit/7d60c2b259cbb181acad0d49cf3de387e86b55e4))
@@ -479,7 +481,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - Initial release
 
-[Unreleased]: https://github.com/vzhd1701/gridplayer/compare/v0.5.5...HEAD
+[Unreleased]: https://github.com/vzhd1701/gridplayer/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/vzhd1701/gridplayer/compare/v0.5.5...v0.6.0
 [0.5.5]: https://github.com/vzhd1701/gridplayer/compare/v0.5.4...v0.5.5
 [0.5.4]: https://github.com/vzhd1701/gridplayer/compare/v0.5.3...v0.5.4
 [0.5.3]: https://github.com/vzhd1701/gridplayer/compare/v0.5.2...v0.5.3
