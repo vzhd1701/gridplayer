@@ -1,6 +1,7 @@
 import logging
 import os
 import sys
+import sysconfig
 from pathlib import Path
 
 from gridplayer.params import env
@@ -72,7 +73,11 @@ def get_embed_vlc_root() -> Path | None:
         return Path(sys.executable).parent / "libVLC"
 
     if env.IS_SNAP:
-        return Path(os.environ["SNAP"]) / "usr" / "lib" / "x86_64-linux-gnu"
+        # the snap's own Python is Ubuntu's: x86_64-linux-gnu, aarch64-linux-gnu
+        multiarch = sysconfig.get_config_var("MULTIARCH")
+        if not multiarch:
+            return None
+        return Path(os.environ["SNAP"]) / "usr" / "lib" / multiarch
 
     if env.IS_APPIMAGE:
         return Path(os.environ["APPDIR"]) / "usr" / "lib"
