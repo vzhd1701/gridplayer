@@ -24,9 +24,9 @@ finish-args:
 - "--talk-name=org.freedesktop.ScreenSaver"
 # Media keys in the background
 - "--own-name=org.mpris.MediaPlayer2.{APP_MODULE}.*"
-# Tray icon, and its note that the player is still running
+# Tray icon. Not its note that the player is still running: Flathub refuses
+# org.freedesktop.Notifications, a Flatpak is to use the notification portal
 - "--talk-name=org.kde.StatusNotifierWatcher"
-- "--talk-name=org.freedesktop.Notifications"
 # Disable annoying warnings
 # Qt: Session managment error: Could not open network socket
 # https://stackoverflow.com/questions/986964/qt-session-management-error
