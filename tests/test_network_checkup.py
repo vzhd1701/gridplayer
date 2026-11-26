@@ -41,6 +41,10 @@ IPV6_ONLY_HOST = "::1"
 # the test runner starts wondering
 TIMEOUT_SEC = 1
 
+# for a step that is meant to get its answer: two hops through a proxy can
+# take more than a second on a busy runner (Windows on Arm, 2026-11-26)
+ANSWER_SEC = 10
+
 
 class PageHandler(BaseHTTPRequestHandler):
     """The host the test page is on."""
@@ -91,7 +95,7 @@ def forwarding_proxy(serving):
         def do_GET(self):
             seen.append(self.path)
 
-            with urllib.request.urlopen(self.path, timeout=TIMEOUT_SEC) as answer:
+            with urllib.request.urlopen(self.path, timeout=ANSWER_SEC) as answer:
                 body = answer.read()
                 status = answer.status
 
@@ -203,17 +207,23 @@ class TestNothingIsConfigured:
         assert "go through GridPlayer" not in said
 
 
+def _through(forwarding_proxy) -> NetworkCheckup:
+    return _checkup(
+        proxy_mode=ProxyMode.CUSTOM,
+        proxy_url=forwarding_proxy[0],
+        timeout=ANSWER_SEC,
+    )
+
+
 class TestAProxyThatWorks:
     def test_the_page_comes_back_through_it(self, site, forwarding_proxy):
-        ran = _run(_checkup(proxy_mode=ProxyMode.CUSTOM, proxy_url=forwarding_proxy[0]))
+        ran = _run(_through(forwarding_proxy))
 
         assert ran["Fetching a page"].status is CheckStatus.PASSED
         assert forwarding_proxy[1] == [network_checkup.TEST_URL]
 
     def test_the_address_is_read_back_with_its_port(self, site, forwarding_proxy):
-        said = _run(
-            _checkup(proxy_mode=ProxyMode.CUSTOM, proxy_url=forwarding_proxy[0])
-        )
+        said = _run(_through(forwarding_proxy))
 
         assert said["Proxy address"].status is CheckStatus.PASSED
         assert "http proxy at 127.0.0.1" in said["Proxy address"].summary
@@ -221,9 +231,7 @@ class TestAProxyThatWorks:
     def test_the_connection_is_made_to_the_proxy_not_the_site(
         self, site, forwarding_proxy
     ):
-        said = _run(
-            _checkup(proxy_mode=ProxyMode.CUSTOM, proxy_url=forwarding_proxy[0])
-        )
+        said = _run(_through(forwarding_proxy))
 
         assert "the proxy at" in said["Opening a connection"].summary
 
