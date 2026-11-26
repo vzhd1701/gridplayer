@@ -13,16 +13,16 @@
   <summary>Play videos side-by-side</summary>
   <description>
     <p>
-      Simple VLC-based video player that can play multiple videos at the same time.
-      You can play as many videos as you like, the only limit is your hardware. It
-      supports all video formats that VLC supports (which is all of them). You can
-      save your playlist retaining information about the position, sound volume,
-      loops, aspect ratio, etc.
+      Simple media player that can play multiple videos at the same time, with MPV or
+      VLC. You can play as many videos as you like, the only limit is your hardware.
+      It supports all video formats that MPV and VLC support (which is all of them).
+      You can save your playlist retaining information about the position, sound
+      volume, loops, aspect ratio, etc.
     </p>
     <p>Features:</p>
     <ul>
       <li>Cross-platform (Linux, Mac, and Windows)</li>
-      <li>Support for any video and audio format (VLC)</li>
+      <li>Support for any video and audio format (MPV and VLC)</li>
       <li>Support for (almost) any streaming URLs (streamlink + yt-dlp)</li>
       <li>Play a whole list in one cell: m3u, pls and xspf playlists, folders, YouTube playlists, IPTV channels</li>
       <li>Cookie support for streams that need a login</li>

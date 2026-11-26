@@ -2,10 +2,10 @@ name: {APP_MODULE}
 version: {APP_VERSION}
 summary: Play multiple videos side-by-side
 description: |
-  Simple VLC-based media player that can play multiple videos at the same
-  time. You can play as many videos as you like, the only limit is your
-  hardware. It supports all video formats that VLC supports (which is all
-  of them).
+  Simple media player that can play multiple videos at the same time, with
+  MPV or VLC. You can play as many videos as you like, the only limit is
+  your hardware. It supports all video formats that MPV and VLC support
+  (which is all of them).
 
 title: {APP_NAME}
 contact: {APP_AUTHOR_CONTACT}
