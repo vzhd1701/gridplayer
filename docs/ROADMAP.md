@@ -76,6 +76,19 @@ unsaved. Left for later because it has to work in every package: the Windows exe
 AppImage, the Flatpak and Snap sandboxes, and from source. And the new copy must wait for the old one to close, or the
 single-instance check hands it back to the old one.
 
+## The tray's note through the portal in the Flatpak
+
+From the 0.6.0 release on Flathub (2026-11-26). Closed to the tray the first time, the app says once that it's still
+running and how to quit it (`TrayManager`, `QSystemTrayIcon.showMessage`). On Linux Qt sends that straight to
+`org.freedesktop.Notifications`, which Flathub refuses to let a Flatpak talk to: it is to use the notification portal.
+The permission is gone from `scripts/flatpak/app.yml`, so in the Flatpak the note isn't shown; the icon and its menu
+work.
+
+- In the Flatpak (`env.IS_FLATPAK`), send the note with the portal's `org.freedesktop.portal.Notification`
+  `AddNotification` (a title and a body) over QtDBus instead. A Flatpak reaches the portal without a permission.
+- Flathub's linter also warns of `--socket=x11` beside `--socket=wayland`. That one stays: VLC Hardware and MPV's
+  Direct draw into an X11 window on a Wayland desktop too, which `--socket=fallback-x11` would take away.
+
 ## Qt 6
 
 Moved to PyQt6 6.12 on the `qt6` branch (2026-11-19), stage by stage in `docs/archive/QT6_PLAN.md`. What it brought for
