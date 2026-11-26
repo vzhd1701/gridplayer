@@ -2,11 +2,11 @@
 last one (#129), and, on MPV, a sound of 1 s plays to its end every time.
 
 The frames are seen by grabbing the cell over and over, and a grab can miss
-a frame. On MPV, which shows the last one whole, one pass reaching it is
-enough: a slow machine misses frames of 40 ms now and then, and #129 cut the
-same frames off every pass. VLC shows the last one for 10 to 20 ms of its 40
-before the clip starts again, which a grab misses on half the passes or so:
-there every pass reaches the frame before it.
+a frame: a slow machine misses frames of 40 ms now and then. #129 cut the
+same frames off every pass, so one pass reaching the end is enough. On MPV,
+which shows the last frame whole, that is the last one. VLC shows it for 10
+to 20 ms of its 40 before the clip starts again, which a grab misses on half
+the passes or so: there it is the frame before it.
 
 Not the sound on VLC: on Windows it is cut to about 100 ms of each pass,
 left as it is (docs/findings/KNOWN_ISSUES.md).
@@ -56,19 +56,12 @@ def _clip(d):
     # the first starts late, and the run ends in the middle of one
     whole = passes[1:]
     d.check("the clip goes round", len(whole) >= 2, len(passes))
-    reached = [max(seen) for seen in whole]
-    if _is_mpv():
-        d.check(
-            "the clip reaches its last frame",
-            CLIP_FRAMES - 1 in reached,
-            [max(seen) for seen in passes],
-        )
-    else:
-        d.check(
-            "every pass of the clip reaches the frame before its last",
-            all(frame >= CLIP_FRAMES - 2 for frame in reached),
-            [max(seen) for seen in passes],
-        )
+    end = CLIP_FRAMES - 1 if _is_mpv() else CLIP_FRAMES - 2
+    d.check(
+        f"the clip reaches frame {end + 1} of {CLIP_FRAMES}",
+        any(max(seen) >= end for seen in whole),
+        [max(seen) for seen in passes],
+    )
 
     d.act(b, "Close")
     d.wait_until(lambda: not d.cells, "the clip is closed")
