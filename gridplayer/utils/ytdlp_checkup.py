@@ -21,7 +21,7 @@ import logging
 import re
 import shutil
 import urllib.request
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 from streamlink import Streamlink
@@ -179,7 +179,7 @@ class YouTubeCheckup(Checkup):
         if released is None:
             return CheckResult(CheckStatus.PASSED, YT_DLP_VERSION)
 
-        age = (datetime.now(tz=timezone.utc).date() - released).days
+        age = (datetime.now(tz=UTC).date() - released).days
 
         #: the yt-dlp version, as "2025.10.22"
         summary = translate(

@@ -120,7 +120,11 @@ sudo xattr -rd com.apple.quarantine /Applications/GridPlayer.app
 uv tool install gridplayer
 ```
 
-**Python 3.10 or later required.**
+**Python 3.11 or later required.**
+
+On Windows with Python 3.15, media keys work only while GridPlayer is in front: the library they need there
+(`winrt`) has no build for 3.15 yet. Python 3.14 has them in the background too:
+`uv tool install --python 3.14 gridplayer`.
 
 This type of installation doesn't come with a player library. It needs libmpv or VLC installed on your system, see
 [libmpv not found](#when-a-mode-isnt-available) for libmpv, or the [VLC official page](https://www.videolan.org/vlc/)

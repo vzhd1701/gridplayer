@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from PyQt6 import QtWidgets
@@ -264,7 +264,7 @@ def _expiry_text(row) -> str:
 
 def _date_text(expires) -> str:
     # stored in UTC, read by somebody sitting in their own timezone
-    lapses = datetime.fromtimestamp(expires, tz=timezone.utc).astimezone()
+    lapses = datetime.fromtimestamp(expires, tz=UTC).astimezone()
 
     return lapses.strftime("%Y-%m-%d")
 

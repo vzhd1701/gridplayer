@@ -7,7 +7,7 @@ name = "gridplayer"
 version = "0.5.5"
 description = "Play videos side-by-side"
 authors = [{ name = "vzhd1701", email = "vzhd1701@gmail.com" }]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 readme = "README.md"
 license-files = ["LICENSE"]
 license = "GPL-3.0-or-later"
@@ -39,10 +39,12 @@ dependencies = [
     "yt-dlp[default,curl-cffi] (>=2026.07.04,<2027.0.0)",
     "pyobjc-core ; sys_platform == 'darwin'",
     "pyobjc-framework-Cocoa ; sys_platform == 'darwin'",
-    "winrt-runtime (>=3.2.1,<4.0.0) ; sys_platform == 'win32'",
-    "winrt-Windows.Foundation (>=3.2.1,<4.0.0) ; sys_platform == 'win32'",
-    "winrt-Windows.Media (>=3.2.1,<4.0.0) ; sys_platform == 'win32'",
-    "winrt-Windows.Media.Playback (>=3.2.1,<4.0.0) ; sys_platform == 'win32'",
+    # Windows' media controls; no build for Python 3.15 yet, without them
+    # the media keys work only while the app is in front
+    "winrt-runtime (>=3.2.1,<4.0.0) ; sys_platform == 'win32' and python_version < '3.15'",
+    "winrt-Windows.Foundation (>=3.2.1,<4.0.0) ; sys_platform == 'win32' and python_version < '3.15'",
+    "winrt-Windows.Media (>=3.2.1,<4.0.0) ; sys_platform == 'win32' and python_version < '3.15'",
+    "winrt-Windows.Media.Playback (>=3.2.1,<4.0.0) ; sys_platform == 'win32' and python_version < '3.15'",
 ]
 
 [project.urls]
@@ -141,7 +143,8 @@ ignore = [
 exclude = ["tests"]
 
 [tool.rumdl]
-disable = ["MD013"]
+# MD076: a list may be tight with a spaced item in it, as the docs have them
+disable = ["MD013", "MD076"]
 exclude = ["LICENSE.md"]
 
 [tool.rumdl.per-file-ignores]

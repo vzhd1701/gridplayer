@@ -7,7 +7,7 @@ VideoBlock.error and RecoveryControl); this is how it is shown.
 """
 
 import dataclasses
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from gridplayer.dialogs.error_details import (
     DetailRows,
@@ -184,7 +184,7 @@ class StatusControl(VideoBlockPart):
         rows.append(
             (
                 translate("Error Details", "When"),
-                datetime.fromtimestamp(error.at, tz=timezone.utc)
+                datetime.fromtimestamp(error.at, tz=UTC)
                 .astimezone()
                 .strftime("%H:%M:%S"),
             )

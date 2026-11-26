@@ -1,7 +1,7 @@
 import logging
 import os
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from gridplayer.params.static import VideoTransform
 from gridplayer.vlc_player import vlc
@@ -365,7 +365,7 @@ def _decode_track_field(
                 media_uri,
                 os.getpid(),
                 threading.get_ident(),
-                datetime.now(timezone.utc).isoformat(),
+                datetime.now(UTC).isoformat(),
                 value,
                 exc,
             )

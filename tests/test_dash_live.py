@@ -3,7 +3,7 @@ HLS: which segments, numbered so that each keeps its number from one reading to 
 next and on into a new period, the picture and sound picked, and the playlist written
 of them."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -15,7 +15,7 @@ from gridplayer.utils.stream_proxy.m3u8 import (
     build_rendition_master_playlist,
 )
 
-STARTED = datetime(2026, 11, 15, 12, 0, 0, tzinfo=timezone.utc)
+STARTED = datetime(2026, 11, 15, 12, 0, 0, tzinfo=UTC)
 
 URL = "https://cdn.example/live/manifest.mpd"
 

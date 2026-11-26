@@ -4,7 +4,7 @@ default:
 # From the oldest Python taken up, not the one that runs this: the builds,
 # the Flatpak's runtime and the Snap's each have their own
 build-requirements:
-    if [ ! -f build/requirements.txt ]; then mkdir -p build && uv pip compile pyproject.toml -q --universal --python-version 3.10 --no-annotate --no-header -o build/requirements.txt; fi
+    if [ ! -f build/requirements.txt ]; then mkdir -p build && uv pip compile pyproject.toml -q --universal --python-version 3.11 --no-annotate --no-header -o build/requirements.txt; fi
 
 build:
     uv build

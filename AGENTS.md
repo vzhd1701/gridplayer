@@ -2,7 +2,7 @@
 
 ## Project
 
-GridPlayer is a cross-platform PyQt6 desktop app for playing multiple videos side-by-side, backed by MPV and VLC. Python 3.10+, using `uv` and `just`.
+GridPlayer is a cross-platform PyQt6 desktop app for playing multiple videos side-by-side, backed by MPV and VLC. Python 3.11+, using `uv` and `just`.
 
 ## Hard boundaries
 

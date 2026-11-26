@@ -6,7 +6,7 @@ a URL or a site's own name for a stream as it is a file name, so every
 platform's idea of what a file can be called gets a say.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -50,7 +50,7 @@ from gridplayer.utils.screenshots import (
 )
 from gridplayer.widgets.video_block_screenshot import ScreenshotControl
 
-NOW = datetime(2026, 9, 24, 13, 5, 9, tzinfo=timezone.utc)
+NOW = datetime(2026, 9, 24, 13, 5, 9, tzinfo=UTC)
 
 
 def _name(template="shot", title="clip.mkv", position_ms=0) -> ScreenshotName:

@@ -362,8 +362,10 @@ class TestVLCSaid:
 
     def test_since_the_video_began_to_open(self):
         vlc_errors.keep_vlc_error("before")
+        # Windows' clock before Python 3.13 goes by 15.6 ms
+        time.sleep(0.02)
         began = time.time()
-        time.sleep(0.01)
+        time.sleep(0.02)
         vlc_errors.keep_vlc_error("after")
 
         assert vlc_errors.vlc_errors_since(began, {threading.get_ident()}) == ["after"]

@@ -6,7 +6,7 @@ with the one answer that sends somebody to the right place.
 """
 
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -482,7 +482,7 @@ class TestFetch:
 
 
 def _version_days_ago(days: int) -> str:
-    cut = datetime.now(tz=timezone.utc).date() - timedelta(days=days)
+    cut = datetime.now(tz=UTC).date() - timedelta(days=days)
 
     return cut.strftime("%Y.%m.%d")
 

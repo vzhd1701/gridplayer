@@ -5,7 +5,7 @@ import threading
 import time
 from collections.abc import Iterator
 from contextlib import suppress
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from email.utils import parsedate_to_datetime
 from functools import partial
 from io import IOBase
@@ -535,11 +535,11 @@ def _server_time(response: Response) -> datetime:
 
             # "-0000" says no zone: UTC, as HTTP has it
             if moment.tzinfo is None:
-                moment = moment.replace(tzinfo=timezone.utc)
+                moment = moment.replace(tzinfo=UTC)
 
             return moment
 
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class HLSProxyLive(HLSStream):

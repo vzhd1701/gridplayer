@@ -24,7 +24,7 @@ import re
 import threading
 from collections import Counter, OrderedDict
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from urllib.parse import urljoin, urlsplit
 from xml.etree import ElementTree as ET
 
@@ -722,7 +722,7 @@ def _seconds(text: str | None) -> float:
 
     # with years or months, counted from a date
     if isinstance(duration, Duration):
-        duration = duration.totimedelta(start=datetime(2000, 1, 1, tzinfo=timezone.utc))
+        duration = duration.totimedelta(start=datetime(2000, 1, 1, tzinfo=UTC))
 
     return duration.total_seconds()
 
@@ -736,6 +736,6 @@ def _aware(moment: datetime) -> datetime:
     mean by one."""
 
     if moment.tzinfo is None:
-        return moment.replace(tzinfo=timezone.utc)
+        return moment.replace(tzinfo=UTC)
 
     return moment

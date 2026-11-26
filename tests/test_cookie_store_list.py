@@ -1,6 +1,6 @@
 import json
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from PyQt6.QtWidgets import (
@@ -37,7 +37,7 @@ def _line(domain, name, value="secret", expires=LONG_AFTER):
 
 
 def _date(expires):
-    lapses = datetime.fromtimestamp(expires, tz=timezone.utc).astimezone()
+    lapses = datetime.fromtimestamp(expires, tz=UTC).astimezone()
 
     return lapses.strftime("%Y-%m-%d")
 

@@ -683,7 +683,7 @@ class VideoRenderer(QThread):
             try:
                 if self._render_if_due(video):
                     rendered.append(video)
-            except Exception as e:  # noqa: PERF203
+            except Exception as e:
                 self._log.exception("A video failed to render")
                 self._videos.remove(video)
                 self._free_video(video)

@@ -15,7 +15,7 @@ failing.
 import dataclasses
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 
 from gridplayer.utils.qt import translate
@@ -75,7 +75,7 @@ def report_text(title: str, rows) -> str:
     never ran, so an abandoned run reports as much as it got through.
     """
 
-    ran_at = datetime.now(tz=timezone.utc).astimezone()
+    ran_at = datetime.now(tz=UTC).astimezone()
 
     lines = [f"{title} - {ran_at.strftime('%Y-%m-%d %H:%M')}", ""]
 

@@ -14,7 +14,7 @@ import sys
 import threading
 import time
 import traceback
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from functools import partial
 from http.server import SimpleHTTPRequestHandler
 from pathlib import Path
@@ -537,8 +537,8 @@ class LiveDash:
         self._started_at = time.time() - self.HEAD_START_S
 
     def manifest(self) -> str:
-        started = datetime.fromtimestamp(self._started_at, timezone.utc)
-        now = datetime.now(timezone.utc)
+        started = datetime.fromtimestamp(self._started_at, UTC)
+        now = datetime.now(UTC)
 
         root = (
             'type="dynamic"'
