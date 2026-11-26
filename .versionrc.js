@@ -22,8 +22,10 @@ let version_updater_python = {...version_updater_regex};
 version_updater_python.regex = /^__version__ = \"([^\"]+)\"\n__version_date__ = \"[^\"]+\"$/m;
 version_updater_python.regex_repl = "__version__ = \"$1\"\n__version_date__ = \"" + today + "\"";
 
+// only the version in a download's tag and file name: the README has other
+// numbers like it, an address (127.0.0.1) and other programs' versions
 let version_updater_readme = {...version_updater_regex};
-version_updater_readme.regex = /\d+\.\d+\.\d+/g;
+version_updater_readme.regex = /(?<=\/download\/v|GridPlayer[-.])\d+\.\d+\.\d+/g;
 version_updater_readme.regex_repl = "$1";
 
 version_file = "gridplayer/version.py"
