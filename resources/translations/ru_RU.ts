@@ -19,16 +19,19 @@
       <source>&lt;p&gt;This software is licensed under &lt;a href=&quot;{APP_LICENSE_URL}&quot;&gt;GNU GPL&lt;/a&gt; version 3.&lt;/p&gt;</source>
       <translation type="unfinished">&lt;p&gt;Программа распространяется под лицензией &lt;a href=&quot;{APP_LICENSE_URL}&quot;&gt;GNU GPL&lt;/a&gt; версии 3.&lt;/p&gt;</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
+      <extra-gp-crowdin>69737</extra-gp-crowdin>
     </message>
     <message>
       <source>&lt;p&gt;Source code is available on &lt;a href=&quot;{APP_URL}&quot;&gt;GitHub&lt;/a&gt;.&lt;br/&gt;</source>
       <translation type="unfinished">&lt;p&gt;Исходный код доступен на &lt;a href=&quot;{APP_URL}&quot;&gt;GitHub&lt;/a&gt;.&lt;br/&gt;</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
+      <extra-gp-crowdin>69743</extra-gp-crowdin>
     </message>
     <message>
       <source>Please send any suggestions and bug reports &lt;a href=&quot;{APP_BUGTRACKER_URL}&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;</source>
       <translation type="unfinished">Отправляйте предложения и сообщения об ошибках &lt;a href=&quot;{APP_BUGTRACKER_URL}&quot;&gt;сюда&lt;/a&gt;.&lt;/p&gt;</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
+      <extra-gp-crowdin>69741</extra-gp-crowdin>
     </message>
     <message>
       <source>Core</source>
@@ -6101,6 +6104,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
       <source>&lt;p&gt;Please consider sending a bug report to the &lt;a href=&quot;{APP_BUGTRACKER_URL}&quot;&gt;bug tracker&lt;/a&gt;.&lt;/p&gt;</source>
       <translation type="unfinished">&lt;p&gt;Вы можете сообщить об ошибке в &lt;a href=&quot;{APP_BUGTRACKER_URL}&quot;&gt;трекере ошибок&lt;/a&gt;.&lt;/p&gt;</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
+      <extra-gp-crowdin>69745</extra-gp-crowdin>
     </message>
     <message>
       <source>Copy to Clipboard</source>
@@ -9020,6 +9024,7 @@ One per video: every video gets its own cell, even inside folders and playlists.
       <source>VLC Options [&lt;a href=&quot;https://wiki.videolan.org/VLC_command-line_help/&quot;&gt;reference&lt;/a&gt;]</source>
       <translation type="unfinished">Параметры VLC [&lt;a href=&quot;https://wiki.videolan.org/VLC_command-line_help/&quot;&gt;справка&lt;/a&gt;]</translation>
       <extra-gp-ai>codex/gpt-6.2-sol/high 2026-11-25</extra-gp-ai>
+      <extra-gp-crowdin>69739</extra-gp-crowdin>
     </message>
     <message>
       <source>Experimental</source>
