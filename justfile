@@ -153,11 +153,12 @@ changelog-since-last:
 changelog-all:
     conventional-changelog -u -i /dev/null --stdout
 
-release:
-    commit-and-tag-version
+# below 1.0 a feat only bumps the patch: name the version with --release-as 0.6.0
+release *ARGS:
+    commit-and-tag-version {{ARGS}}
 
-release-dry:
-    commit-and-tag-version --dry-run
+release-dry *ARGS:
+    commit-and-tag-version --dry-run {{ARGS}}
 
 update-actions:
     actions-up --style preserve -y
