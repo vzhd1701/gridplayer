@@ -24,6 +24,8 @@ jobs:
         with:
           identifier: vzhd1701.GridPlayer
           installers-regex: 'GridPlayer-.*-win(64|arm64)-install\.exe$'
-          token: ${{ secrets.GIT_TOKEN }}
+          # classic, with public_repo and workflow: syncing the fork brings
+          # winget-pkgs' own workflow files along
+          token: ${{ secrets.WINGET_TOKEN }}
           version: ${{ inputs.version }}
           release-tag: ${{ github.event_name == 'release' && github.event.release.tag_name || format('v{0}', inputs.version) }}
