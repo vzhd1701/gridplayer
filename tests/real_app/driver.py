@@ -33,6 +33,9 @@ DEFAULT_SETTINGS = {
     "player/one_instance": False,
     # scenarios find menu items by their English names, whatever the system's language
     "player/language": "en_US",
+    # what mpv says went wrong, in app.log: off, a failure on MPV leaves nothing
+    # to tell its cause by
+    "logging/log_level_mpv": logging.WARNING,
 }
 
 
