@@ -54,10 +54,19 @@ const postbumpCommands = [
     `NEW_VERSION=$(uv run --frozen python -c 'from gridplayer.version import __version__; print(__version__)')`,
     'uv run --frozen keepachangelog release "$NEW_VERSION"',
     "uv run --frozen rumdl fmt CHANGELOG.md",
+    // keepachangelog writes it in text mode: CRLF on Windows, which the
+    // pre-commit hook refuses
+    'if [ "$OS" = Windows_NT ]; then dos2unix CHANGELOG.md; fi',
     "git add CHANGELOG.md uv.lock",
 ].join(" && ");
 
-const postbumpScript = `bash -c ${JSON.stringify(postbumpCommands)}`;
+// The command is run by cmd on Windows but by sh elsewhere, which would
+// expand $NEW_VERSION in double quotes before bash had set it
+const quoteForShell = process.platform === "win32"
+    ? JSON.stringify
+    : (text) => `'${text.replace(/'/g, `'\\''`)}'`;
+
+const postbumpScript = `bash -c ${quoteForShell(postbumpCommands)}`;
 
 
 module.exports = {
