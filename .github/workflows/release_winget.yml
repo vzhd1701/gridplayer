@@ -1,0 +1,29 @@
+name: release_winget
+
+on:
+  release:
+    types: [released]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Package version, without the v. Uses the GitHub release v{version} for installers.'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-slim
+    steps:
+      # the installers for x64 and arm64, not the portable zips; opens a pull
+      # request on microsoft/winget-pkgs from the fork vzhd1701/winget-pkgs
+      - name: Publish to WinGet
+        uses: vedantmgoyal9/winget-releaser@main
+        with:
+          identifier: vzhd1701.GridPlayer
+          installers-regex: 'GridPlayer-.*-win(64|arm64)-install\.exe$'
+          token: ${{ secrets.GIT_TOKEN }}
+          version: ${{ inputs.version }}
+          release-tag: ${{ github.event_name == 'release' && github.event.release.tag_name || format('v{0}', inputs.version) }}
