@@ -110,6 +110,7 @@ select = [
     ##"N",    # pep8-naming
     "PERF", # perflint
     "PIE",  # flake8-pie
+    "PLE",  # pylint's errors: a control character in a string (PLE2510...)
     "PT",   # flake8-pytest-style
     "PTH",  # flake8-use-pathlib
     "Q",    # flake8-quotes
