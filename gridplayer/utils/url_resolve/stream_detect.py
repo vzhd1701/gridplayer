@@ -87,7 +87,7 @@ def is_dash_live_stream(
 
     manifest = session.http.get(url).text
 
-    return bool(re.search(r'type\s*=\s*"dynamic"', manifest[:MANIFEST_HEAD]))
+    return bool(re.search(r'\btype\s*=\s*"dynamic"', manifest[:MANIFEST_HEAD]))
 
 
 def is_fragmented_stream(
