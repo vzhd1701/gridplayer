@@ -40,8 +40,8 @@ jobs:
           - { os: windows-latest, python-version: "3.14" }
           - { os: macos-15-intel, python-version: "3.14" }
           # arm64, as the Windows and Linux packages are built for it too
-          - { os: windows-11-arm, python-version: "3.14", trial: true }
-          - { os: ubuntu-24.04-arm, python-version: "3.14", trial: true }
+          - { os: windows-11-arm, python-version: "3.14" }
+          - { os: ubuntu-24.04-arm, python-version: "3.14" }
     # by what tells them apart: GitHub's own name lists every value of the row
     name: test (${{ matrix.os }}, ${{ matrix.python-version }}${{ matrix.trial && ', trial' || '' }})
     runs-on: ${{ matrix.os }}
@@ -101,9 +101,7 @@ jobs:
       fail-fast: false
       matrix:
         # side by side: the oldest Ubuntu taken and the newest
-        os: [ ubuntu-24.04, ubuntu-26.04 ]
-        include:
-          - { os: ubuntu-24.04-arm, trial: true }
+        os: [ ubuntu-24.04, ubuntu-26.04, ubuntu-24.04-arm ]
     name: real-app (${{ matrix.os }}${{ matrix.trial && ', trial' || '' }})
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.trial == true }}
@@ -151,9 +149,7 @@ jobs:
       fail-fast: false
       matrix:
         # libmpv 0.37, the oldest taken, and 0.41
-        os: [ ubuntu-24.04, ubuntu-26.04 ]
-        include:
-          - { os: ubuntu-24.04-arm, trial: true }
+        os: [ ubuntu-24.04, ubuntu-26.04, ubuntu-24.04-arm ]
     name: real-app-mpv (${{ matrix.os }}${{ matrix.trial && ', trial' || '' }})
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.trial == true }}
@@ -206,8 +202,8 @@ jobs:
         include:
           - { os: windows-latest, part: vlc, select: "not mpv" }
           - { os: windows-latest, part: mpv, select: mpv }
-          - { os: windows-11-arm, part: vlc, select: "not mpv", trial: true }
-          - { os: windows-11-arm, part: mpv, select: mpv, trial: true }
+          - { os: windows-11-arm, part: vlc, select: "not mpv" }
+          - { os: windows-11-arm, part: mpv, select: mpv }
           - { os: macos-15-intel, part: all, select: "" }
     name: real-app-desktop (${{ matrix.os }}, ${{ matrix.part }}${{ matrix.trial && ', trial' || '' }})
     runs-on: ${{ matrix.os }}
